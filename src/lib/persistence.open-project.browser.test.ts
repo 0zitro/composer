@@ -148,6 +148,15 @@ describe("persistence · open project", () => {
       await save("Recovered");
       expect(await listProjectIndex()).toHaveLength(1);
     });
+
+    it("regression: a failed lookup is retried on the next load without a save in between", async () => {
+      await openAndCloseAtVersion(DB_NAME, 4);
+      await expect(loadCurrentProject()).rejects.toThrow();
+
+      await deleteDatabase(DB_NAME);
+
+      await expect(loadCurrentProject()).resolves.toBeUndefined();
+    });
   });
 
   it("replaceCurrentProject on a fresh install creates the open project", async () => {
