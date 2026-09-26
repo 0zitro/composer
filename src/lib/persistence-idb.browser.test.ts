@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   APP_STATE_STORE_NAME,
   DB_NAME,
@@ -15,6 +14,7 @@ import {
   runTransaction,
   setInStore,
 } from "@/lib/persistence-idb";
+import { describe, expect, it } from "vitest";
 
 // The shared browser setup (src/test/setup-browser.ts) deletes the entire
 // `ttml-composer` database before every test, so each test starts from a
@@ -118,20 +118,35 @@ function openAtVersion(version: number, create: (db: IDBDatabase) => void): Prom
 }
 
 describe("persistence-idb · upgrade", () => {
-  it("regression: upgrading from v2 keeps the legacy current project", async () => {
+  it("regression: upgrading from v2 keeps the legacy current project and stems, and creates every new store", async () => {
     const v2 = await openAtVersion(2, (db) => {
       db.createObjectStore(PROJECT_STORE_NAME);
       db.createObjectStore(STEM_STORE_NAME);
     });
     await new Promise<void>((resolve, reject) => {
-      const tx = v2.transaction(PROJECT_STORE_NAME, "readwrite");
+      const tx = v2.transaction([PROJECT_STORE_NAME, STEM_STORE_NAME], "readwrite");
       tx.objectStore(PROJECT_STORE_NAME).put({ version: 1, lines: [] }, "current");
+      tx.objectStore(STEM_STORE_NAME).put(new Uint8Array([1, 2, 3]), "vocals");
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
     v2.close();
 
+    const upgraded = await openDB();
+    for (const name of [
+      PROJECT_STORE_NAME,
+      STEM_STORE_NAME,
+      PROJECT_RECORD_STORE_NAME,
+      PROJECT_INDEX_STORE_NAME,
+      PROJECT_AUDIO_STORE_NAME,
+      APP_STATE_STORE_NAME,
+    ]) {
+      expect(upgraded.objectStoreNames.contains(name)).toBe(true);
+    }
+    upgraded.close();
+
     expect(await getFromStore(PROJECT_STORE_NAME, "current")).toEqual({ version: 1, lines: [] });
+    expect(await getFromStore(STEM_STORE_NAME, "vocals")).toEqual(new Uint8Array([1, 2, 3]));
   });
 });
 
@@ -154,6 +169,16 @@ describe("persistence-idb · runTransaction", () => {
         tx.abort();
       }),
     ).rejects.toThrow();
+    expect(await getFromStore(PROJECT_RECORD_STORE_NAME, "p1")).toBeUndefined();
+  });
+
+  it("aborts and does not persist writes when the work callback throws synchronously", async () => {
+    await expect(
+      runTransaction([PROJECT_RECORD_STORE_NAME], "readwrite", (tx) => {
+        tx.objectStore(PROJECT_RECORD_STORE_NAME).put({ a: 1 }, "p1");
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
     expect(await getFromStore(PROJECT_RECORD_STORE_NAME, "p1")).toBeUndefined();
   });
 

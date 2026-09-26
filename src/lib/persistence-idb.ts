@@ -1,5 +1,6 @@
 // -- Constants ----------------------------------------------------------------
 
+const LOG_PREFIX = "[PersistenceIDB]";
 const DB_NAME = "ttml-composer";
 const DB_VERSION = 3;
 const PROJECT_STORE_NAME = "projects";
@@ -29,6 +30,9 @@ function openDB(): Promise<IDBDatabase> {
       for (const name of ALL_STORE_NAMES) {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
       }
+    };
+    request.onblocked = () => {
+      console.warn(LOG_PREFIX, "database open blocked by another open connection; waiting for it to close");
     };
   });
 }
@@ -99,19 +103,31 @@ async function runTransaction(
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeNames, mode);
-    transaction.oncomplete = () => {
+    let closed = false;
+    let workError: unknown;
+    const closeOnce = () => {
+      if (closed) return;
+      closed = true;
       db.close();
+    };
+    transaction.oncomplete = () => {
+      closeOnce();
       resolve();
     };
     transaction.onerror = () => {
-      db.close();
-      reject(transaction.error ?? new Error("IndexedDB transaction failed"));
+      closeOnce();
+      reject(workError ?? transaction.error ?? new Error("IndexedDB transaction failed"));
     };
     transaction.onabort = () => {
-      db.close();
-      reject(transaction.error ?? new Error("IndexedDB transaction aborted"));
+      closeOnce();
+      reject(workError ?? transaction.error ?? new Error("IndexedDB transaction aborted"));
     };
-    work(transaction);
+    try {
+      work(transaction);
+    } catch (error) {
+      workError = error;
+      transaction.abort();
+    }
   });
 }
 
