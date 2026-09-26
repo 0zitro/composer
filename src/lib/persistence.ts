@@ -53,7 +53,7 @@ function ensureOpenProjectId(): Promise<string> {
   return openProjectIdCreation;
 }
 
-function __resetOpenProjectForTests(): void {
+function forgetOpenProjectId(): void {
   openProjectIdLookup = null;
   openProjectIdCreation = null;
 }
@@ -113,7 +113,7 @@ async function clearCurrentProject(): Promise<void> {
   const id = await findOpenProjectId();
   if (id) await deleteProject(id);
   await clearOpenProjectId();
-  __resetOpenProjectForTests();
+  forgetOpenProjectId();
 }
 
 // -- Audio File Persistence ---------------------------------------------------
@@ -198,5 +198,5 @@ export {
   saveAudioFile,
   loadAudioFile,
   clearAudioFile,
-  __resetOpenProjectForTests,
+  forgetOpenProjectId,
 };

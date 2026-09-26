@@ -1,18 +1,33 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { reconcileLine } from "@/domain/line/model";
 import {
-  __resetOpenProjectForTests,
+  clearAudioFile,
   clearCurrentProject,
+  forgetOpenProjectId,
   loadAudioFile,
   loadCurrentProject,
+  replaceCurrentProject,
   saveAudioFile,
   saveCurrentProject,
 } from "@/lib/persistence";
+import { DB_NAME } from "@/lib/persistence-idb";
 import { listProjectIndex } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
-import { seedAudioFile, seedProject } from "@/test/idb";
+import { deleteDatabase, seedAudioFile, seedProject } from "@/test/idb";
 import { describe, expect, it } from "vitest";
+
+function openAndCloseAtVersion(name: string, version: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onupgradeneeded = () => {};
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
 
 function save(title: string): Promise<void> {
   return saveCurrentProject(
@@ -76,7 +91,7 @@ describe("persistence · open project", () => {
         agents: DEFAULT_AGENTS,
       });
       await seedAudioFile({ name: "legacy.mp3", type: "audio/mpeg", data: new Uint8Array(5).buffer });
-      __resetOpenProjectForTests();
+      forgetOpenProjectId();
       expect((await loadCurrentProject())?.metadata.title).toBe("Legacy");
       expect((await loadAudioFile())?.name).toBe("legacy.mp3");
     });
@@ -103,7 +118,7 @@ describe("persistence · open project", () => {
           }),
         ],
       });
-      __resetOpenProjectForTests();
+      forgetOpenProjectId();
       const loaded = await loadCurrentProject();
       expect(loaded?.version).toBe(SAVED_PROJECT_VERSION);
       expect(loaded?.lines[0].transliteration?.alignmentStatus).toBe("confirmed");
@@ -120,5 +135,40 @@ describe("persistence · open project", () => {
       expect(index).toHaveLength(1);
       expect(index[0].storedAudioBytes).toBe(8);
     });
+
+    it("regression: a database opened at a newer version rejects reads and writes, and recovers once the database is deleted", async () => {
+      await openAndCloseAtVersion(DB_NAME, 4);
+
+      await expect(loadCurrentProject()).rejects.toThrow();
+      await expect(save("Blocked")).rejects.toThrow();
+
+      await deleteDatabase(DB_NAME);
+
+      await expect(loadCurrentProject()).resolves.toBeUndefined();
+      await save("Recovered");
+      expect(await listProjectIndex()).toHaveLength(1);
+    });
+  });
+
+  it("replaceCurrentProject on a fresh install creates the open project", async () => {
+    expect(await getOpenProjectId()).toBeUndefined();
+    await replaceCurrentProject({
+      version: SAVED_PROJECT_VERSION,
+      savedAt: 1,
+      metadata: { title: "Replaced", artists: [], album: "", duration: 0 },
+      agents: DEFAULT_AGENTS,
+      lines: [],
+      granularity: "word",
+    });
+    expect(await getOpenProjectId()).toBeDefined();
+    expect((await loadCurrentProject())?.metadata.title).toBe("Replaced");
+  });
+
+  it("clearAudioFile keeps the record", async () => {
+    await save("One");
+    await saveAudioFile(new File([new Uint8Array(16)], "a.mp3", { type: "audio/mpeg" }));
+    await clearAudioFile();
+    expect((await loadCurrentProject())?.metadata.title).toBe("One");
+    expect(await loadAudioFile()).toBeUndefined();
   });
 });

@@ -19,6 +19,15 @@ function seedAudioFile(args: SeedAudioFileArgs): Promise<void> {
   return setInStore(PROJECT_STORE_NAME, LEGACY_AUDIO_KEY, args);
 }
 
+function deleteDatabase(name: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error(`deleteDatabase(${name}) failed`));
+    request.onblocked = () => resolve();
+  });
+}
+
 // -- Exports -------------------------------------------------------------------
 
-export { seedProject, seedAudioFile };
+export { seedProject, seedAudioFile, deleteDatabase };
