@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
 import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
 import { migrateLegacyProject } from "@/lib/project-migration";
 import { getOpenProjectId, listProjectIndex, loadProjectAudio, loadProjectRecord } from "@/lib/project-repository";
+import { allowConsole } from "@/test/console-guard";
 import { seedAudioFile, seedProject } from "@/test/idb";
+import { describe, expect, it } from "vitest";
+
+function withExpectedWindowError<T>(run: () => Promise<T>): Promise<T> {
+  const onWindowError = (event: ErrorEvent) => event.preventDefault();
+  window.addEventListener("error", onWindowError);
+  return run().finally(() => window.removeEventListener("error", onWindowError));
+}
 
 const LEGACY_PROJECT = {
   version: 1,
@@ -42,6 +49,36 @@ describe("migrateLegacyProject", () => {
     expect(await migrateLegacyProject()).toBeUndefined();
     expect(await getOpenProjectId()).toBeUndefined();
     expect(await listProjectIndex()).toEqual([]);
+  });
+
+  describe("regressions", () => {
+    it("regression: a malformed legacy record still migrates and clears the legacy keys", async () => {
+      const malformed = { ...LEGACY_PROJECT, lines: [null, { id: "x" }] };
+      await seedProject(malformed);
+
+      const id = await migrateLegacyProject();
+
+      expect(id).toBeTruthy();
+      expect((await loadProjectRecord(id as string))?.lines).toEqual([null, { id: "x" }]);
+      expect(await getFromStore(PROJECT_STORE_NAME, "current")).toBeUndefined();
+      expect(await getFromStore(PROJECT_STORE_NAME, "current-audio")).toBeUndefined();
+    });
+
+    it("regression: an aborted migration leaves the legacy keys in place", async () => {
+      allowConsole(/Cannot read properties of null/);
+      await seedProject(LEGACY_PROJECT);
+      await seedAudioFile({ name: "kick-back.flac", type: "audio/flac", data: null as unknown as ArrayBuffer });
+
+      await withExpectedWindowError(() => expect(migrateLegacyProject()).rejects.toThrow());
+
+      expect(await getFromStore(PROJECT_STORE_NAME, "current")).toEqual(LEGACY_PROJECT);
+      expect(await getFromStore(PROJECT_STORE_NAME, "current-audio")).toEqual({
+        name: "kick-back.flac",
+        type: "audio/flac",
+        data: null,
+      });
+      expect(await getOpenProjectId()).toBeUndefined();
+    });
   });
 
   describe("edge cases", () => {

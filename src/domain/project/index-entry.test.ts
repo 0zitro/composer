@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { buildIndexEntry, type IndexEntryInput } from "@/domain/project/index-entry";
+import { type IndexEntryInput, buildIndexEntry } from "@/domain/project/index-entry";
 import { createLine } from "@/test/factories";
+import { describe, expect, it } from "vitest";
 
 function input(overrides: Partial<IndexEntryInput> = {}): IndexEntryInput {
   return {
@@ -84,6 +84,26 @@ describe("buildIndexEntry", () => {
     it("regression: does not crash on a legacy record with a single artist field and missing lines", () => {
       const entry = buildIndexEntry(input({ metadata: { title: "Old", artist: "Someone" }, lines: undefined }));
       expect(entry.artists).toEqual(["Someone"]);
+      expect(entry.lineCount).toBe(0);
+    });
+
+    it("regression: treats non-array stored lines as zero lines", () => {
+      const entry = buildIndexEntry(input({ lines: "oops" }));
+      expect(entry.lineCount).toBe(0);
+    });
+
+    it("regression: skips a null entry among stored lines", () => {
+      const entry = buildIndexEntry(input({ lines: [null, { id: "x" }] }));
+      expect(entry.lineCount).toBe(0);
+    });
+
+    it("regression: treats a line with a missing text field as having no main lyrics", () => {
+      const entry = buildIndexEntry(input({ lines: [{ id: "y" }] }));
+      expect(entry.lineCount).toBe(0);
+    });
+
+    it("regression: treats a line with a non-string text field as having no main lyrics", () => {
+      const entry = buildIndexEntry(input({ lines: [{ id: "z", text: 42 }] }));
       expect(entry.lineCount).toBe(0);
     });
   });

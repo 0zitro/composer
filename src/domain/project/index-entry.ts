@@ -24,7 +24,7 @@ interface ProjectIndexEntry {
 interface IndexEntryInput {
   id: string;
   metadata: Parameters<typeof normalizeLoadedMetadata>[0];
-  lines: LyricLine[] | undefined;
+  lines: unknown;
   audioSource: SavedAudioSource | undefined;
   storedAudioBytes: number;
   updatedAt: number;
@@ -32,9 +32,22 @@ interface IndexEntryInput {
 
 // -- Derivation ---------------------------------------------------------------
 
+function isStoredLine(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function hasStoredMainLyrics(line: Record<string, unknown>): boolean {
+  return typeof line.text === "string" && hasMainLyrics(line as unknown as LyricLine);
+}
+
+function normalizeStoredLines(lines: unknown): LyricLine[] {
+  const entries = Array.isArray(lines) ? lines : [];
+  return entries.filter(isStoredLine).filter(hasStoredMainLyrics) as unknown as LyricLine[];
+}
+
 function buildIndexEntry(input: IndexEntryInput): ProjectIndexEntry {
   const metadata = normalizeLoadedMetadata(input.metadata);
-  const lyricLines = (input.lines ?? []).filter(hasMainLyrics);
+  const lyricLines = normalizeStoredLines(input.lines);
   return {
     id: input.id,
     title: metadata.title,
