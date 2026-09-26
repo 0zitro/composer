@@ -14,6 +14,7 @@ import type { StateCreator } from "zustand";
 
 function createMetadataInitialState(): MetadataState {
   return {
+    projectSession: 0,
     metadata: {
       title: "",
       artists: [],
@@ -48,6 +49,9 @@ const createMetadataSlice: StateCreator<ProjectStore, [], [], MetadataState & Me
       isDirty: true,
     })),
 
+  startProjectSession: () => set((state) => ({ projectSession: state.projectSession + 1 })),
+
+  reset: () => set((state) => ({ ...createProjectInitialState(), projectSession: state.projectSession + 1 })),
   resetSongIdentity: (title) =>
     set((state) => ({
       metadata: normalizeLoadedMetadata({ title }),
@@ -62,8 +66,6 @@ const createMetadataSlice: StateCreator<ProjectStore, [], [], MetadataState & Me
 
   clearUnexportedImport: () =>
     set((state) => (state.hasUnexportedImport ? { hasUnexportedImport: false, isDirty: true } : state)),
-
-  reset: () => set(createProjectInitialState()),
 });
 
 // -- Exports ------------------------------------------------------------------

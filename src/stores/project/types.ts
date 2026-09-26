@@ -9,7 +9,7 @@ import type { WordTiming } from "@/domain/word/timing";
 
 type GranularityMode = "line" | "word";
 type EditorMode = "simple" | "advanced";
-type SimpleTab = "import" | "edit" | "sync" | "timeline" | "preview" | "export";
+type SimpleTab = "import" | "edit" | "languages" | "sync" | "timeline" | "preview" | "export";
 
 interface SyllableSplitDefaults {
   applyToAll: boolean;
@@ -32,6 +32,8 @@ interface HistoryEntry {
 
 interface MetadataState {
   metadata: ProjectMetadata;
+  /** In-memory identity for replacements, including files that reuse line IDs. */
+  projectSession: number;
   hasUnexportedImport: boolean;
 }
 
@@ -85,6 +87,7 @@ interface HistoryState {
 
 interface MetadataActions {
   setMetadata: (metadata: Partial<ProjectMetadata>) => void;
+  startProjectSession: () => void;
   resetSongIdentity: (title: string) => void;
   restoreSongIdentity: (identity: SongIdentity) => void;
   markSongDetailsImported: () => void;
