@@ -5,20 +5,54 @@ import type { LyricLine } from "@/domain/line/model";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
-import { PROJECT_STORE_NAME, deleteFromStore, getFromStore, setInStore } from "@/lib/persistence-idb";
+import { migrateLegacyProject } from "@/lib/project-migration";
 import {
-  SAVED_PROJECT_VERSION,
-  type SavedAudioFile,
-  type SavedProject,
-  upgradeSavedProject,
-} from "@/lib/saved-project";
+  clearOpenProjectId,
+  createProjectId,
+  deleteProject,
+  deleteProjectAudio,
+  getOpenProjectId,
+  loadProjectAudio,
+  loadProjectRecord,
+  saveProjectAudio,
+  saveProjectRecord,
+  setOpenProjectId,
+} from "@/lib/project-repository";
+import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";
 
-// -- Constants ----------------------------------------------------------------
+// -- Open project -------------------------------------------------------------
 
-const CURRENT_PROJECT_KEY = "current";
-const AUDIO_FILE_KEY = "current-audio";
+let openProjectIdLookup: Promise<string | undefined> | null = null;
+let openProjectIdCreation: Promise<string> | null = null;
+
+function findOpenProjectId(): Promise<string | undefined> {
+  openProjectIdLookup ??= getOpenProjectId().then((id) => id ?? migrateLegacyProject());
+  return openProjectIdLookup;
+}
+
+function ensureOpenProjectId(): Promise<string> {
+  openProjectIdCreation ??= findOpenProjectId()
+    .then(async (existing) => {
+      if (existing) return existing;
+      const id = createProjectId();
+      await setOpenProjectId(id);
+      openProjectIdLookup = Promise.resolve(id);
+      return id;
+    })
+    .catch((error: unknown) => {
+      openProjectIdCreation = null;
+      openProjectIdLookup = null;
+      throw error;
+    });
+  return openProjectIdCreation;
+}
+
+function __resetOpenProjectForTests(): void {
+  openProjectIdLookup = null;
+  openProjectIdCreation = null;
+}
 
 // -- Public API ---------------------------------------------------------------
 
@@ -56,43 +90,42 @@ async function saveCurrentProject(
     customSnapPoints,
     hasUnexportedImport,
   };
-  await setInStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY, project);
+  await saveProjectRecord(await ensureOpenProjectId(), project);
 }
 
 async function loadCurrentProject(): Promise<SavedProject | undefined> {
-  const project = await getFromStore<SavedProject>(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY);
-  if (project && upgradeSavedProject(project)) await setInStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY, project);
+  const id = await findOpenProjectId();
+  if (!id) return undefined;
+  const project = await loadProjectRecord(id);
+  if (project && upgradeSavedProject(project)) await saveProjectRecord(id, project);
   return project;
 }
 
 async function replaceCurrentProject(project: SavedProject): Promise<void> {
-  await setInStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY, project);
+  await saveProjectRecord(await ensureOpenProjectId(), project);
 }
 
 async function clearCurrentProject(): Promise<void> {
-  await deleteFromStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY);
-  await clearAudioFile();
+  const id = await findOpenProjectId();
+  if (id) await deleteProject(id);
+  await clearOpenProjectId();
+  __resetOpenProjectForTests();
 }
 
 // -- Audio File Persistence ---------------------------------------------------
 
 async function saveAudioFile(file: File): Promise<void> {
-  const data = await file.arrayBuffer();
-  await setInStore<SavedAudioFile>(PROJECT_STORE_NAME, AUDIO_FILE_KEY, {
-    name: file.name,
-    type: file.type,
-    data,
-  });
+  await saveProjectAudio(await ensureOpenProjectId(), file);
 }
 
 async function loadAudioFile(): Promise<File | undefined> {
-  const saved = await getFromStore<SavedAudioFile>(PROJECT_STORE_NAME, AUDIO_FILE_KEY);
-  if (!saved) return undefined;
-  return new File([saved.data], saved.name, { type: saved.type });
+  const id = await findOpenProjectId();
+  return id ? loadProjectAudio(id) : undefined;
 }
 
 async function clearAudioFile(): Promise<void> {
-  await deleteFromStore(PROJECT_STORE_NAME, AUDIO_FILE_KEY);
+  const id = await findOpenProjectId();
+  if (id) await deleteProjectAudio(id);
 }
 
 function exportProjectToFile(
@@ -161,4 +194,5 @@ export {
   saveAudioFile,
   loadAudioFile,
   clearAudioFile,
+  __resetOpenProjectForTests,
 };

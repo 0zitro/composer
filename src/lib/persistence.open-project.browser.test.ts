@@ -1,0 +1,123 @@
+import { describe, expect, it } from "vitest";
+import { DEFAULT_AGENTS } from "@/domain/agent/colors";
+import { reconcileLine } from "@/domain/line/model";
+import {
+  __resetOpenProjectForTests,
+  clearCurrentProject,
+  loadAudioFile,
+  loadCurrentProject,
+  saveAudioFile,
+  saveCurrentProject,
+} from "@/lib/persistence";
+import { getOpenProjectId, listProjectIndex, loadProjectRecord } from "@/lib/project-repository";
+import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
+import { seedAudioFile, seedProject } from "@/test/idb";
+
+function save(title: string): Promise<void> {
+  return saveCurrentProject(
+    { title, artists: [], album: "", duration: 0 },
+    DEFAULT_AGENTS,
+    [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
+    [],
+    "word",
+    { applyToAll: false, caseInsensitive: false },
+    { kind: "file", name: "a.mp3" },
+    [],
+    [],
+    "original",
+    false,
+    [],
+  );
+}
+
+describe("persistence · open project", () => {
+  it("the first save creates one open project, and later saves reuse it", async () => {
+    await save("One");
+    const id = await getOpenProjectId();
+    await save("Two");
+    expect(await getOpenProjectId()).toBe(id);
+    expect(await listProjectIndex()).toEqual([expect.objectContaining({ id, title: "Two" })]);
+    expect((await loadCurrentProject())?.metadata.title).toBe("Two");
+  });
+
+  it("audio saves land on the open project", async () => {
+    await save("One");
+    await saveAudioFile(new File([new Uint8Array(32)], "a.mp3", { type: "audio/mpeg" }));
+    expect((await loadAudioFile())?.size).toBe(32);
+    expect((await listProjectIndex())[0].storedAudioBytes).toBe(32);
+  });
+
+  it("clearCurrentProject removes the project, and the next save starts a new one", async () => {
+    await save("One");
+    const first = await getOpenProjectId();
+    await clearCurrentProject();
+    expect(await loadCurrentProject()).toBeUndefined();
+    expect(await loadAudioFile()).toBeUndefined();
+    await save("Fresh");
+    const second = await getOpenProjectId();
+    expect(second).not.toBe(first);
+    expect(await listProjectIndex()).toHaveLength(1);
+  });
+
+  describe("edge cases", () => {
+    it("loadCurrentProject returns undefined on a fresh install and creates nothing", async () => {
+      expect(await loadCurrentProject()).toBeUndefined();
+      expect(await getOpenProjectId()).toBeUndefined();
+    });
+
+    it("a legacy install loads through the migration", async () => {
+      await seedProject({
+        version: 1,
+        savedAt: 1,
+        metadata: { title: "Legacy" },
+        lines: [],
+        granularity: "word",
+        agents: DEFAULT_AGENTS,
+      });
+      await seedAudioFile({ name: "legacy.mp3", type: "audio/mpeg", data: new Uint8Array(5).buffer });
+      __resetOpenProjectForTests();
+      expect((await loadCurrentProject())?.metadata.title).toBe("Legacy");
+      expect((await loadAudioFile())?.name).toBe("legacy.mp3");
+    });
+
+    it("a record older than the current version is upgraded on load and written back", async () => {
+      await seedProject({
+        version: 1,
+        savedAt: 1,
+        metadata: { title: "Old", artists: [], album: "", duration: 0 },
+        granularity: "word",
+        agents: DEFAULT_AGENTS,
+        lines: [
+          reconcileLine({
+            id: "L1",
+            text: "걸음은 Like a dance",
+            agentId: "v1",
+            transliteration: {
+              language: "ko-Latn",
+              text: "geol-eum-eun Like a dance",
+              segments: [],
+              origin: "google",
+              sourceFingerprint: "legacy",
+            },
+          }),
+        ],
+      });
+      __resetOpenProjectForTests();
+      const loaded = await loadCurrentProject();
+      expect(loaded?.version).toBe(SAVED_PROJECT_VERSION);
+      expect(loaded?.lines[0].transliteration?.alignmentStatus).toBe("confirmed");
+      const id = await getOpenProjectId();
+      expect(id).toBeDefined();
+      expect((await loadProjectRecord(id ?? ""))?.version).toBe(SAVED_PROJECT_VERSION);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: an audio save and a project save racing on first boot share one project", async () => {
+      await Promise.all([save("Race"), saveAudioFile(new File([new Uint8Array(8)], "r.mp3", { type: "audio/mpeg" }))]);
+      const index = await listProjectIndex();
+      expect(index).toHaveLength(1);
+      expect(index[0].storedAudioBytes).toBe(8);
+    });
+  });
+});
