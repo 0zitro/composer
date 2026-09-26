@@ -4,7 +4,7 @@
 // and `/recover` even when the rest of the app is in a broken state.
 
 import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
-import { clearAllProjects, getOpenProjectId, loadProjectRecord } from "@/lib/project-repository";
+import { LEGACY_PROJECT_KEY, clearAllProjects, getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 
 // -- Types --------------------------------------------------------------------
 
@@ -25,7 +25,6 @@ interface RecoveryResult {
 
 // -- Constants ----------------------------------------------------------------
 
-const CURRENT_PROJECT_KEY = "current";
 const NOT_FOUND_RESULT: RecoveryResult = {
   found: false,
   filename: "",
@@ -39,7 +38,7 @@ const NOT_FOUND_RESULT: RecoveryResult = {
 async function readProjectFromIDB(): Promise<RecoveredProject | undefined> {
   const openId = await getOpenProjectId();
   const open = openId ? await loadProjectRecord(openId) : undefined;
-  return open ?? getFromStore<RecoveredProject>(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY);
+  return open ?? getFromStore<RecoveredProject>(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY);
 }
 
 function buildRecoveryResult(project: RecoveredProject): RecoveryResult {

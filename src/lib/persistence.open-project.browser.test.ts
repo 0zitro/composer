@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { reconcileLine } from "@/domain/line/model";
 import {
@@ -9,9 +8,11 @@ import {
   saveAudioFile,
   saveCurrentProject,
 } from "@/lib/persistence";
-import { getOpenProjectId, listProjectIndex, loadProjectRecord } from "@/lib/project-repository";
+import { listProjectIndex } from "@/lib/project-repository";
+import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
 import { seedAudioFile, seedProject } from "@/test/idb";
+import { describe, expect, it } from "vitest";
 
 function save(title: string): Promise<void> {
   return saveCurrentProject(

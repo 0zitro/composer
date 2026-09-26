@@ -1,9 +1,5 @@
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
-
-// -- Constants -----------------------------------------------------------------
-
-const CURRENT_KEY = "current";
-const AUDIO_KEY = "current-audio";
+import { LEGACY_AUDIO_KEY, LEGACY_PROJECT_KEY } from "@/lib/project-storage";
 
 // -- Types ---------------------------------------------------------------------
 
@@ -16,11 +12,11 @@ interface SeedAudioFileArgs {
 // -- Helpers -------------------------------------------------------------------
 
 function seedProject(project: unknown): Promise<void> {
-  return setInStore(PROJECT_STORE_NAME, CURRENT_KEY, project);
+  return setInStore(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY, project);
 }
 
 function seedAudioFile(args: SeedAudioFileArgs): Promise<void> {
-  return setInStore(PROJECT_STORE_NAME, AUDIO_KEY, args);
+  return setInStore(PROJECT_STORE_NAME, LEGACY_AUDIO_KEY, args);
 }
 
 // -- Exports -------------------------------------------------------------------

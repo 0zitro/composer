@@ -11,13 +11,12 @@ import {
   createProjectId,
   deleteProject,
   deleteProjectAudio,
-  getOpenProjectId,
   loadProjectAudio,
-  loadProjectRecord,
   saveProjectAudio,
   saveProjectRecord,
   setOpenProjectId,
 } from "@/lib/project-repository";
+import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";

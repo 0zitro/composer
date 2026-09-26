@@ -1,22 +1,19 @@
-import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
-import { PROJECT_STORE_NAME, getFromStore, setInStore } from "@/lib/persistence-idb";
 import {
-  clearAllProjects,
   clearOpenProjectId,
   createProjectId,
   deleteProject,
   deleteProjectAudio,
-  getOpenProjectId,
   listProjectIndex,
   loadProjectAudio,
-  loadProjectRecord,
   saveProjectAudio,
   saveProjectRecord,
   setOpenProjectId,
 } from "@/lib/project-repository";
+import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
 import { createLine } from "@/test/factories";
+import { describe, expect, it } from "vitest";
 
 function project(overrides: Partial<SavedProject> = {}): SavedProject {
   return {
@@ -99,16 +96,6 @@ describe("project-repository", () => {
     expect(await getOpenProjectId()).toBe("p9");
     await clearOpenProjectId();
     expect(await getOpenProjectId()).toBeUndefined();
-  });
-
-  it("clearAllProjects empties every project store, the legacy keys included", async () => {
-    await saveProjectRecord("p1", project());
-    await setOpenProjectId("p1");
-    await setInStore(PROJECT_STORE_NAME, "current", project());
-    await clearAllProjects();
-    expect(await listProjectIndex()).toEqual([]);
-    expect(await getOpenProjectId()).toBeUndefined();
-    expect(await getFromStore(PROJECT_STORE_NAME, "current")).toBeUndefined();
   });
 
   describe("edge cases", () => {

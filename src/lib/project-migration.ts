@@ -6,13 +6,12 @@ import {
   PROJECT_STORE_NAME,
   runTransaction,
 } from "@/lib/persistence-idb";
-import { OPEN_PROJECT_KEY, createProjectId, getOpenProjectId, indexEntryForProject } from "@/lib/project-repository";
+import { createProjectId, indexEntryForProject } from "@/lib/project-repository";
+import { LEGACY_AUDIO_KEY, LEGACY_PROJECT_KEY, OPEN_PROJECT_KEY, getOpenProjectId } from "@/lib/project-storage";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
 
 // -- Constants ----------------------------------------------------------------
 
-const LEGACY_PROJECT_KEY = "current";
-const LEGACY_AUDIO_KEY = "current-audio";
 const MIGRATION_STORES = [
   PROJECT_STORE_NAME,
   PROJECT_RECORD_STORE_NAME,

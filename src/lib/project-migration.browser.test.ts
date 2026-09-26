@@ -1,6 +1,7 @@
 import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
 import { migrateLegacyProject } from "@/lib/project-migration";
-import { getOpenProjectId, listProjectIndex, loadProjectAudio, loadProjectRecord } from "@/lib/project-repository";
+import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
+import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { allowConsole } from "@/test/console-guard";
 import { seedAudioFile, seedProject } from "@/test/idb";
 import { describe, expect, it } from "vitest";

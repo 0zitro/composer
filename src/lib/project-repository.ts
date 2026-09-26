@@ -1,22 +1,18 @@
-import { nanoid } from "nanoid";
-import { buildIndexEntry, type ProjectIndexEntry } from "@/domain/project/index-entry";
+import { type ProjectIndexEntry, buildIndexEntry } from "@/domain/project/index-entry";
 import {
   APP_STATE_STORE_NAME,
   PROJECT_AUDIO_STORE_NAME,
   PROJECT_INDEX_STORE_NAME,
   PROJECT_RECORD_STORE_NAME,
-  PROJECT_STORE_NAME,
   deleteFromStore,
   getAllFromStore,
   getFromStore,
   runTransaction,
   setInStore,
 } from "@/lib/persistence-idb";
+import { OPEN_PROJECT_KEY } from "@/lib/project-storage";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
-
-// -- Constants ----------------------------------------------------------------
-
-const OPEN_PROJECT_KEY = "open-project-id";
+import { nanoid } from "nanoid";
 
 // -- Identity -----------------------------------------------------------------
 
@@ -36,10 +32,6 @@ function indexEntryForProject(id: string, project: SavedProject, storedAudioByte
 }
 
 // -- Open project pointer -----------------------------------------------------
-
-function getOpenProjectId(): Promise<string | undefined> {
-  return getFromStore<string>(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY);
-}
 
 function setOpenProjectId(id: string): Promise<void> {
   return setInStore(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY, id);
@@ -70,10 +62,6 @@ function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
       };
     };
   });
-}
-
-function loadProjectRecord(id: string): Promise<SavedProject | undefined> {
-  return getFromStore<SavedProject>(PROJECT_RECORD_STORE_NAME, id);
 }
 
 function listProjectIndex(): Promise<ProjectIndexEntry[]> {
@@ -122,34 +110,17 @@ function deleteProject(id: string): Promise<void> {
   });
 }
 
-function clearAllProjects(): Promise<void> {
-  const stores = [
-    PROJECT_STORE_NAME,
-    PROJECT_RECORD_STORE_NAME,
-    PROJECT_INDEX_STORE_NAME,
-    PROJECT_AUDIO_STORE_NAME,
-    APP_STATE_STORE_NAME,
-  ];
-  return runTransaction(stores, "readwrite", (tx) => {
-    for (const name of stores) tx.objectStore(name).clear();
-  });
-}
-
 // -- Exports ------------------------------------------------------------------
 
 export {
-  OPEN_PROJECT_KEY,
   createProjectId,
   indexEntryForProject,
-  getOpenProjectId,
   setOpenProjectId,
   clearOpenProjectId,
   saveProjectRecord,
-  loadProjectRecord,
   listProjectIndex,
   saveProjectAudio,
   loadProjectAudio,
   deleteProjectAudio,
   deleteProject,
-  clearAllProjects,
 };
