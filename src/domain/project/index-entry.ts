@@ -13,6 +13,7 @@ interface ProjectIndexEntry {
   artists: string[];
   album: string;
   thumbnailDataUrl?: string;
+  videoId?: string;
   lineCount: number;
   syncedLineCount: number;
   hasWordTiming: boolean;
@@ -54,6 +55,7 @@ function buildIndexEntry(input: IndexEntryInput): ProjectIndexEntry {
     artists: metadata.artists,
     album: metadata.album,
     ...(metadata.thumbnailDataUrl ? { thumbnailDataUrl: metadata.thumbnailDataUrl } : {}),
+    ...(input.audioSource?.kind === "youtube" ? { videoId: input.audioSource.videoId } : {}),
     lineCount: lyricLines.length,
     syncedLineCount: lyricLines.filter(hasAnyTiming).length,
     hasWordTiming: lyricLines.some(isWordSynced),

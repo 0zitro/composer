@@ -46,6 +46,11 @@ describe("buildIndexEntry", () => {
     expect(entry.storedAudioBytes).toBe(4_812_300);
   });
 
+  it("records the video id for a youtube audio source", () => {
+    const entry = buildIndexEntry(input({ audioSource: { kind: "youtube", videoId: "dX3k_QDnzHE" } }));
+    expect(entry.videoId).toBe("dX3k_QDnzHE");
+  });
+
   describe("edge cases", () => {
     it("treats a project with no lines as zero of zero", () => {
       const entry = buildIndexEntry(input({ lines: [] }));
@@ -124,6 +129,14 @@ describe("buildIndexEntry", () => {
 
     it("omits thumbnailDataUrl when the project has none", () => {
       expect("thumbnailDataUrl" in buildIndexEntry(input())).toBe(false);
+    });
+
+    it("omits videoId when the audio source is not youtube", () => {
+      expect("videoId" in buildIndexEntry(input({ audioSource: { kind: "file", name: "a.mp3" } }))).toBe(false);
+    });
+
+    it("omits videoId when there is no audio source", () => {
+      expect("videoId" in buildIndexEntry(input({ audioSource: undefined }))).toBe(false);
     });
   });
 });
