@@ -1,10 +1,5 @@
-import {
-  clearAudioFile,
-  loadAudioFile,
-  saveAudioFile,
-  saveCurrentProject,
-  type SavedAudioSource,
-} from "@/lib/persistence";
+import { clearAudioFile, loadAudioFile, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
+import type { SavedAudioSource } from "@/domain/project/audio-source";
 import { cancelPendingSave, debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { loadCurrentProjectWithPrimingMigration } from "@/lib/priming-migration";

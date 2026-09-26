@@ -2,7 +2,8 @@ import { parseLamePriming } from "@/audio/lame-priming";
 import { isLineSynced, isWordSynced } from "@/domain/line/predicates";
 import type { LyricLine } from "@/domain/line/model";
 import type { WordTiming } from "@/domain/word/timing";
-import { loadAudioFile, loadCurrentProject, replaceCurrentProject, type SavedProject } from "@/lib/persistence";
+import { loadAudioFile, loadCurrentProject, replaceCurrentProject } from "@/lib/persistence";
+import type { SavedProject } from "@/lib/saved-project";
 
 // -- Helpers ------------------------------------------------------------------
 

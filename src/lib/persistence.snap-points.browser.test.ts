@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { SnapPoint } from "@/domain/snap-point/model";
-import { clearCurrentProject, loadCurrentProject, type SavedProject, saveCurrentProject } from "@/lib/persistence";
+import { clearCurrentProject, loadCurrentProject, saveCurrentProject } from "@/lib/persistence";
+import type { SavedProject } from "@/lib/saved-project";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { snapPoints } from "@/test/factories";
 

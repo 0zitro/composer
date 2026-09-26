@@ -1,36 +1,19 @@
 import type { Stem } from "@/audio/separation/types";
 import type { Agent } from "@/domain/agent/model";
 import type { LinkGroup } from "@/domain/group/template";
-import { migrateLegacyTransliterationLine } from "@/domain/language/migrate";
 import type { LyricLine } from "@/domain/line/model";
+import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import { PROJECT_STORE_NAME, deleteFromStore, getFromStore, setInStore } from "@/lib/persistence-idb";
+import {
+  SAVED_PROJECT_VERSION,
+  type SavedAudioFile,
+  type SavedProject,
+  upgradeSavedProject,
+} from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";
-
-// -- Types --------------------------------------------------------------------
-
-type SavedAudioSource = { kind: "file"; name: string } | { kind: "youtube"; videoId: string };
-
-interface SavedProject {
-  version: 1 | 2 | 3;
-  savedAt: number;
-  metadata: ProjectMetadata;
-  agents: Agent[];
-  lines: LyricLine[];
-  groups?: LinkGroup[];
-  granularity: GranularityMode;
-  syllableSplitDefaults?: SyllableSplitDefaults;
-  audioFileName?: string;
-  audioSource?: SavedAudioSource;
-  dismissedSuggestions?: string[];
-  dismissedExplicitSuggestions?: string[];
-  currentStem?: Stem;
-  primingStripped?: boolean;
-  customSnapPoints?: (SnapPoint | number)[];
-  hasUnexportedImport?: boolean;
-}
 
 // -- Constants ----------------------------------------------------------------
 
@@ -56,7 +39,7 @@ async function saveCurrentProject(
 ): Promise<void> {
   const audioFileName = audioSource?.kind === "file" ? audioSource.name : undefined;
   const project: SavedProject = {
-    version: 3,
+    version: SAVED_PROJECT_VERSION,
     savedAt: Date.now(),
     metadata,
     agents,
@@ -78,11 +61,7 @@ async function saveCurrentProject(
 
 async function loadCurrentProject(): Promise<SavedProject | undefined> {
   const project = await getFromStore<SavedProject>(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY);
-  if (project && project.version < 3) {
-    if (Array.isArray(project.lines)) project.lines = project.lines.map(migrateLegacyTransliterationLine);
-    project.version = 3;
-    await setInStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY, project);
-  }
+  if (project && upgradeSavedProject(project)) await setInStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY, project);
   return project;
 }
 
@@ -96,12 +75,6 @@ async function clearCurrentProject(): Promise<void> {
 }
 
 // -- Audio File Persistence ---------------------------------------------------
-
-interface SavedAudioFile {
-  name: string;
-  type: string;
-  data: ArrayBuffer;
-}
 
 async function saveAudioFile(file: File): Promise<void> {
   const data = await file.arrayBuffer();
@@ -135,7 +108,7 @@ function exportProjectToFile(
   audioFileName?: string,
 ): void {
   const project: SavedProject = {
-    version: 3,
+    version: SAVED_PROJECT_VERSION,
     savedAt: Date.now(),
     metadata,
     agents,
@@ -171,10 +144,7 @@ async function importProjectFromFile(file: File): Promise<SavedProject> {
   if (!project.syllableSplitDefaults) {
     project.syllableSplitDefaults = DEFAULT_SYLLABLE_SPLIT_DEFAULTS;
   }
-  if (project.version < 3 && Array.isArray(project.lines)) {
-    project.lines = project.lines.map(migrateLegacyTransliterationLine);
-  }
-  project.version = 3;
+  upgradeSavedProject(project);
 
   return project;
 }
@@ -192,4 +162,3 @@ export {
   loadAudioFile,
   clearAudioFile,
 };
-export type { SavedAudioSource, SavedProject };
