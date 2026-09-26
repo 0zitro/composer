@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DB_NAME, DB_VERSION, PROJECT_STORE_NAME } from "@/lib/persistence-idb";
+import { listProjectIndex, saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
 import { clearRecoveryStorage, downloadRecoveryFile, readRecoveryMetadata } from "@/lib/recovery";
 import { seedProject } from "@/test/idb";
 
@@ -161,6 +162,39 @@ describe("recovery", () => {
       const after = await readRecoveryMetadata();
       expect(after.found).toBe(true);
       expect(after.title).toBe("After");
+    });
+  });
+
+  describe("per-project storage", () => {
+    it("reads the open project when there is no legacy record", async () => {
+      await saveProjectRecord("p1", {
+        version: 1,
+        savedAt: 1715000000000,
+        metadata: { title: "Seven", artists: [], album: "", duration: 0 },
+        agents: [],
+        lines: [{ id: "a", text: "first", agentId: "v1" }],
+        granularity: "word",
+      });
+      await setOpenProjectId("p1");
+      const result = await readRecoveryMetadata();
+      expect(result.found).toBe(true);
+      expect(result.title).toBe("Seven");
+      expect(result.lineCount).toBe(1);
+    });
+
+    it("clearRecoveryStorage also clears per-project storage", async () => {
+      await saveProjectRecord("p1", {
+        version: 1,
+        savedAt: 1,
+        metadata: { title: "Seven", artists: [], album: "", duration: 0 },
+        agents: [],
+        lines: [],
+        granularity: "word",
+      });
+      await setOpenProjectId("p1");
+      await clearRecoveryStorage();
+      expect((await readRecoveryMetadata()).found).toBe(false);
+      expect(await listProjectIndex()).toEqual([]);
     });
   });
 });

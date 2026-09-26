@@ -3,7 +3,8 @@
 // store, hook, or component so it remains usable from error boundaries
 // and `/recover` even when the rest of the app is in a broken state.
 
-import { PROJECT_STORE_NAME, getFromStore, openDB } from "@/lib/persistence-idb";
+import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
+import { clearAllProjects, getOpenProjectId, loadProjectRecord } from "@/lib/project-repository";
 
 // -- Types --------------------------------------------------------------------
 
@@ -35,8 +36,10 @@ const NOT_FOUND_RESULT: RecoveryResult = {
 
 // -- Helpers ------------------------------------------------------------------
 
-function readProjectFromIDB(): Promise<RecoveredProject | undefined> {
-  return getFromStore<RecoveredProject>(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY);
+async function readProjectFromIDB(): Promise<RecoveredProject | undefined> {
+  const openId = await getOpenProjectId();
+  const open = openId ? await loadProjectRecord(openId) : undefined;
+  return open ?? getFromStore<RecoveredProject>(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY);
 }
 
 function buildRecoveryResult(project: RecoveredProject): RecoveryResult {
@@ -78,20 +81,8 @@ async function downloadRecoveryFile(): Promise<RecoveryResult> {
   return result;
 }
 
-async function clearRecoveryStorage(): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PROJECT_STORE_NAME, "readwrite");
-    tx.objectStore(PROJECT_STORE_NAME).clear();
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error ?? new Error("IndexedDB clear failed"));
-    };
-  });
+function clearRecoveryStorage(): Promise<void> {
+  return clearAllProjects();
 }
 
 // -- Exports ------------------------------------------------------------------
