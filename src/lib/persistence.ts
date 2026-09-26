@@ -28,7 +28,12 @@ let openProjectIdLookup: Promise<string | undefined> | null = null;
 let openProjectIdCreation: Promise<string> | null = null;
 
 function findOpenProjectId(): Promise<string | undefined> {
-  openProjectIdLookup ??= getOpenProjectId().then((id) => id ?? migrateLegacyProject());
+  openProjectIdLookup ??= getOpenProjectId()
+    .then((id) => id ?? migrateLegacyProject())
+    .catch((error: unknown) => {
+      openProjectIdLookup = null;
+      throw error;
+    });
   return openProjectIdLookup;
 }
 

@@ -1,5 +1,5 @@
 import { beforeEach } from "vitest";
-import { cleanup } from "vitest-browser-react";
+import { cleanup } from "vitest-browser-react/pure";
 import { __resetOpenProjectForTests } from "@/lib/persistence";
 import { __resetPersistenceSettledForTests } from "@/lib/persistence-settled";
 import { resetAllStores } from "@/test/stores";
@@ -16,9 +16,8 @@ async function deleteDB(name: string): Promise<void> {
   });
 }
 
-// vitest-browser-react's own unmount hook runs after this one, so unmount here first
-// or the previous test's still-live subscriptions race this hook's DB wipe and store reset.
 beforeEach(async () => {
+  // Unmount first so a previous test's live subscriptions cannot race the wipe.
   await cleanup();
   await Promise.all(COMPOSER_DBS.map(deleteDB));
   __resetOpenProjectForTests();
