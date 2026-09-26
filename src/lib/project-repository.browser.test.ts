@@ -28,8 +28,14 @@ function project(overrides: Partial<SavedProject> = {}): SavedProject {
   };
 }
 
+function audioBytes(length: number): Uint8Array {
+  const data = new Uint8Array(length);
+  for (let i = 0; i < length; i++) data[i] = (i * 7 + 1) % 256;
+  return data;
+}
+
 function audioFile(bytes: number, name = "espresso.flac"): File {
-  return new File([new Uint8Array(bytes)], name, { type: "audio/flac" });
+  return new File([audioBytes(bytes)], name, { type: "audio/flac" });
 }
 
 describe("project-repository", () => {
@@ -65,12 +71,14 @@ describe("project-repository", () => {
     expect(entry.storedAudioBytes).toBe(2048);
   });
 
-  it("round-trips audio as a File with its name and type", async () => {
+  it("round-trips audio as a File with its name, type and exact bytes", async () => {
     await saveProjectAudio("p1", audioFile(16));
     const file = await loadProjectAudio("p1");
     expect(file?.name).toBe("espresso.flac");
     expect(file?.type).toBe("audio/flac");
     expect(file?.size).toBe(16);
+    const bytes = file ? new Uint8Array(await file.arrayBuffer()) : new Uint8Array();
+    expect(bytes).toEqual(audioBytes(16));
   });
 
   it("deleteProjectAudio removes the audio and sets the index size to zero", async () => {
@@ -126,6 +134,13 @@ describe("project-repository", () => {
     it("the index updatedAt follows the record's savedAt", async () => {
       await saveProjectRecord("p1", project({ savedAt: 42 }));
       expect((await listProjectIndex())[0].updatedAt).toBe(42);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: a concurrent record save and audio save both land in the same index entry", async () => {
+      await Promise.all([saveProjectRecord("p1", project()), saveProjectAudio("p1", audioFile(256))]);
+      expect((await listProjectIndex())[0].storedAudioBytes).toBe(256);
     });
   });
 });

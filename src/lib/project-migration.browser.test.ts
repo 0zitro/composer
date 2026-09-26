@@ -1,4 +1,10 @@
-import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
+import {
+  PROJECT_AUDIO_STORE_NAME,
+  PROJECT_RECORD_STORE_NAME,
+  PROJECT_STORE_NAME,
+  getAllFromStore,
+  getFromStore,
+} from "@/lib/persistence-idb";
 import { migrateLegacyProject } from "@/lib/project-migration";
 import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
@@ -50,6 +56,8 @@ describe("migrateLegacyProject", () => {
     expect(await migrateLegacyProject()).toBeUndefined();
     expect(await getOpenProjectId()).toBeUndefined();
     expect(await listProjectIndex()).toEqual([]);
+    expect(await getAllFromStore(PROJECT_RECORD_STORE_NAME)).toEqual([]);
+    expect(await getAllFromStore(PROJECT_AUDIO_STORE_NAME)).toEqual([]);
   });
 
   describe("regressions", () => {
