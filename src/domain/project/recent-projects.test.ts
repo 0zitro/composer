@@ -73,4 +73,21 @@ describe("recentProjects", () => {
       expect(input).toEqual(ENTRIES);
     });
   });
+
+  describe("regressions", () => {
+    it("breaks a tie in updatedAt by id, regardless of input order", () => {
+      const alpha = entry("alpha", { updatedAt: 20 });
+      const bravo = entry("bravo", { updatedAt: 20 });
+      const forward = recentProjects([bravo, alpha], { excludeId: undefined, query: "", limit: 6 });
+      const backward = recentProjects([alpha, bravo], { excludeId: undefined, query: "", limit: 6 });
+      expect(forward.map((e) => e.id)).toEqual(["alpha", "bravo"]);
+      expect(backward.map((e) => e.id)).toEqual(["alpha", "bravo"]);
+    });
+
+    it("matches an NFD-stored title against an NFC query", () => {
+      const decomposed = entry("cafe", { title: "Café".normalize("NFD"), updatedAt: 5 });
+      const result = recentProjects([decomposed], { excludeId: undefined, query: "café", limit: 6 });
+      expect(result.map((e) => e.id)).toEqual(["cafe"]);
+    });
+  });
 });

@@ -23,6 +23,12 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime(new Date(2026, 8, 1, 9, 0, 0).getTime(), NOW)).toBe("Sep 1");
   });
 
+  describe("regressions", () => {
+    it("includes the year when the date falls in a different year than now", () => {
+      expect(formatRelativeTime(new Date(2025, 8, 20, 9, 0, 0).getTime(), NOW)).toBe("Sep 20, 2025");
+    });
+  });
+
   describe("edge cases", () => {
     it("treats a time in the future as just now", () => {
       expect(formatRelativeTime(NOW + HOUR, NOW)).toBe("Just now");

@@ -14,7 +14,9 @@ function formatRelativeTime(timestamp: number, now: number): string {
   if (elapsed < DAY_MS) return `${Math.floor(elapsed / HOUR_MS)} h ago`;
   if (elapsed < 2 * DAY_MS) return "Yesterday";
   if (elapsed < WEEK_MS) return `${Math.floor(elapsed / DAY_MS)} days ago`;
-  return new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const date = new Date(timestamp);
+  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
 }
 
 // -- Exports ------------------------------------------------------------------
