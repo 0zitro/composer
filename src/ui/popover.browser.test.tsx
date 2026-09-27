@@ -75,4 +75,71 @@ describe("Popover", () => {
     );
     await expect.element(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-haspopup", "listbox");
   });
+
+  describe("controlled", () => {
+    it("shows the content when open is true, without a click", async () => {
+      const screen = await render(
+        <Popover open onOpenChange={() => undefined} trigger={<button type="button">Open</button>}>
+          <div>Controlled body</div>
+        </Popover>,
+      );
+      await expect.element(screen.getByText("Controlled body")).toBeInTheDocument();
+    });
+
+    it("asks the owner to open on a trigger click and leaves the state to the owner", async () => {
+      const requests: boolean[] = [];
+      const screen = await render(
+        <Popover
+          open={false}
+          onOpenChange={(next) => requests.push(next)}
+          trigger={<button type="button">Open</button>}
+        >
+          <div>Controlled body</div>
+        </Popover>,
+      );
+      await screen.getByRole("button", { name: "Open" }).click();
+      expect(requests).toEqual([true]);
+      expect(document.body.textContent).not.toContain("Controlled body");
+    });
+
+    it("asks the owner to close on Escape", async () => {
+      const requests: boolean[] = [];
+      await render(
+        <Popover open onOpenChange={(next) => requests.push(next)} trigger={<button type="button">Open</button>}>
+          <div>Controlled body</div>
+        </Popover>,
+      );
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await expect.poll(() => requests).toEqual([false]);
+    });
+
+    it("the close render-prop asks the owner to close", async () => {
+      const requests: boolean[] = [];
+      const screen = await render(
+        <Popover open onOpenChange={(next) => requests.push(next)} trigger={<button type="button">Open</button>}>
+          {(close) => (
+            <button type="button" onClick={close}>
+              Done
+            </button>
+          )}
+        </Popover>,
+      );
+      await screen.getByRole("button", { name: "Done" }).click();
+      expect(requests).toEqual([false]);
+    });
+
+    it("names the floating element", async () => {
+      const screen = await render(
+        <Popover
+          open
+          onOpenChange={() => undefined}
+          aria-label="Switch project"
+          trigger={<button type="button">Open</button>}
+        >
+          <div>Controlled body</div>
+        </Popover>,
+      );
+      await expect.element(screen.getByRole("dialog", { name: "Switch project" })).toBeInTheDocument();
+    });
+  });
 });
