@@ -6,7 +6,6 @@ import {
   clearCurrentProject,
   loadAudioFile,
   loadCurrentProject,
-  replaceCurrentProject,
   saveAudioFile,
   saveCurrentProject,
 } from "@/lib/persistence";
@@ -157,20 +156,6 @@ describe("persistence · open project", () => {
 
       await expect(loadCurrentProject()).resolves.toBeUndefined();
     });
-  });
-
-  it("replaceCurrentProject on a fresh install creates the open project", async () => {
-    expect(await getOpenProjectId()).toBeUndefined();
-    await replaceCurrentProject({
-      version: SAVED_PROJECT_VERSION,
-      savedAt: 1,
-      metadata: { title: "Replaced", artists: [], album: "", duration: 0 },
-      agents: DEFAULT_AGENTS,
-      lines: [],
-      granularity: "word",
-    });
-    expect(await getOpenProjectId()).toBeDefined();
-    expect((await loadCurrentProject())?.metadata.title).toBe("Replaced");
   });
 
   it("clearAudioFile keeps the record", async () => {

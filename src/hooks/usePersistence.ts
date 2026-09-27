@@ -1,13 +1,14 @@
-import { clearAudioFile, loadAudioFile, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
-import type { SavedAudioSource } from "@/domain/project/audio-source";
+import type { ProjectTab } from "@/domain/project/tab";
+import { restoreOpenProject } from "@/lib/open-project";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { clearAudioFile, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { cancelPendingSave, debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { markPersistenceSettled } from "@/lib/persistence-settled";
-import { loadCurrentProjectWithPrimingMigration } from "@/lib/priming-migration";
-import { type AudioSource, useAudioStore } from "@/stores/audio";
+import { setProjectLastTab } from "@/lib/project-repository";
+import { isRestoringProject } from "@/lib/project-restore";
+import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
+import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
-import { DEFAULT_AGENTS } from "@/domain/agent/colors";
-import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
 import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { useEffect } from "react";
@@ -18,57 +19,12 @@ const LOG_PREFIX = "[Persistence]";
 
 // -- Helpers ------------------------------------------------------------------
 
-function toSavedAudioSource(source: AudioSource): SavedAudioSource | undefined {
-  if (!source) return undefined;
-  if (source.type === "file") return { kind: "file", name: source.file.name };
-  if (source.type === "youtube") return { kind: "youtube", videoId: source.videoId };
-  return undefined;
-}
-
-function playableFile(source: AudioSource): File | null {
-  if (!source) return null;
-  if (source.type === "file") return source.file;
-  if (source.type === "youtube") return source.file ?? null;
-  return null;
-}
-
-type ProjectSaveArgs = Parameters<typeof debouncedSave>;
-
-function buildSaveArgs(): ProjectSaveArgs | null {
-  const projectState = useProjectStore.getState();
-  const liveAudioSource = useAudioStore.getState().source;
-  // Skip only when the session is truly empty. Audio-loaded sessions need to
-  // persist non-lyric fields like currentStem and the audio source kind, even
-  // before the user types any lyrics.
-  const hasContent = projectState.lines.length > 0 || projectState.metadata.title;
-  const hasContext = liveAudioSource !== null;
-  if (!hasContent && !hasContext) return null;
-  return [
-    projectState.metadata,
-    projectState.agents,
-    projectState.lines,
-    projectState.groups,
-    projectState.granularity,
-    projectState.syllableSplitDefaults,
-    toSavedAudioSource(liveAudioSource),
-    projectState.dismissedSuggestions,
-    projectState.dismissedExplicitSuggestions,
-    useSeparationStore.getState().currentStem,
-    projectState.primingStripped,
-    projectState.customSnapPoints,
-    projectState.hasUnexportedImport,
-  ];
-}
-
 function commitProjectSave(): void {
   const args = buildSaveArgs();
   if (!args) return;
   debouncedSave(...args);
 }
 
-// Discrete user actions (stem picking) should not wait for the typing-tuned
-// debounce. Cancel any queued debounced save so it can't overwrite this one
-// with stale args, then write to IDB now.
 function commitProjectSaveNow(): void {
   const args = buildSaveArgs();
   if (!args) return;
@@ -76,58 +32,17 @@ function commitProjectSaveNow(): void {
   saveCurrentProject(...args).catch((err) => console.error(LOG_PREFIX, "Immediate save failed:", err));
 }
 
+function rememberLastTab(tab: ProjectTab): void {
+  const id = openProjectIdSnapshot();
+  if (!id) return;
+  setProjectLastTab(id, tab).catch((err) => console.error(`${LOG_PREFIX} could not remember the tab:`, err));
+}
+
 // -- Hook ---------------------------------------------------------------------
 
 function usePersistence(): void {
   useEffect(() => {
-    Promise.all([loadCurrentProjectWithPrimingMigration(), loadAudioFile()])
-      .then(([project, file]) => {
-        if (project) {
-          const issues: string[] = [];
-          const safeLines = project.lines ?? [];
-          if (!project.lines) issues.push("missing lines");
-          const safeAgents = project.agents && project.agents.length > 0 ? project.agents : DEFAULT_AGENTS;
-          if (!project.agents || project.agents.length === 0) issues.push("missing or empty agents");
-          const safeGranularity = project.granularity ?? useSettingsStore.getState().defaultGranularity;
-          if (project.granularity === undefined) issues.push("missing granularity");
-          if (issues.length > 0) {
-            console.warn(
-              `${LOG_PREFIX} loaded project has malformed fields (${issues.join(", ")}); using safe defaults. The raw record is still in IndexedDB; visit /recover to download it.`,
-            );
-          }
-
-          // Restore the saved stem selection BEFORE setting the audio source.
-          // useAutoSeparate's source subscription will then run refreshForCurrentSource
-          // which preserves currentStem when the cached stems are still available, and
-          // falls back to "original" when they aren't (LRU eviction or variant change).
-          if (project.currentStem) {
-            useSeparationStore.getState().restoreCurrentStem(project.currentStem);
-          }
-
-          const savedSource = project.audioSource;
-          if (savedSource?.kind === "youtube") {
-            useAudioStore.getState().setYouTubeSource(savedSource.videoId, file);
-          } else if (file) {
-            useAudioStore.getState().setSource({ type: "file", file });
-          }
-
-          const state = useProjectStore.getState();
-          state.setMetadata(normalizeLoadedMetadata(project.metadata));
-          state.setLines(safeLines);
-          state.setGroups(project.groups ?? []);
-          state.setGranularity(safeGranularity);
-          state.setSyllableSplitDefaults(project.syllableSplitDefaults ?? DEFAULT_SYLLABLE_SPLIT_DEFAULTS);
-          state.setAgents(safeAgents);
-          state.setDismissedSuggestions(project.dismissedSuggestions ?? []);
-          state.setDismissedExplicitSuggestions(project.dismissedExplicitSuggestions ?? []);
-          state.setPrimingStripped(project.primingStripped ?? false);
-          state.setCustomSnapPoints(project.customSnapPoints ?? []);
-          if (project.hasUnexportedImport) state.markSongDetailsImported();
-          state.markClean();
-        } else if (file) {
-          useAudioStore.getState().setSource({ type: "file", file });
-        }
-      })
+    restoreOpenProject()
       .catch((err) => {
         console.error(`${LOG_PREFIX} initial load failed:`, err);
       })
@@ -142,37 +57,36 @@ function usePersistence(): void {
       });
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = useProjectStore.subscribe((state) => {
-      if (!state.isDirty) return;
-      commitProjectSave();
-    });
-    return () => unsubscribe();
-  }, []);
+  useEffect(
+    () =>
+      useProjectStore.subscribe((state, previous) => {
+        if (isRestoringProject()) return;
+        if (state.activeTab !== previous.activeTab) rememberLastTab(state.activeTab);
+        if (state.isDirty) commitProjectSave();
+      }),
+    [],
+  );
 
-  // Stem selection lives in a separate store, so changes to currentStem alone
-  // don't mark the project dirty and wouldn't trigger the project subscription
-  // above. Subscribe to currentStem directly and save IMMEDIATELY (no debounce):
-  // picking a stem is a discrete action and the user can reload at any time,
-  // so the debounce window would silently lose the choice.
-  useEffect(() => {
-    const unsubscribe = useSeparationStore.subscribe((state, prevState) => {
-      if (state.currentStem === prevState.currentStem) return;
-      commitProjectSaveNow();
-    });
-    return () => unsubscribe();
-  }, []);
+  // Picking a stem is a discrete action: save it at once instead of waiting for the typing debounce.
+  useEffect(
+    () =>
+      useSeparationStore.subscribe((state, previous) => {
+        if (state.currentStem === previous.currentStem || isRestoringProject()) return;
+        commitProjectSaveNow();
+      }),
+    [],
+  );
 
   useEffect(() => {
     let prevSource = useAudioStore.getState().source;
-    const unsubscribe = useAudioStore.subscribe((state) => {
+    return useAudioStore.subscribe((state) => {
       if (state.source === prevSource) return;
       const previous = prevSource;
       prevSource = state.source;
+      if (isRestoringProject()) return;
 
       const nextFile = playableFile(state.source);
       const prevFile = playableFile(previous);
-
       if (nextFile && nextFile !== prevFile) {
         saveAudioFile(nextFile).catch((err) => console.error(`${LOG_PREFIX} audio save failed:`, err));
         return;
@@ -181,7 +95,6 @@ function usePersistence(): void {
         clearAudioFile().catch((err) => console.error(`${LOG_PREFIX} audio clear failed:`, err));
       }
     });
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -202,10 +115,7 @@ function usePersistence(): void {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Always flush so debounced saves (title edits, lyrics typing, anything
-      // queued within the debounce window) land in IDB before the page closes.
-      // The leave-confirmation prompt below stays gated on meaningful project
-      // content so we don't nag on every audio-only reload.
+      // Always flush; only the leave prompt is gated on real lyrics, so audio-only reloads are not nagged.
       void flushPendingSave();
       const state = useProjectStore.getState();
       if (state.isDirty && state.lines.length > 0) {

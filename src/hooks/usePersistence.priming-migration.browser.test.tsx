@@ -5,7 +5,9 @@ import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { WordTiming } from "@/domain/word/timing";
 import { usePersistence } from "@/hooks/usePersistence";
 import { clearCurrentProject, loadCurrentProject, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
-import { loadCurrentProjectWithPrimingMigration } from "@/lib/priming-migration";
+import { loadProjectForRestore } from "@/lib/project-restore";
+import { getOpenProjectId } from "@/lib/project-storage";
+import type { SavedProject } from "@/lib/saved-project";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createMp3File } from "@/test/audio-fixtures";
@@ -39,9 +41,14 @@ function seedSavedProject(opts: { primingStripped: boolean }): Promise<void> {
   );
 }
 
+async function loadOpenProjectForRestore(): Promise<SavedProject | undefined> {
+  const id = await getOpenProjectId();
+  return id ? (await loadProjectForRestore(id)).project : undefined;
+}
+
 // -- Tests --------------------------------------------------------------------
 
-describe("loadCurrentProjectWithPrimingMigration", () => {
+describe("loadProjectForRestore · LAME priming", () => {
   beforeEach(async () => {
     await clearCurrentProject();
   });
@@ -57,7 +64,7 @@ describe("loadCurrentProjectWithPrimingMigration", () => {
     await saveAudioFile(mp3);
     await seedSavedProject({ primingStripped: false });
 
-    const migrated = await loadCurrentProjectWithPrimingMigration();
+    const migrated = await loadOpenProjectForRestore();
     expect(migrated).toBeDefined();
     const shiftSec = samples / sampleRate;
     const words = (migrated!.lines[0] as { words: WordTiming[] }).words;
@@ -73,7 +80,7 @@ describe("loadCurrentProjectWithPrimingMigration", () => {
     await saveAudioFile(mp3);
     await seedSavedProject({ primingStripped: true });
 
-    const loaded = await loadCurrentProjectWithPrimingMigration();
+    const loaded = await loadOpenProjectForRestore();
     const words = (loaded!.lines[0] as { words: WordTiming[] }).words;
     expect(words[0].begin).toBeCloseTo(1.0);
     expect(words[1].end).toBeCloseTo(2.0);
@@ -83,7 +90,7 @@ describe("loadCurrentProjectWithPrimingMigration", () => {
   it("leaves timings unchanged and does not set the flag when audio bytes are missing", async () => {
     await seedSavedProject({ primingStripped: false });
 
-    const loaded = await loadCurrentProjectWithPrimingMigration();
+    const loaded = await loadOpenProjectForRestore();
     expect(loaded!.primingStripped).toBe(false);
     const words = (loaded!.lines[0] as { words: WordTiming[] }).words;
     expect(words[0].begin).toBeCloseTo(1.0);
@@ -91,7 +98,7 @@ describe("loadCurrentProjectWithPrimingMigration", () => {
   });
 
   it("returns undefined when there is no saved project", async () => {
-    const loaded = await loadCurrentProjectWithPrimingMigration();
+    const loaded = await loadOpenProjectForRestore();
     expect(loaded).toBeUndefined();
   });
 
@@ -101,7 +108,7 @@ describe("loadCurrentProjectWithPrimingMigration", () => {
     await saveAudioFile(noPrimingMp3);
     await seedSavedProject({ primingStripped: false });
 
-    const loaded = await loadCurrentProjectWithPrimingMigration();
+    const loaded = await loadOpenProjectForRestore();
     expect(loaded!.primingStripped).toBe(true);
     const words = (loaded!.lines[0] as { words: WordTiming[] }).words;
     expect(words[0].begin).toBeCloseTo(1.0);

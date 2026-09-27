@@ -77,10 +77,6 @@ async function loadCurrentProject(): Promise<SavedProject | undefined> {
   return project;
 }
 
-async function replaceCurrentProject(project: SavedProject): Promise<void> {
-  await saveProjectRecord(await ensureOpenProjectId(), project);
-}
-
 async function clearCurrentProject(): Promise<void> {
   const id = await findOpenProjectId();
   if (id) await removeProjectData(id);
@@ -167,7 +163,6 @@ export {
   saveProjectTo,
   saveCurrentProject,
   loadCurrentProject,
-  replaceCurrentProject,
   clearCurrentProject,
   exportProjectToFile,
   importProjectFromFile,
