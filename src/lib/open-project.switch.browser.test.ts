@@ -1,6 +1,10 @@
 import { forkOpenProject, openProject, restoreOpenProject } from "@/lib/open-project";
-import { isProjectInUse } from "@/lib/open-project-session";
-import { findOpenProjectId, openProjectIdSnapshot, subscribeOpenProjectId } from "@/lib/open-project-session";
+import {
+  findOpenProjectId,
+  isProjectInUse,
+  openProjectIdSnapshot,
+  subscribeOpenProjectId,
+} from "@/lib/open-project-session";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectIndexEntry, removeProjectData, setProjectLastTab } from "@/lib/project-repository";
 import { buildSaveArgs } from "@/lib/project-snapshot";
