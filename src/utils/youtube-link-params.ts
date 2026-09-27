@@ -20,4 +20,4 @@ function stripYouTubeParams(): void {
 
 // -- Exports ------------------------------------------------------------------
 
-export { YOUTUBE_PARAM_NAMES, readYouTubeParam, stripYouTubeParams };
+export { readYouTubeParam, stripYouTubeParams };

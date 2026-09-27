@@ -4,13 +4,14 @@ import { parseLamePriming } from "@/audio/lame-priming";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { WordTiming } from "@/domain/word/timing";
 import { usePersistence } from "@/hooks/usePersistence";
-import { loadCurrentProject, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
+import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { loadProjectForRestore } from "@/lib/project-restore";
 import { getOpenProjectId } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createMp3File } from "@/test/audio-fixtures";
+import { loadOpenProjectRecord } from "@/test/projects";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -149,7 +150,7 @@ describe("usePersistence priming-stripped flag survives the boot restore", () =>
     await waitForProjectHydration();
     await new Promise((r) => setTimeout(r, 150));
 
-    const reloaded = await loadCurrentProject();
+    const reloaded = await loadOpenProjectRecord();
     expect(reloaded?.primingStripped).toBe(true);
   });
 
@@ -175,7 +176,7 @@ describe("usePersistence priming-stripped flag survives the boot restore", () =>
     await waitForProjectHydration();
     await new Promise((r) => setTimeout(r, 150));
 
-    const reloaded = await loadCurrentProject();
+    const reloaded = await loadOpenProjectRecord();
     expect(reloaded?.primingStripped).toBe(true);
   });
 });

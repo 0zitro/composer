@@ -10,7 +10,6 @@ import type { WordTiming } from "@/domain/word/timing";
 
 type GranularityMode = "line" | "word";
 type EditorMode = "simple" | "advanced";
-type SimpleTab = ProjectTab;
 
 interface SyllableSplitDefaults {
   applyToAll: boolean;
@@ -59,7 +58,7 @@ interface GroupsState {
 interface UiState {
   granularity: GranularityMode;
   editorMode: EditorMode;
-  activeTab: SimpleTab;
+  activeTab: ProjectTab;
   syllableSplitDefaults: SyllableSplitDefaults;
   primingStripped: boolean;
 }
@@ -106,7 +105,7 @@ interface AgentActions {
 interface UiActions {
   setGranularity: (mode: GranularityMode) => void;
   setEditorMode: (mode: EditorMode) => void;
-  setActiveTab: (tab: SimpleTab) => void;
+  setActiveTab: (tab: ProjectTab) => void;
   setSyllableSplitDefaults: (defaults: SyllableSplitDefaults) => void;
   setPrimingStripped: (value: boolean) => void;
 }
@@ -217,7 +216,6 @@ type ProjectStore = ProjectState & ProjectActions;
 
 export type {
   GranularityMode,
-  SimpleTab,
   SyllableSplitDefaults,
   MetadataState,
   SongIdentity,

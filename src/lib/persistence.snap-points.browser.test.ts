@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { SnapPoint } from "@/domain/snap-point/model";
-import { loadCurrentProject, saveCurrentProject } from "@/lib/persistence";
+import { saveCurrentProject } from "@/lib/persistence";
 import type { SavedProject } from "@/lib/saved-project";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { snapPoints } from "@/test/factories";
+import { loadOpenProjectRecord } from "@/test/projects";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -28,21 +29,21 @@ function saveWithSnapPoints(customSnapPoints: SnapPoint[]): Promise<void> {
 // -- Tests --------------------------------------------------------------------
 
 describe("persistence · customSnapPoints", () => {
-  it("saveCurrentProject persists customSnapPoints and loadCurrentProject reads them back", async () => {
+  it("saveCurrentProject persists customSnapPoints and the stored record reads them back", async () => {
     await saveWithSnapPoints(snapPoints([5, 12]));
-    const loaded = await loadCurrentProject();
+    const loaded = await loadOpenProjectRecord();
     expect(loaded?.customSnapPoints?.map((p) => (typeof p === "number" ? p : p.time))).toEqual([5, 12]);
   });
 
   it("saveCurrentProject persists an empty customSnapPoints array", async () => {
     await saveWithSnapPoints([]);
-    const loaded = await loadCurrentProject();
+    const loaded = await loadOpenProjectRecord();
     expect(loaded?.customSnapPoints).toEqual([]);
   });
 
   it("round-trips a longer sorted array with numeric fidelity", async () => {
     await saveWithSnapPoints(snapPoints([0, 1.5, 3.25, 99]));
-    const loaded = await loadCurrentProject();
+    const loaded = await loadOpenProjectRecord();
     expect(loaded?.customSnapPoints?.map((p) => (typeof p === "number" ? p : p.time))).toEqual([0, 1.5, 3.25, 99]);
   });
 
@@ -50,7 +51,7 @@ describe("persistence · customSnapPoints", () => {
     it("round-trips snap point ids and times unchanged", async () => {
       const saved = snapPoints([5, 12]);
       await saveWithSnapPoints(saved);
-      const loaded = await loadCurrentProject();
+      const loaded = await loadOpenProjectRecord();
       // Persistence must preserve the stable id, not just the time, so reloaded
       // pins keep their AnimatePresence identity.
       expect(loaded?.customSnapPoints).toEqual(saved);
@@ -76,7 +77,7 @@ describe("persistence · customSnapPoints", () => {
     };
     await setInStore(PROJECT_STORE_NAME, "current", legacyRecord);
 
-    const loaded = await loadCurrentProject();
+    const loaded = await loadOpenProjectRecord();
     expect(loaded?.customSnapPoints).toBeUndefined();
   });
 });

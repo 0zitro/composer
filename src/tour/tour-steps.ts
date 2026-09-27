@@ -1,5 +1,6 @@
 import { useAudioStore } from "@/stores/audio";
-import { type SimpleTab, useProjectStore } from "@/stores/project";
+import type { ProjectTab } from "@/domain/project/tab";
+import { useProjectStore } from "@/stores/project";
 import { MOD_KEY } from "@/utils/platform";
 import type { DriveStep } from "driver.js";
 
@@ -14,7 +15,7 @@ interface GatedStep {
 
 // -- Helpers ------------------------------------------------------------------
 
-function switchTab(tabId: SimpleTab) {
+function switchTab(tabId: ProjectTab) {
   useProjectStore.getState().setActiveTab(tabId);
 }
 

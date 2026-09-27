@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { usePersistence } from "@/hooks/usePersistence";
-import { loadCurrentProject } from "@/lib/persistence";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { seedProject } from "@/test/idb";
 import { render } from "@/test/render";
+import { loadOpenProjectRecord } from "@/test/projects";
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ describe("usePersistence · unexported imported song details", () => {
     useProjectStore.getState().setLines([{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }]);
     useProjectStore.getState().markSongDetailsImported();
 
-    await expect.poll(async () => (await loadCurrentProject())?.hasUnexportedImport, { timeout: 2000 }).toBe(true);
+    await expect.poll(async () => (await loadOpenProjectRecord())?.hasUnexportedImport, { timeout: 2000 }).toBe(true);
   });
 
   describe("edge cases", () => {

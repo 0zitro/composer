@@ -1,12 +1,12 @@
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import type { Shortcut } from "@/hooks/useKeyboardShortcuts";
 import { useAudioStore } from "@/stores/audio";
-import type { SimpleTab } from "@/stores/project";
+import type { ProjectTab } from "@/domain/project/tab";
 import { getEffectiveBinding, useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { useMemo } from "react";
 
 interface GlobalShortcutActions {
-  setActiveTab: (tab: SimpleTab) => void;
+  setActiveTab: (tab: ProjectTab) => void;
   setHelpOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
 }

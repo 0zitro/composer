@@ -13,7 +13,6 @@ import { ProjectProgress } from "@/ui/projects/project-progress";
 import { Scroll } from "@/ui/scroll";
 import { cn } from "@/utils/cn";
 import { formatRelativeTime } from "@/utils/format-relative-time";
-import { quotedTitle } from "@/utils/project-toast";
 import { IconPlus, IconSearch } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -150,7 +149,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
     }
   };
 
-  const emptyMessage = query.trim() ? `No projects match ${quotedTitle(query.trim())}` : "No other projects yet";
+  const emptyMessage = query.trim() ? `No projects match “${query.trim()}”` : "No other projects yet";
 
   return (
     <div className="w-[440px]">

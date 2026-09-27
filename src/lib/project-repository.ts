@@ -180,4 +180,3 @@ export {
   deleteProjectAudio,
   removeProjectData,
 };
-export type { IndexCarriedFields };

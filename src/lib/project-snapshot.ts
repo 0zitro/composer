@@ -47,4 +47,4 @@ function buildSaveArgs(): ProjectSaveArgs | null {
 
 // -- Exports ------------------------------------------------------------------
 
-export { toSavedAudioSource, playableFile, buildSaveArgs };
+export { playableFile, buildSaveArgs };

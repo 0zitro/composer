@@ -1,19 +1,6 @@
 // -- Boot-time settled signals ------------------------------------------------
-//
-// Module-scoped promises that resolve once boot-time writers finish their async
-// work. URL-driven import hooks await `persistenceSettled` before mutating the
-// project/audio stores, so persistence's restore never clobbers their writes.
-//
-// `hashImportSettled` mirrors the pattern for `useImportFromHash`: it resolves
-// after `runImport` returns (success, failure, or skip). Tests await it to read
-// the final stable state without arbitrary delays.
-//
-// Tests reset the singletons via the `__reset*` helpers so each test starts
-// with a fresh pending promise.
-//
-// linkProjectSettled and queryImportSettled order the ?v= project decision
-// before the link's metadata is applied.
 
+// Boot writers resolve these so URL imports apply only after the restore and the ?v= project decision.
 let _markPersistenceSettled: () => void = () => {};
 let persistenceSettled: Promise<void> = new Promise<void>((resolve) => {
   _markPersistenceSettled = resolve;
@@ -96,4 +83,3 @@ export {
   markQueryImportSettled,
   __resetPersistenceSettledForTests,
 };
-export type { LinkProjectOutcome };

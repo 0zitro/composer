@@ -1,6 +1,8 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { ProjectSaveArgs } from "@/lib/persistence";
-import { saveProjectAudio, saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
+import { findOpenProjectId } from "@/lib/open-project-session";
+import { loadProjectAudio, saveProjectAudio, saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
+import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
 import { createLine } from "@/test/factories";
@@ -60,7 +62,19 @@ async function seedStoredProject(id: string, options: SeedOptions = {}): Promise
   return project;
 }
 
+// -- Reading ------------------------------------------------------------------
+
+async function loadOpenProjectRecord(): Promise<SavedProject | undefined> {
+  const id = await findOpenProjectId();
+  return id ? loadProjectRecord(id) : undefined;
+}
+
+async function loadOpenProjectAudio(): Promise<File | undefined> {
+  const id = await findOpenProjectId();
+  return id ? loadProjectAudio(id) : undefined;
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { storedProject, songTitled, saveArgsTitled, seedStoredProject };
+export { storedProject, songTitled, saveArgsTitled, seedStoredProject, loadOpenProjectRecord, loadOpenProjectAudio };
 export type { SeedOptions };

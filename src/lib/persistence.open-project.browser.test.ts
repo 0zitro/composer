@@ -1,19 +1,15 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { reconcileLine } from "@/domain/line/model";
-import { forgetOpenProjectId } from "@/lib/open-project-session";
-import {
-  clearAudioFile,
-  loadAudioFile,
-  loadCurrentProject,
-  saveAudioFile,
-  saveCurrentProject,
-} from "@/lib/persistence";
+import { findOpenProjectId, forgetOpenProjectId } from "@/lib/open-project-session";
+import { clearAudioFile, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { DB_NAME } from "@/lib/persistence-idb";
 import { listProjectIndex } from "@/lib/project-repository";
+import { loadProjectForRestore } from "@/lib/project-restore";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
 import { deleteDatabase, openAndCloseAtVersion, seedAudioFile, seedProject } from "@/test/idb";
 import { describe, expect, it } from "vitest";
+import { loadOpenProjectRecord, loadOpenProjectAudio } from "@/test/projects";
 
 function save(title: string): Promise<void> {
   return saveCurrentProject(
@@ -39,19 +35,19 @@ describe("persistence · open project", () => {
     await save("Two");
     expect(await getOpenProjectId()).toBe(id);
     expect(await listProjectIndex()).toEqual([expect.objectContaining({ id, title: "Two" })]);
-    expect((await loadCurrentProject())?.metadata.title).toBe("Two");
+    expect((await loadOpenProjectRecord())?.metadata.title).toBe("Two");
   });
 
   it("audio saves land on the open project", async () => {
     await save("One");
     await saveAudioFile(new File([new Uint8Array(32)], "a.mp3", { type: "audio/mpeg" }));
-    expect((await loadAudioFile())?.size).toBe(32);
+    expect((await loadOpenProjectAudio())?.size).toBe(32);
     expect((await listProjectIndex())[0].storedAudioBytes).toBe(32);
   });
 
   describe("edge cases", () => {
-    it("loadCurrentProject returns undefined on a fresh install and creates nothing", async () => {
-      expect(await loadCurrentProject()).toBeUndefined();
+    it("reading the open project returns undefined on a fresh install and creates nothing", async () => {
+      expect(await loadOpenProjectRecord()).toBeUndefined();
       expect(await getOpenProjectId()).toBeUndefined();
     });
 
@@ -66,8 +62,8 @@ describe("persistence · open project", () => {
       });
       await seedAudioFile({ name: "legacy.mp3", type: "audio/mpeg", data: new Uint8Array(5).buffer });
       forgetOpenProjectId();
-      expect((await loadCurrentProject())?.metadata.title).toBe("Legacy");
-      expect((await loadAudioFile())?.name).toBe("legacy.mp3");
+      expect((await loadOpenProjectRecord())?.metadata.title).toBe("Legacy");
+      expect((await loadOpenProjectAudio())?.name).toBe("legacy.mp3");
     });
 
     it("a record older than the current version is upgraded on load and written back", async () => {
@@ -93,11 +89,11 @@ describe("persistence · open project", () => {
         ],
       });
       forgetOpenProjectId();
-      const loaded = await loadCurrentProject();
+      const id = await findOpenProjectId();
+      expect(id).toBeDefined();
+      const { project: loaded } = await loadProjectForRestore(id ?? "");
       expect(loaded?.version).toBe(SAVED_PROJECT_VERSION);
       expect(loaded?.lines[0].transliteration?.alignmentStatus).toBe("confirmed");
-      const id = await getOpenProjectId();
-      expect(id).toBeDefined();
       expect((await loadProjectRecord(id ?? ""))?.version).toBe(SAVED_PROJECT_VERSION);
     });
   });
@@ -113,23 +109,23 @@ describe("persistence · open project", () => {
     it("regression: a database opened at a newer version rejects reads and writes, and recovers once the database is deleted", async () => {
       await openAndCloseAtVersion(DB_NAME, 4);
 
-      await expect(loadCurrentProject()).rejects.toThrow();
+      await expect(loadOpenProjectRecord()).rejects.toThrow();
       await expect(save("Blocked")).rejects.toThrow();
 
       await deleteDatabase(DB_NAME);
 
-      await expect(loadCurrentProject()).resolves.toBeUndefined();
+      await expect(loadOpenProjectRecord()).resolves.toBeUndefined();
       await save("Recovered");
       expect(await listProjectIndex()).toHaveLength(1);
     });
 
     it("regression: a failed lookup is retried on the next load without a save in between", async () => {
       await openAndCloseAtVersion(DB_NAME, 4);
-      await expect(loadCurrentProject()).rejects.toThrow();
+      await expect(loadOpenProjectRecord()).rejects.toThrow();
 
       await deleteDatabase(DB_NAME);
 
-      await expect(loadCurrentProject()).resolves.toBeUndefined();
+      await expect(loadOpenProjectRecord()).resolves.toBeUndefined();
     });
   });
 
@@ -137,7 +133,7 @@ describe("persistence · open project", () => {
     await save("One");
     await saveAudioFile(new File([new Uint8Array(16)], "a.mp3", { type: "audio/mpeg" }));
     await clearAudioFile();
-    expect((await loadCurrentProject())?.metadata.title).toBe("One");
-    expect(await loadAudioFile()).toBeUndefined();
+    expect((await loadOpenProjectRecord())?.metadata.title).toBe("One");
+    expect(await loadOpenProjectAudio()).toBeUndefined();
   });
 });

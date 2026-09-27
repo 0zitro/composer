@@ -33,3 +33,28 @@ describe("markerMode", () => {
     });
   });
 });
+
+describe("resetProjectScope", () => {
+  it("clears the selection, menus, word editing, paste mode and scroll", () => {
+    const store = useTimelineStore.getState();
+    store.setSelectedWords([{ lineId: "l1", lineIndex: 0, wordIndex: 0, type: "word" }]);
+    store.setContextMenu({ x: 1, y: 2, target: { kind: "gutter", lineId: "l1", lineIndex: 0 } });
+    store.setEditingWord({ lineId: "l1", wordIndex: 0, type: "word" });
+    store.setScrollLeft(240);
+    store.resetProjectScope();
+    const state = useTimelineStore.getState();
+    expect(state.selectedWords).toEqual([]);
+    expect(state.contextMenu).toBeNull();
+    expect(state.editingWord).toBeNull();
+    expect(state.pasteMode).toEqual({ status: "idle" });
+    expect(state.scrollLeft).toBe(0);
+  });
+
+  describe("invariants", () => {
+    it("keeps view preferences such as zoom", () => {
+      useTimelineStore.getState().setZoom(140);
+      useTimelineStore.getState().resetProjectScope();
+      expect(useTimelineStore.getState().zoom).toBe(140);
+    });
+  });
+});

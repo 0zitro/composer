@@ -59,12 +59,7 @@ function resetProjectScopedStores(): void {
   useProjectStore.getState().reset();
   useAudioStore.getState().setSource(null);
   useSeparationStore.getState().reset();
-  const timeline = useTimelineStore.getState();
-  timeline.clearSelection();
-  timeline.clearContextMenu();
-  timeline.clearEditingWord();
-  timeline.setPasteMode({ status: "idle" });
-  timeline.setScrollLeft(0);
+  useTimelineStore.getState().resetProjectScope();
 }
 
 function warnAboutMalformedFields(project: SavedProject): void {

@@ -6,8 +6,7 @@ import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import { ensureOpenProjectId, findOpenProjectId } from "@/lib/open-project-session";
-import { deleteProjectAudio, loadProjectAudio, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
-import { loadProjectRecord } from "@/lib/project-storage";
+import { deleteProjectAudio, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
 import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";
@@ -62,23 +61,10 @@ function saveCurrentProject(...args: ProjectSaveArgs): Promise<void> {
   return saveProjectTo(ensureOpenProjectId(), ...args);
 }
 
-async function loadCurrentProject(): Promise<SavedProject | undefined> {
-  const id = await findOpenProjectId();
-  if (!id) return undefined;
-  const project = await loadProjectRecord(id);
-  if (project && upgradeSavedProject(project)) await saveProjectRecord(id, project);
-  return project;
-}
-
 // -- Audio File Persistence ---------------------------------------------------
 
 async function saveAudioFile(file: File): Promise<void> {
   await saveProjectAudio(await ensureOpenProjectId(), file);
-}
-
-async function loadAudioFile(): Promise<File | undefined> {
-  const id = await findOpenProjectId();
-  return id ? loadProjectAudio(id) : undefined;
 }
 
 async function clearAudioFile(): Promise<void> {
@@ -148,11 +134,9 @@ export {
   buildSavedProject,
   saveProjectTo,
   saveCurrentProject,
-  loadCurrentProject,
   exportProjectToFile,
   importProjectFromFile,
   saveAudioFile,
-  loadAudioFile,
   clearAudioFile,
 };
 export type { ProjectSaveArgs };

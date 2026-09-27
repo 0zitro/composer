@@ -51,4 +51,3 @@ function subscribeProjectsDeleted(listener: (ids: string[]) => void): () => void
 // -- Exports ------------------------------------------------------------------
 
 export { PROJECT_CHANNEL_NAME, announceProjectsDeleted, subscribeProjectsDeleted };
-export type { ProjectsDeletedMessage };

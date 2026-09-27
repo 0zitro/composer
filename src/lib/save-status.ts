@@ -78,4 +78,4 @@ function resetSaveStatus(): void {
 // -- Exports ------------------------------------------------------------------
 
 export { getSaveStatus, subscribeSaveStatus, setSavePending, trackSave, resetSaveStatus };
-export type { SaveStatus, SaveKind };
+export type { SaveStatus };

@@ -83,6 +83,7 @@ interface TimelineActions {
   clearContextMenu: () => void;
   setEditingWord: (editing: EditingWord | null) => void;
   clearEditingWord: () => void;
+  resetProjectScope: () => void;
   toggleRollingEditMode: () => void;
   toggleMarkerMode: () => void;
   setHoveredSnapPointId: (id: string | null) => void;
@@ -172,6 +173,8 @@ const useTimelineStore = create<TimelineState & TimelineActions>((set, get) => {
     clearContextMenu: () => set({ contextMenu: null }),
     setEditingWord: (editingWord) => set({ editingWord }),
     clearEditingWord: () => set({ editingWord: null }),
+    resetProjectScope: () =>
+      set({ selectedWords: [], contextMenu: null, editingWord: null, pasteMode: { status: "idle" }, scrollLeft: 0 }),
     toggleRollingEditMode: () => set((s) => ({ rollingEditMode: !s.rollingEditMode })),
     toggleMarkerMode: () => set((s) => ({ markerMode: !s.markerMode })),
     setHoveredSnapPointId: (hoveredSnapPointId) => set({ hoveredSnapPointId }),
