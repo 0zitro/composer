@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 import { Popover } from "@/ui/popover";
 import { render } from "@/test/render";
 
@@ -111,6 +112,33 @@ describe("Popover", () => {
       );
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
       await expect.poll(() => requests).toEqual([false]);
+    });
+
+    it("asks the owner to close on an outside pointerdown", async () => {
+      const requests: boolean[] = [];
+      await render(
+        <Popover open onOpenChange={(next) => requests.push(next)} trigger={<button type="button">Open</button>}>
+          <div>Controlled body</div>
+        </Popover>,
+      );
+      document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      await expect.poll(() => requests).toEqual([false]);
+    });
+
+    it("requests open on Enter when the trigger is focused", async () => {
+      const requests: boolean[] = [];
+      const screen = await render(
+        <Popover
+          open={false}
+          onOpenChange={(next) => requests.push(next)}
+          trigger={<button type="button">Open</button>}
+        >
+          <div>Controlled body</div>
+        </Popover>,
+      );
+      (screen.getByRole("button", { name: "Open" }).element() as HTMLButtonElement).focus();
+      await userEvent.keyboard("{Enter}");
+      expect(requests).toEqual([true]);
     });
 
     it("the close render-prop asks the owner to close", async () => {
