@@ -1,7 +1,7 @@
 import { FileDropZone } from "@/audio/file-drop-zone";
 import { useStartNewSong } from "@/hooks/useStartNewSong";
 import { PROJECT_FILE_ACCEPT } from "@/lib/project-file";
-import { importProjectFile } from "@/lib/project-import";
+import { importProjectFromInput } from "@/lib/project-import";
 import { Button } from "@/ui/button";
 import { IconField } from "@/ui/icon-field";
 import { EDITOR_PATH } from "@/utils/app-routes";
@@ -78,7 +78,7 @@ const NewSongLink: React.FC<{ onCreate: (videoId: string) => void }> = ({ onCrea
       </div>
       <p
         id={hintId}
-        role={error ? "alert" : undefined}
+        aria-live="polite"
         className={cn("mt-1.5 text-xs", error ? "text-composer-negative select-text" : "text-composer-text/60")}
       >
         {error ?? "Each song gets its own project."}
@@ -96,10 +96,7 @@ const NewSongPanel: React.FC<NewSongPanelProps> = ({ className }) => {
   const { startWithFile, startWithVideo } = useStartNewSong();
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (await importProjectFile(file)) navigate(EDITOR_PATH);
+    if (await importProjectFromInput(event)) navigate(EDITOR_PATH);
   };
 
   return (

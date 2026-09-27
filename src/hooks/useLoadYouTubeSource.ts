@@ -34,6 +34,10 @@ function isYouTubeLoadError(error: unknown): boolean {
   return error instanceof YouTubeLoadFailedError || error instanceof YouTubeLoadSupersededError;
 }
 
+function isYouTubeLoadFailure(error: unknown): error is YouTubeLoadFailedError {
+  return error instanceof YouTubeLoadFailedError;
+}
+
 // -- Hook ---------------------------------------------------------------------
 
 function useLoadYouTubeSource(): (videoId: string) => Promise<void> {
@@ -96,11 +100,13 @@ function isStillOnNewProject(newId: string): boolean {
   return openProjectIdSnapshot() === newId;
 }
 
-async function revertToPreviousProject(previousId: string, newId: string): Promise<void> {
-  try {
-    await openProject(previousId);
-  } catch (error) {
-    console.error(LOG_PREFIX, "could not switch back to the previous project", error);
+async function revertToPreviousProject(previousId: string | undefined, newId: string): Promise<void> {
+  if (previousId !== undefined) {
+    try {
+      await openProject(previousId);
+    } catch (error) {
+      console.error(LOG_PREFIX, "could not switch back to the previous project", error);
+    }
   }
   try {
     await deleteProject(newId);
@@ -109,7 +115,7 @@ async function revertToPreviousProject(previousId: string, newId: string): Promi
   }
 }
 
-async function loadVideoWithRollback(videoId: string, newId: string, previousId: string): Promise<void> {
+async function loadVideoWithRollback(videoId: string, newId: string, previousId: string | undefined): Promise<void> {
   useAudioStore.getState().setYouTubeSource(videoId);
   try {
     await waitForYouTubeLoad(videoId);
@@ -166,4 +172,4 @@ function waitForYouTubeLoad(videoId: string): Promise<void> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { useLoadYouTubeSource, loadVideoWithRollback, isYouTubeLoadError };
+export { useLoadYouTubeSource, loadVideoWithRollback, isYouTubeLoadError, isYouTubeLoadFailure };

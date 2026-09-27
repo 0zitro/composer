@@ -3,7 +3,7 @@ import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave } from "@/lib/persistence-debounce";
 import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
-import { importProjectFile } from "@/lib/project-import";
+import { importProjectFromInput } from "@/lib/project-import";
 import { currentSaveArgs } from "@/lib/project-snapshot";
 import { useConfirm } from "@/stores/confirm-store";
 import { useCallback } from "react";
@@ -22,11 +22,7 @@ function useProjectFileActions() {
     downloadProjectFile(projectFileFrom(openProjectIdSnapshot(), buildSavedProject(...currentSaveArgs())));
   }, []);
 
-  const handleImportProject = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (file) await importProjectFile(file);
-  }, []);
+  const handleImportProject = importProjectFromInput;
 
   const handleClearProject = useCallback(async () => {
     const ok = await confirm({

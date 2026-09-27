@@ -8,6 +8,7 @@ import { type ProjectFile, readProjectFile, savedProjectFromFile } from "@/lib/p
 import { createProjectId, listProjectIndex, saveProjectRecord, updateProjectRecord } from "@/lib/project-repository";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
+import type { ChangeEvent } from "react";
 import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
@@ -116,7 +117,22 @@ async function importProjectFile(file: File): Promise<string | null> {
   }
 }
 
+// -- Input wiring ---------------------------------------------------------------
+
+async function importProjectFromInput(event: ChangeEvent<HTMLInputElement>): Promise<string | null> {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  return file ? importProjectFile(file) : null;
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { findImportConflict, projectFileSummary, importProjectAsNew, replaceProjectFromFile, importProjectFile };
+export {
+  findImportConflict,
+  projectFileSummary,
+  importProjectAsNew,
+  replaceProjectFromFile,
+  importProjectFile,
+  importProjectFromInput,
+};
 export type { ImportConflict, ImportConflictReason, ProjectFileSummary };

@@ -1,9 +1,12 @@
 import { useLoadAudioFile } from "@/hooks/useLoadAudioFile";
-import { isYouTubeLoadError, useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
+import { isYouTubeLoadError, isYouTubeLoadFailure, loadVideoWithRollback } from "@/hooks/useLoadYouTubeSource";
 import { createProject } from "@/lib/open-project";
-import { EDITOR_PATH } from "@/utils/app-routes";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { useProjectStore } from "@/stores/project";
+import { EDITOR_PATH, LIBRARY_PATH } from "@/utils/app-routes";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
 
@@ -21,7 +24,6 @@ const LOG_PREFIX = "[NewSong]";
 function useStartNewSong(): NewSongStarters {
   const navigate = useNavigate();
   const loadAudioFile = useLoadAudioFile();
-  const loadYouTubeSource = useLoadYouTubeSource();
 
   return useMemo(
     () => ({
@@ -31,14 +33,20 @@ function useStartNewSong(): NewSongStarters {
         loadAudioFile(file);
       },
       startWithVideo: (videoId: string) => {
-        createProject();
+        const newId = createProject();
+        useProjectStore.getState().setMetadata({ title: videoId });
         navigate(EDITOR_PATH);
-        loadYouTubeSource(videoId).catch((error: unknown) => {
+        loadVideoWithRollback(videoId, newId, undefined).catch((error: unknown) => {
+          if (isYouTubeLoadFailure(error) && openProjectIdSnapshot() !== newId) {
+            navigate(LIBRARY_PATH);
+            toast.error(error.message);
+            return;
+          }
           if (!isYouTubeLoadError(error)) console.error(LOG_PREFIX, "could not load the video", error);
         });
       },
     }),
-    [navigate, loadAudioFile, loadYouTubeSource],
+    [navigate, loadAudioFile],
   );
 }
 
