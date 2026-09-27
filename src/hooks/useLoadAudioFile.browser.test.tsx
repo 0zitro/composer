@@ -1,12 +1,13 @@
 import { useLoadAudioFile } from "@/hooks/useLoadAudioFile";
 import { usePersistence } from "@/hooks/usePersistence";
-import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectAudio } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { createAudioFile } from "@/test/audio-fixtures";
+import { createLine } from "@/test/factories";
 import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { Toaster } from "sonner";
@@ -106,6 +107,20 @@ describe("useLoadAudioFile · projects", () => {
       load(createAudioFile("b-side.wav"));
       expect(openProjectIdSnapshot()).toBe("a");
       expect(useProjectStore.getState().lines).toHaveLength(2);
+    });
+
+    it("shows the new-project toast even when the previous project has no id yet", async () => {
+      const screen = await render(<Toaster />);
+      useAudioStore.getState().setSource({ type: "file", file: createAudioFile("alpha.wav") });
+      useProjectStore.getState().setLines([createLine({ text: "Waiting in a car" })]);
+      useProjectStore.getState().setMetadata({ title: "Alpha" });
+      expect(openProjectIdSnapshot()).toBeUndefined();
+      const load = await loader();
+      load(createAudioFile("b-side.wav"));
+      const previousId = await ensureOpenProjectId();
+      expect(previousId).not.toBe(openProjectIdSnapshot());
+      await expect.element(screen.getByText("Opened “b-side” in a new project")).toBeInTheDocument();
+      await expect.element(screen.getByText("“Alpha” is still in Projects.")).toBeInTheDocument();
     });
   });
 });

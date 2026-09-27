@@ -2,13 +2,13 @@ import { useCallback } from "react";
 import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import { confirmClearImportedSongDetails } from "@/hooks/imported-song-details";
 import { createProject } from "@/lib/open-project";
-import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { audioTagsToMetadata } from "@/utils/audio-tags";
 import { fileIdentityKey } from "@/utils/file-identity";
 import { fileNameWithoutExtension } from "@/utils/file-name";
-import { quotedTitle, showNewProjectToast } from "@/utils/project-toast";
+import { showNewProjectToast } from "@/utils/project-toast";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -62,19 +62,13 @@ function readTagsInBackground(file: File): void {
   });
 }
 
-function startFileInNewProject(file: File, title: string): void {
-  const previousId = openProjectIdSnapshot();
+async function startFileInNewProject(file: File, title: string): Promise<void> {
+  const previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
   const previousTitle = useProjectStore.getState().metadata.title;
   createProject();
   useAudioStore.getState().setSource({ type: "file", file });
   useProjectStore.getState().setMetadata({ title });
-  if (previousId) {
-    showNewProjectToast(
-      `Opened ${quotedTitle(title)} in a new project`,
-      `${quotedTitle(previousTitle)} is still in Projects.`,
-      previousId,
-    );
-  }
+  showNewProjectToast(title, previousTitle, previousId);
   readTagsInBackground(file);
 }
 
@@ -88,7 +82,7 @@ function useLoadAudioFile(): (file: File) => void {
       previous != null && !(previous.type === "file" && fileIdentityKey(previous.file) === fileIdentityKey(file));
 
     if (replacesDifferentSong && hasLyricLines(useProjectStore.getState().lines)) {
-      startFileInNewProject(file, title);
+      void startFileInNewProject(file, title);
       return;
     }
 

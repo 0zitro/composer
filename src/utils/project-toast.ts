@@ -1,4 +1,7 @@
-import { openProject } from "@/lib/open-project";
+import { hasLyricLines } from "@/domain/project/lyrics-presence";
+import { deleteProject, openProject } from "@/lib/open-project";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { useProjectStore } from "@/stores/project";
 import { toast } from "sonner";
 
 // -- Constants ----------------------------------------------------------------
@@ -12,19 +15,39 @@ function quotedTitle(title: string): string {
   return `“${title || "Untitled"}”`;
 }
 
+// -- Switching back -------------------------------------------------------------
+
+function abandonedNewProjectId(newId: string | undefined): string | undefined {
+  if (newId === undefined || openProjectIdSnapshot() !== newId) return undefined;
+  return hasLyricLines(useProjectStore.getState().lines) ? undefined : newId;
+}
+
+async function switchBackToPreviousProject(previousId: string, newId: string | undefined): Promise<void> {
+  const abandonedId = abandonedNewProjectId(newId);
+  try {
+    await openProject(previousId);
+  } catch (error) {
+    console.error(LOG_PREFIX, "could not switch back", error);
+    toast.error("Couldn't switch back to that project");
+    return;
+  }
+  if (!abandonedId) return;
+  deleteProject(abandonedId).catch((error: unknown) => {
+    console.error(LOG_PREFIX, "could not delete the abandoned project", error);
+  });
+}
+
 // -- Toasts -------------------------------------------------------------------
 
-function showNewProjectToast(heading: string, description: string, previousId: string): void {
-  toast(heading, {
-    description,
+function showNewProjectToast(title: string, previousTitle: string, previousId: string): void {
+  const newId = openProjectIdSnapshot();
+  toast(`Opened ${quotedTitle(title)} in a new project`, {
+    description: `${quotedTitle(previousTitle)} is still in Projects.`,
     duration: NEW_PROJECT_TOAST_DURATION_MS,
     action: {
       label: "Switch back",
       onClick: () => {
-        openProject(previousId).catch((error: unknown) => {
-          console.error(LOG_PREFIX, "could not switch back", error);
-          toast.error("Couldn't switch back to that project");
-        });
+        void switchBackToPreviousProject(previousId, newId);
       },
     },
   });

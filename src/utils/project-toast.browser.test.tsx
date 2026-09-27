@@ -1,0 +1,54 @@
+import { createProject, restoreOpenProject } from "@/lib/open-project";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { isProjectDeleted } from "@/lib/project-tombstones";
+import { useProjectStore } from "@/stores/project";
+import { createLine } from "@/test/factories";
+import { render } from "@/test/render";
+import { seedStoredProject, songTitled } from "@/test/projects";
+import { showNewProjectToast } from "@/utils/project-toast";
+import { Toaster } from "sonner";
+import { describe, expect, it } from "vitest";
+
+// -- Helpers ------------------------------------------------------------------
+
+async function openAlphaThenCreateNewProject(): Promise<string> {
+  await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+  await restoreOpenProject();
+  return createProject();
+}
+
+// -- Tests --------------------------------------------------------------------
+
+describe("showNewProjectToast", () => {
+  it("keeps the new project when Switch back is clicked and it has lyrics", async () => {
+    const newId = await openAlphaThenCreateNewProject();
+    useProjectStore.getState().setLines([createLine({ text: "New words" })]);
+    const screen = await render(<Toaster />);
+    showNewProjectToast("b-side", "Alpha", "a");
+    await screen.getByRole("button", { name: "Switch back" }).click();
+    await expect.poll(openProjectIdSnapshot).toBe("a");
+    expect(await isProjectDeleted(newId)).toBe(false);
+  });
+
+  it("deletes the new project when Switch back is clicked and it has no lyrics", async () => {
+    const newId = await openAlphaThenCreateNewProject();
+    const screen = await render(<Toaster />);
+    showNewProjectToast("b-side", "Alpha", "a");
+    await screen.getByRole("button", { name: "Switch back" }).click();
+    await expect.poll(openProjectIdSnapshot).toBe("a");
+    await expect.poll(() => isProjectDeleted(newId)).toBe(true);
+  });
+
+  describe("edge cases", () => {
+    it("does not delete anything when the user switched to a different project before clicking Switch back", async () => {
+      const newId = await openAlphaThenCreateNewProject();
+      const screen = await render(<Toaster />);
+      showNewProjectToast("b-side", "Alpha", "a");
+      const elsewhere = createProject();
+      await screen.getByRole("button", { name: "Switch back" }).click();
+      await expect.poll(openProjectIdSnapshot).toBe("a");
+      expect(await isProjectDeleted(newId)).toBe(false);
+      expect(await isProjectDeleted(elsewhere)).toBe(false);
+    });
+  });
+});

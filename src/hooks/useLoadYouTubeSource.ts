@@ -4,10 +4,14 @@ import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { confirmClearImportedSongDetails } from "@/hooks/imported-song-details";
 import { createProject, deleteProject, openProject } from "@/lib/open-project";
-import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { quotedTitle, showNewProjectToast } from "@/utils/project-toast";
+import { showNewProjectToast } from "@/utils/project-toast";
+
+// -- Constants ----------------------------------------------------------------
+
+const LOG_PREFIX = "[YouTubeSource]";
 
 // -- Hook ---------------------------------------------------------------------
 
@@ -63,16 +67,29 @@ function resetSongIdentityForVideo(videoId: string, previous: AudioSource): () =
   };
 }
 
-function abandonsNewProject(newId: string, videoId: string): boolean {
+function abandonsNewProject(newId: string, loadError: unknown): boolean {
   return (
+    !(loadError instanceof Error && loadError.message === "youtube_load_superseded") &&
     openProjectIdSnapshot() === newId &&
-    matchesPending(useAudioStore.getState().source, videoId) &&
     !hasLyricLines(useProjectStore.getState().lines)
   );
 }
 
+async function revertToPreviousProject(previousId: string, newId: string): Promise<void> {
+  try {
+    await openProject(previousId);
+  } catch (error) {
+    console.error(LOG_PREFIX, "could not switch back to the previous project", error);
+  }
+  try {
+    await deleteProject(newId);
+  } catch (error) {
+    console.error(LOG_PREFIX, "could not delete the abandoned project", error);
+  }
+}
+
 async function loadVideoInNewProject(videoId: string): Promise<void> {
-  const previousId = openProjectIdSnapshot();
+  const previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
   const previousTitle = useProjectStore.getState().metadata.title;
   const newId = createProject();
   useAudioStore.getState().setYouTubeSource(videoId);
@@ -80,19 +97,12 @@ async function loadVideoInNewProject(videoId: string): Promise<void> {
   try {
     await waitForYouTubeLoad(videoId);
   } catch (error) {
-    if (previousId && abandonsNewProject(newId, videoId)) {
-      await openProject(previousId);
-      await deleteProject(newId);
+    if (abandonsNewProject(newId, error)) {
+      await revertToPreviousProject(previousId, newId);
     }
     throw error;
   }
-  if (previousId) {
-    showNewProjectToast(
-      `Opened ${quotedTitle(useProjectStore.getState().metadata.title)} in a new project`,
-      `${quotedTitle(previousTitle)} is still in Projects.`,
-      previousId,
-    );
-  }
+  showNewProjectToast(useProjectStore.getState().metadata.title, previousTitle, previousId);
 }
 
 function withoutThumbnailOf(metadata: ProjectMetadata, videoId: string): ProjectMetadata {
@@ -102,21 +112,36 @@ function withoutThumbnailOf(metadata: ProjectMetadata, videoId: string): Project
 
 function waitForYouTubeLoad(videoId: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const unsubscribe = useAudioStore.subscribe((state) => {
+    let settled = false;
+    let evaluationQueued = false;
+    const evaluate = (): void => {
+      evaluationQueued = false;
+      if (settled) return;
+      const state = useAudioStore.getState();
       if (matchesLoaded(state.source, videoId)) {
+        settled = true;
         unsubscribe();
         resolve();
         return;
       }
       if (state.youtubeLoadError) {
+        settled = true;
         unsubscribe();
         reject(new Error(state.youtubeLoadError));
         return;
       }
       if (!matchesPending(state.source, videoId)) {
+        settled = true;
         unsubscribe();
         reject(new Error("youtube_load_superseded"));
       }
+    };
+    // A failed load can revert the source and set the error in two separate synchronous
+    // notifications; wait a tick so evaluate reads the settled state, not the midpoint.
+    const unsubscribe = useAudioStore.subscribe(() => {
+      if (evaluationQueued || settled) return;
+      evaluationQueued = true;
+      queueMicrotask(evaluate);
     });
   });
 }
