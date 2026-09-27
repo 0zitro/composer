@@ -69,14 +69,13 @@ function buildMetadataFromUrl(params: URLSearchParams): Partial<ProjectMetadata>
   return Object.keys(patch).length === 0 ? null : patch;
 }
 
-function readsBootYouTubeParam(): boolean {
+function hasBootYouTubeParam(): boolean {
   return typeof window !== "undefined" && readYouTubeParam(new URLSearchParams(window.location.search)) !== null;
 }
 
 function useImportFromQuery(): void {
-  // Captured at render time, before any effect (including useImportFromYouTube's,
-  // which strips this same param) can run, so this is independent of hook mount order.
-  const [waitsForLink] = useState(readsBootYouTubeParam);
+  // Read at render: useImportFromYouTube's effect strips this param.
+  const [waitsForLink] = useState(hasBootYouTubeParam);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
