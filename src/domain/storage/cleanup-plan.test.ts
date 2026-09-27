@@ -17,8 +17,8 @@ function plan(bytesToFree: number, overrides: Partial<Parameters<typeof planClea
   return planCleanup({
     entries: ENTRIES,
     stemJobs: STEMS,
-    openProjectId: undefined,
-    openStemJobKey: null,
+    isProjectInUse: () => false,
+    isStemJobInUse: () => false,
     bytesToFree,
     ...overrides,
   });
@@ -59,14 +59,14 @@ describe("planCleanup", () => {
     });
 
     it("the open project's audio", () => {
-      const ids = plan(10_000, { openProjectId: "stale" }).flatMap((step) =>
+      const ids = plan(10_000, { isProjectInUse: (id) => id === "stale" }).flatMap((step) =>
         step.kind === "youtube-audio" ? [step.projectId] : [],
       );
       expect(ids).toEqual(["recent"]);
     });
 
     it("the open project's stems", () => {
-      const keys = plan(10_000, { openStemJobKey: "old|fp32|v2" }).flatMap((step) =>
+      const keys = plan(10_000, { isStemJobInUse: (jobKey) => jobKey === "old|fp32|v2" }).flatMap((step) =>
         step.kind === "stems" ? [step.jobKey] : [],
       );
       expect(keys).toEqual(["new|fp32|v2"]);

@@ -12,7 +12,7 @@ const disposers: (() => void)[] = [];
 function maintenance(limitBytes: number | undefined) {
   const runs: { result: CleanupResult; trigger: MaintenanceTrigger }[] = [];
   const controller = createStorageMaintenance({
-    readContext: () => ({ smartCleanup: true, limitBytes, openStemJobKey: null }),
+    readContext: () => ({ smartCleanup: true, limitBytes, isStemJobInUse: () => false }),
     onCleaned: (result, trigger) => runs.push({ result, trigger }),
     delayMs: 20,
   });
@@ -58,7 +58,7 @@ describe("createStorageMaintenance", () => {
         if (running) overlapped = true;
         running = true;
         events.push("start");
-        return { smartCleanup: true, limitBytes: 0, openStemJobKey: null };
+        return { smartCleanup: true, limitBytes: 0, isStemJobInUse: () => false };
       },
       onCleaned: (result) => {
         running = false;

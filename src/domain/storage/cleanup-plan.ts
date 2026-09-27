@@ -15,8 +15,8 @@ type CleanupStep =
 interface CleanupInput {
   entries: readonly CleanupEntry[];
   stemJobs: readonly StemJobUsage[];
-  openProjectId: string | undefined;
-  openStemJobKey: string | null;
+  isProjectInUse: (id: string) => boolean;
+  isStemJobInUse: (jobKey: string) => boolean;
   bytesToFree: number;
 }
 
@@ -24,14 +24,14 @@ interface CleanupInput {
 
 function stemSteps(input: CleanupInput): CleanupStep[] {
   return input.stemJobs
-    .filter((job) => job.jobKey !== input.openStemJobKey && job.bytes > 0)
+    .filter((job) => !input.isStemJobInUse(job.jobKey) && job.bytes > 0)
     .toSorted((a, b) => a.createdAt - b.createdAt || compareIds(a.jobKey, b.jobKey))
     .map((job): CleanupStep => ({ kind: "stems", jobKey: job.jobKey, bytes: job.bytes }));
 }
 
 function youtubeAudioSteps(input: CleanupInput): CleanupStep[] {
   return input.entries
-    .filter((entry) => entry.id !== input.openProjectId && isCachedYouTubeAudio(entry))
+    .filter((entry) => !input.isProjectInUse(entry.id) && isCachedYouTubeAudio(entry))
     .toSorted((a, b) => lastOpenedAt(a) - lastOpenedAt(b) || compareIds(a.id, b.id))
     .map((entry): CleanupStep => ({ kind: "youtube-audio", projectId: entry.id, bytes: entry.storedAudioBytes }));
 }

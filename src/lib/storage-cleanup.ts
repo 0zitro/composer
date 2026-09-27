@@ -3,7 +3,7 @@ import { planCleanup } from "@/domain/storage/cleanup-plan";
 import { bytesToFree } from "@/domain/storage/space";
 import { storageUsage } from "@/domain/storage/usage";
 import { readStorageEstimate } from "@/lib/browser-storage";
-import { isProjectInUse, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { isProjectInUse } from "@/lib/open-project-session";
 import { removeCachedYouTubeAudio } from "@/lib/project-audio";
 import { listProjectIndex } from "@/lib/project-repository";
 
@@ -12,7 +12,7 @@ import { listProjectIndex } from "@/lib/project-repository";
 interface CleanupContext {
   smartCleanup: boolean;
   limitBytes: number | undefined;
-  openStemJobKey: string | null;
+  isStemJobInUse: (jobKey: string) => boolean;
   storageFull: boolean;
 }
 
@@ -35,8 +35,8 @@ async function runSmartCleanup(context: CleanupContext): Promise<CleanupResult> 
   const steps = planCleanup({
     entries,
     stemJobs,
-    openProjectId: openProjectIdSnapshot(),
-    openStemJobKey: context.openStemJobKey,
+    isProjectInUse,
+    isStemJobInUse: context.isStemJobInUse,
     bytesToFree: bytesToFree({
       usedBytes: usage.totalBytes,
       limitBytes: context.limitBytes,
@@ -47,7 +47,7 @@ async function runSmartCleanup(context: CleanupContext): Promise<CleanupResult> 
   const result: CleanupResult = { ...NOTHING_CLEANED };
   const stemKeys = steps.flatMap((step) => (step.kind === "stems" ? [step.jobKey] : []));
   if (stemKeys.length > 0) {
-    const removed = await removeStemJobs(stemKeys, context.openStemJobKey);
+    const removed = await removeStemJobs(stemKeys, context.isStemJobInUse);
     result.removedStemJobs = removed.jobs;
     result.freedBytes += removed.bytes;
   }

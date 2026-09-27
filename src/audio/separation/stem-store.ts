@@ -23,6 +23,26 @@ interface StemRemoval {
 const MAX_ENTRIES = 3;
 const STEM_CACHE_VERSION = 2;
 
+// -- Module state ---------------------------------------------------------------
+
+const loadingStemJobs = new Map<string, number>();
+
+// -- Stem jobs in use -----------------------------------------------------------
+
+function beginLoadingStemJob(jobKey: string): void {
+  loadingStemJobs.set(jobKey, (loadingStemJobs.get(jobKey) ?? 0) + 1);
+}
+
+function endLoadingStemJob(jobKey: string): void {
+  const count = loadingStemJobs.get(jobKey) ?? 0;
+  if (count <= 1) loadingStemJobs.delete(jobKey);
+  else loadingStemJobs.set(jobKey, count - 1);
+}
+
+function isStemJobLoading(jobKey: string): boolean {
+  return loadingStemJobs.has(jobKey);
+}
+
 // -- Keys ---------------------------------------------------------------------
 
 function makeKey(audioHash: string, stem: Stem, variant: VocalModelVariant): string {
@@ -115,9 +135,12 @@ async function deleteStemRecords(shouldDelete: (jobKey: string) => boolean): Pro
   return { jobs: removedJobs.size, bytes };
 }
 
-function removeStemJobs(jobKeys: readonly string[], keepJobKey: string | null = null): Promise<StemRemoval> {
+function removeStemJobs(
+  jobKeys: readonly string[],
+  isInUse: (jobKey: string) => boolean = () => false,
+): Promise<StemRemoval> {
   const doomed = new Set(jobKeys);
-  return deleteStemRecords((jobKey) => doomed.has(jobKey) && jobKey !== keepJobKey);
+  return deleteStemRecords((jobKey) => doomed.has(jobKey) && !isInUse(jobKey));
 }
 
 function clearStemCache(keepJobKey: string | null): Promise<StemRemoval> {
@@ -135,5 +158,16 @@ async function evictIfOverCapacity(): Promise<void> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { stemJobKey, getStem, hasStems, putStem, listStemJobs, removeStemJobs, clearStemCache };
+export {
+  stemJobKey,
+  getStem,
+  hasStems,
+  putStem,
+  listStemJobs,
+  removeStemJobs,
+  clearStemCache,
+  beginLoadingStemJob,
+  endLoadingStemJob,
+  isStemJobLoading,
+};
 export type { StemRemoval };

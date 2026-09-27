@@ -1,7 +1,10 @@
 import {
+  beginLoadingStemJob,
   clearStemCache,
+  endLoadingStemJob,
   getStem,
   hasStems,
+  isStemJobLoading,
   listStemJobs,
   putStem,
   removeStemJobs,
@@ -54,9 +57,10 @@ describe("stem store", () => {
     expect(seen).toEqual(["media-removed"]);
   });
 
-  it("removes only the named jobs but never the kept job, checked inside the same transaction", async () => {
+  it("removes only the named jobs but never a job the guard reports as in use, checked inside the same transaction", async () => {
     await separate("h1", 10, 20);
-    expect(await removeStemJobs([stemJobKey("h1", "fp32")], stemJobKey("h1", "fp32"))).toEqual({ jobs: 0, bytes: 0 });
+    const key = stemJobKey("h1", "fp32");
+    expect(await removeStemJobs([key], (jobKey) => jobKey === key)).toEqual({ jobs: 0, bytes: 0 });
     expect(await listStemJobs()).toHaveLength(1);
   });
 
@@ -109,6 +113,30 @@ describe("stem store", () => {
       }
       const keys = (await listStemJobs()).map((job) => job.jobKey).toSorted();
       expect(keys).toEqual(["b", "c", "d"].map((hash) => stemJobKey(hash, "fp32")).toSorted());
+    });
+  });
+});
+
+describe("stem job in use", () => {
+  it("is false before anything marks it loading", () => {
+    expect(isStemJobLoading("h1|fp32|v2")).toBe(false);
+  });
+
+  it("is true while loading and false once it ends", () => {
+    beginLoadingStemJob("h1|fp32|v2");
+    expect(isStemJobLoading("h1|fp32|v2")).toBe(true);
+    endLoadingStemJob("h1|fp32|v2");
+    expect(isStemJobLoading("h1|fp32|v2")).toBe(false);
+  });
+
+  describe("invariants", () => {
+    it("stays in use while any of two overlapping loads is still running", () => {
+      beginLoadingStemJob("h1|fp32|v2");
+      beginLoadingStemJob("h1|fp32|v2");
+      endLoadingStemJob("h1|fp32|v2");
+      expect(isStemJobLoading("h1|fp32|v2")).toBe(true);
+      endLoadingStemJob("h1|fp32|v2");
+      expect(isStemJobLoading("h1|fp32|v2")).toBe(false);
     });
   });
 });

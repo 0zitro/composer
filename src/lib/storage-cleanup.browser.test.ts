@@ -1,4 +1,11 @@
-import { listStemJobs, putStem, stemJobKey } from "@/audio/separation/stem-store";
+import {
+  beginLoadingStemJob,
+  endLoadingStemJob,
+  isStemJobLoading,
+  listStemJobs,
+  putStem,
+  stemJobKey,
+} from "@/audio/separation/stem-store";
 import { storageUsage } from "@/domain/storage/usage";
 import { openProject } from "@/lib/open-project";
 import { adoptOpenProjectId } from "@/lib/open-project-session";
@@ -6,6 +13,7 @@ import { PROJECT_INDEX_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { loadProjectAudio } from "@/lib/project-audio";
 import { listProjectIndex, loadProjectIndexEntry } from "@/lib/project-repository";
 import { type CleanupContext, runSmartCleanup } from "@/lib/storage-cleanup";
+import { subscribeStorageSignals } from "@/lib/storage-signals";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { indexEntry } from "@/test/index-entries";
 import { seedStoredProject } from "@/test/projects";
@@ -13,7 +21,19 @@ import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
-const EVERYTHING: Omit<CleanupContext, "limitBytes"> = { smartCleanup: true, openStemJobKey: null, storageFull: false };
+const EVERYTHING: Omit<CleanupContext, "limitBytes"> = {
+  smartCleanup: true,
+  isStemJobInUse: () => false,
+  storageFull: false,
+};
+
+function onFirstMediaRemoved(callback: () => void): void {
+  const stop = subscribeStorageSignals((signal) => {
+    if (signal !== "media-removed") return;
+    stop();
+    callback();
+  });
+}
 
 async function seedYouTube(id: string, openedAt: number): Promise<void> {
   await seedStoredProject(id, {
@@ -85,24 +105,47 @@ describe("runSmartCleanup", () => {
 
     it("the open project's stems", async () => {
       await seedStems("mine");
-      await runSmartCleanup({ ...EVERYTHING, limitBytes: 0, openStemJobKey: stemJobKey("mine", "fp32") });
-      expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([stemJobKey("mine", "fp32")]);
+      const key = stemJobKey("mine", "fp32");
+      await runSmartCleanup({ ...EVERYTHING, limitBytes: 0, isStemJobInUse: (jobKey) => jobKey === key });
+      expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([key]);
     });
 
-    it("a project's audio if it starts opening between planning and removal", async () => {
-      await seedYouTube("opening", 1);
-      const opening = openProject("opening");
+    it("a stem job's stems if it starts loading between planning and removal", async () => {
+      await seedStems("mine");
+      const key = stemJobKey("mine", "fp32");
+      const resultPromise = runSmartCleanup({ ...EVERYTHING, limitBytes: 0, isStemJobInUse: isStemJobLoading });
+      beginLoadingStemJob(key);
+      try {
+        await resultPromise;
+      } finally {
+        endLoadingStemJob(key);
+      }
+      expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([key]);
+    });
+
+    it("a project's audio if it starts opening after planning, while another project is still being removed", async () => {
+      await seedYouTube("decoy", 1);
+      await seedYouTube("opening", 50);
+      let opening: Promise<void> | undefined;
+      onFirstMediaRemoved(() => {
+        opening = openProject("opening");
+      });
       const result = await runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
-      expect(result.removedYouTubeAudio).toBe(0);
+      expect(result.removedYouTubeAudio).toBe(1);
+      expect(await loadProjectAudio("decoy")).toBeUndefined();
       expect(await loadProjectAudio("opening")).toBeDefined();
       await opening;
     });
 
-    it("a project's audio if it becomes the open project during a run", async () => {
-      await seedYouTube("switching", 1);
-      const resultPromise = runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
-      adoptOpenProjectId("switching");
-      await resultPromise;
+    it("a project's audio if it becomes the open project after planning, while another project is still being removed", async () => {
+      await seedYouTube("decoy", 1);
+      await seedYouTube("switching", 50);
+      onFirstMediaRemoved(() => {
+        adoptOpenProjectId("switching");
+      });
+      const result = await runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
+      expect(result.removedYouTubeAudio).toBe(1);
+      expect(await loadProjectAudio("decoy")).toBeUndefined();
       expect(await loadProjectAudio("switching")).toBeDefined();
     });
   });

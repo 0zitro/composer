@@ -1,3 +1,4 @@
+import { isStemJobLoading } from "@/audio/separation/stem-store";
 import { storageLimitBytes } from "@/domain/storage/storage-limit";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import type { CleanupContext, CleanupResult } from "@/lib/storage-cleanup";
@@ -14,12 +15,16 @@ const CHECK_DELAY_MS = 1000;
 
 // -- Helpers ------------------------------------------------------------------
 
+function isStemJobInUse(jobKey: string): boolean {
+  return jobKey === useSeparationStore.getState().jobKey || isStemJobLoading(jobKey);
+}
+
 function readCleanupContext(): Omit<CleanupContext, "storageFull"> {
   const settings = useSettingsStore.getState();
   return {
     smartCleanup: settings.smartCleanup,
     limitBytes: storageLimitBytes(settings.storageLimit),
-    openStemJobKey: useSeparationStore.getState().jobKey,
+    isStemJobInUse,
   };
 }
 

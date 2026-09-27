@@ -7,7 +7,14 @@ import {
 import { computeInstrumental } from "@/audio/separation/derived-stems";
 import { hasCachedModel } from "@/audio/separation/model-cache";
 import { getModelDescriptor, isModelHostingConfigured } from "@/audio/separation/model-registry";
-import { getStem, hasStems, putStem, stemJobKey } from "@/audio/separation/stem-store";
+import {
+  beginLoadingStemJob,
+  endLoadingStemJob,
+  getStem,
+  hasStems,
+  putStem,
+  stemJobKey,
+} from "@/audio/separation/stem-store";
 import type { SeparationError, SeparationStatus, Stem } from "@/audio/separation/types";
 import { hasOnlyFiniteSamples } from "@/audio/separation/validate-channels";
 import { SeparationWorker } from "@/audio/separation/worker-host";
@@ -119,23 +126,28 @@ const useSeparationStore = create<SeparationState & SeparationActions>((set, get
     const audioHash = await hashFile(file);
     const jobKey = stemJobKey(audioHash, variant);
 
-    const has = await hasStems(audioHash, variant);
-    if (!has) {
-      set({ jobKey, availableStems: ["original"], stemUrls: {}, currentStem: "original", status: "idle" });
-      return;
-    }
+    beginLoadingStemJob(jobKey);
+    try {
+      const has = await hasStems(audioHash, variant);
+      if (!has) {
+        set({ jobKey, availableStems: ["original"], stemUrls: {}, currentStem: "original", status: "idle" });
+        return;
+      }
 
-    const vocalsBlob = await getStem(audioHash, "vocals", variant);
-    const instrumentalBlob = await getStem(audioHash, "instrumental", variant);
-    const stemUrls: Partial<Record<Stem, string>> = {};
-    if (vocalsBlob) stemUrls.vocals = URL.createObjectURL(vocalsBlob);
-    if (instrumentalBlob) stemUrls.instrumental = URL.createObjectURL(instrumentalBlob);
-    set({
-      jobKey,
-      availableStems: ["original", "vocals", "instrumental"],
-      stemUrls,
-      status: "ready",
-    });
+      const vocalsBlob = await getStem(audioHash, "vocals", variant);
+      const instrumentalBlob = await getStem(audioHash, "instrumental", variant);
+      const stemUrls: Partial<Record<Stem, string>> = {};
+      if (vocalsBlob) stemUrls.vocals = URL.createObjectURL(vocalsBlob);
+      if (instrumentalBlob) stemUrls.instrumental = URL.createObjectURL(instrumentalBlob);
+      set({
+        jobKey,
+        availableStems: ["original", "vocals", "instrumental"],
+        stemUrls,
+        status: "ready",
+      });
+    } finally {
+      endLoadingStemJob(jobKey);
+    }
   },
 
   downloadModel: async () => {
