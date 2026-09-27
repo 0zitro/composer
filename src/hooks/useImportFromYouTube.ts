@@ -6,6 +6,7 @@ import { getPersistenceSettled, getQueryImportSettled, markLinkProjectSettled } 
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { showLinkedProjectToast } from "@/utils/project-toast";
+import { hasLoadedYouTubeSourceFor } from "@/utils/youtube-source";
 import { readYouTubeParam, stripYouTubeParams } from "@/utils/youtube-link-params";
 import { extractVideoId } from "@/utils/youtube-url";
 
@@ -26,11 +27,6 @@ function announceLinkedProject(outcome: CreatedVideoProject): void {
       outcome.id,
     );
   });
-}
-
-function hasCachedAudioFor(videoId: string): boolean {
-  const current = useAudioStore.getState().source;
-  return current?.type === "youtube" && current.videoId === videoId && current.file != null;
 }
 
 // -- Hook ---------------------------------------------------------------------
@@ -66,7 +62,7 @@ function useImportFromYouTube(): void {
         const outcome = await openProjectForVideo(videoId);
         markLinkProjectSettled(outcome.kind);
         if (outcome.kind === "created") announceLinkedProject(outcome);
-        if (hasCachedAudioFor(videoId)) return;
+        if (hasLoadedYouTubeSourceFor(useAudioStore.getState().source, videoId)) return;
         loadRef.current(videoId).catch(() => {
           // The load error is surfaced through useAudioStore.youtubeLoadError and the tunnel toast.
         });

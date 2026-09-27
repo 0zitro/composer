@@ -8,6 +8,7 @@ import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-s
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { showNewProjectToast } from "@/utils/project-toast";
+import { hasLoadedYouTubeSourceFor, isYouTubeSourceFor } from "@/utils/youtube-source";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -47,7 +48,7 @@ function useLoadYouTubeSource(): (videoId: string) => Promise<void> {
       undoReset = resetSongIdentityForVideo(videoId, previous);
     } else {
       void confirmClearImportedSongDetails().then((clear) => {
-        if (!matchesPending(useAudioStore.getState().source, videoId)) return;
+        if (!isYouTubeSourceFor(useAudioStore.getState().source, videoId)) return;
         if (clear) undoReset = resetSongIdentityForVideo(videoId, previous);
         else useProjectStore.getState().clearUnexportedImport();
       });
@@ -122,7 +123,7 @@ function withoutThumbnailOf(metadata: ProjectMetadata, videoId: string): Project
 function waitForYouTubeLoad(videoId: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const unsubscribe = useAudioStore.subscribe((state) => {
-      if (matchesLoaded(state.source, videoId)) {
+      if (hasLoadedYouTubeSourceFor(state.source, videoId)) {
         unsubscribe();
         resolve();
         return;
@@ -132,20 +133,12 @@ function waitForYouTubeLoad(videoId: string): Promise<void> {
         reject(new Error(state.youtubeLoadError));
         return;
       }
-      if (!matchesPending(state.source, videoId)) {
+      if (!isYouTubeSourceFor(state.source, videoId)) {
         unsubscribe();
         reject(new YouTubeLoadSupersededError());
       }
     });
   });
-}
-
-function matchesLoaded(source: ReturnType<typeof useAudioStore.getState>["source"], videoId: string): boolean {
-  return source?.type === "youtube" && source.videoId === videoId && source.file != null;
-}
-
-function matchesPending(source: ReturnType<typeof useAudioStore.getState>["source"], videoId: string): boolean {
-  return source?.type === "youtube" && source.videoId === videoId;
 }
 
 // -- Exports ------------------------------------------------------------------

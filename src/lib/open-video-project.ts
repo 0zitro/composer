@@ -4,6 +4,7 @@ import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { findProjectByVideoId } from "@/lib/project-repository";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
+import { isYouTubeSourceFor } from "@/utils/youtube-source";
 
 // -- Types --------------------------------------------------------------------
 
@@ -15,8 +16,7 @@ type VideoProjectOutcome =
 // -- Public API ---------------------------------------------------------------
 
 async function openProjectForVideo(videoId: string): Promise<VideoProjectOutcome> {
-  const source = useAudioStore.getState().source;
-  if (source?.type === "youtube" && source.videoId === videoId) return { kind: "current" };
+  if (isYouTubeSourceFor(useAudioStore.getState().source, videoId)) return { kind: "current" };
 
   const openId = openProjectIdSnapshot();
   const match = await findProjectByVideoId(videoId);
