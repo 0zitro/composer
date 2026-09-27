@@ -40,7 +40,10 @@ async function migrateLegacyProject(): Promise<string | undefined> {
           if (project) {
             tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
             tx.objectStore(PROJECT_INDEX_STORE_NAME).put(
-              indexEntryForProject(id, project, audio?.data.byteLength ?? 0),
+              indexEntryForProject(id, project, {
+                storedAudioBytes: audio?.data.byteLength ?? 0,
+                openedAt: project.savedAt,
+              }),
               id,
             );
           }

@@ -2,6 +2,7 @@ import type { LyricLine } from "@/domain/line/model";
 import { hasAnyTiming, hasMainLyrics, isWordSynced } from "@/domain/line/predicates";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
+import type { ProjectTab } from "@/domain/project/tab";
 
 // -- Types --------------------------------------------------------------------
 
@@ -20,6 +21,8 @@ interface ProjectIndexEntry {
   audioKind: ProjectAudioKind;
   storedAudioBytes: number;
   updatedAt: number;
+  openedAt?: number;
+  lastTab?: ProjectTab;
 }
 
 interface IndexEntryInput {
@@ -29,6 +32,8 @@ interface IndexEntryInput {
   audioSource: SavedAudioSource | undefined;
   storedAudioBytes: number;
   updatedAt: number;
+  openedAt?: number;
+  lastTab?: ProjectTab;
 }
 
 // -- Derivation ---------------------------------------------------------------
@@ -62,6 +67,8 @@ function buildIndexEntry(input: IndexEntryInput): ProjectIndexEntry {
     audioKind: input.audioSource?.kind ?? "none",
     storedAudioBytes: input.storedAudioBytes,
     updatedAt: input.updatedAt,
+    ...(input.openedAt !== undefined ? { openedAt: input.openedAt } : {}),
+    ...(input.lastTab ? { lastTab: input.lastTab } : {}),
   };
 }
 

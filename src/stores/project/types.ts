@@ -2,6 +2,7 @@ import type { Agent } from "@/domain/agent/model";
 import type { LineTemplate, LinkGroup } from "@/domain/group/template";
 import type { LyricLine } from "@/domain/line/model";
 import type { ProjectMetadata } from "@/domain/project/metadata";
+import type { ProjectTab } from "@/domain/project/tab";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import type { WordTiming } from "@/domain/word/timing";
 
@@ -9,7 +10,7 @@ import type { WordTiming } from "@/domain/word/timing";
 
 type GranularityMode = "line" | "word";
 type EditorMode = "simple" | "advanced";
-type SimpleTab = "import" | "edit" | "languages" | "sync" | "timeline" | "preview" | "export";
+type SimpleTab = ProjectTab;
 
 interface SyllableSplitDefaults {
   applyToAll: boolean;

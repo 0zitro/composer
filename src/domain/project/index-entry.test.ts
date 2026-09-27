@@ -139,4 +139,22 @@ describe("buildIndexEntry", () => {
       expect("videoId" in buildIndexEntry(input({ audioSource: undefined }))).toBe(false);
     });
   });
+
+  describe("carried fields", () => {
+    it("copies openedAt and lastTab when they are given", () => {
+      const entry = buildIndexEntry(input({ openedAt: 1_758_900_500_000, lastTab: "sync" }));
+      expect(entry.openedAt).toBe(1_758_900_500_000);
+      expect(entry.lastTab).toBe("sync");
+    });
+
+    it("omits openedAt and lastTab when they are not given", () => {
+      const entry = buildIndexEntry(input());
+      expect("openedAt" in entry).toBe(false);
+      expect("lastTab" in entry).toBe(false);
+    });
+
+    it("keeps an openedAt of zero", () => {
+      expect(buildIndexEntry(input({ openedAt: 0 })).openedAt).toBe(0);
+    });
+  });
 });

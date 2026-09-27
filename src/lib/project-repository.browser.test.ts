@@ -4,11 +4,15 @@ import {
   createProjectId,
   deleteProject,
   deleteProjectAudio,
+  findProjectByVideoId,
   listProjectIndex,
   loadProjectAudio,
+  loadProjectIndexEntry,
+  markProjectOpened,
   saveProjectAudio,
   saveProjectRecord,
   setOpenProjectId,
+  setProjectLastTab,
 } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
@@ -104,6 +108,55 @@ describe("project-repository", () => {
     expect(await getOpenProjectId()).toBe("p9");
     await clearOpenProjectId();
     expect(await getOpenProjectId()).toBeUndefined();
+  });
+
+  describe("carried index fields", () => {
+    it("a new project's entry is opened when it is saved", async () => {
+      await saveProjectRecord("p1", project({ savedAt: 500 }));
+      expect((await loadProjectIndexEntry("p1"))?.openedAt).toBe(500);
+    });
+
+    it("markProjectOpened and setProjectLastTab survive later record saves", async () => {
+      await saveProjectRecord("p1", project({ savedAt: 1 }));
+      await markProjectOpened("p1", 900);
+      await setProjectLastTab("p1", "timeline");
+      await saveProjectRecord("p1", project({ savedAt: 2 }));
+      const entry = await loadProjectIndexEntry("p1");
+      expect(entry).toMatchObject({ openedAt: 900, lastTab: "timeline", updatedAt: 2 });
+    });
+
+    it("markProjectOpened and setProjectLastTab do not change updatedAt", async () => {
+      await saveProjectRecord("p1", project({ savedAt: 7 }));
+      await markProjectOpened("p1", 99);
+      await setProjectLastTab("p1", "edit");
+      expect((await loadProjectIndexEntry("p1"))?.updatedAt).toBe(7);
+    });
+
+    it("patches on a project with no entry write nothing", async () => {
+      await markProjectOpened("ghost", 1);
+      await setProjectLastTab("ghost", "sync");
+      expect(await listProjectIndex()).toEqual([]);
+    });
+  });
+
+  describe("findProjectByVideoId", () => {
+    it("finds the project whose audio is that video", async () => {
+      await saveProjectRecord("yt", project({ audioSource: { kind: "youtube", videoId: "dX3k_QDnzHE" } }));
+      await saveProjectRecord("file", project());
+      expect((await findProjectByVideoId("dX3k_QDnzHE"))?.id).toBe("yt");
+    });
+
+    it("returns undefined when no project has the video", async () => {
+      await saveProjectRecord("file", project());
+      expect(await findProjectByVideoId("dX3k_QDnzHE")).toBeUndefined();
+    });
+
+    it("prefers the most recently edited project when two share a video", async () => {
+      const audioSource = { kind: "youtube" as const, videoId: "dX3k_QDnzHE" };
+      await saveProjectRecord("older", project({ audioSource, savedAt: 10 }));
+      await saveProjectRecord("newer", project({ audioSource, savedAt: 20 }));
+      expect((await findProjectByVideoId("dX3k_QDnzHE"))?.id).toBe("newer");
+    });
   });
 
   describe("edge cases", () => {

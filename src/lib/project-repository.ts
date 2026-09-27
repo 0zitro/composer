@@ -1,4 +1,5 @@
 import { type ProjectIndexEntry, buildIndexEntry } from "@/domain/project/index-entry";
+import type { ProjectTab } from "@/domain/project/tab";
 import {
   APP_STATE_STORE_NAME,
   PROJECT_AUDIO_STORE_NAME,
@@ -14,21 +15,35 @@ import { OPEN_PROJECT_KEY } from "@/lib/project-storage";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
 import { nanoid } from "nanoid";
 
+// -- Types --------------------------------------------------------------------
+
+interface IndexCarriedFields {
+  storedAudioBytes: number;
+  openedAt?: number;
+  lastTab?: ProjectTab;
+}
+
+type IndexPatch = Partial<IndexCarriedFields>;
+
 // -- Identity -----------------------------------------------------------------
 
 function createProjectId(): string {
   return nanoid();
 }
 
-function indexEntryForProject(id: string, project: SavedProject, storedAudioBytes: number): ProjectIndexEntry {
+function indexEntryForProject(id: string, project: SavedProject, carried: IndexCarriedFields): ProjectIndexEntry {
   return buildIndexEntry({
     id,
     metadata: project.metadata,
     lines: project.lines,
     audioSource: project.audioSource,
-    storedAudioBytes,
     updatedAt: project.savedAt,
+    ...carried,
   });
+}
+
+function carriedIndexFields(entry: ProjectIndexEntry): IndexCarriedFields {
+  return { storedAudioBytes: entry.storedAudioBytes, openedAt: entry.openedAt, lastTab: entry.lastTab };
 }
 
 // -- Open project pointer -----------------------------------------------------
@@ -52,39 +67,63 @@ function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
     previous.onsuccess = () => {
       const entry = previous.result as ProjectIndexEntry | undefined;
       if (entry) {
-        index.put(indexEntryForProject(id, project, entry.storedAudioBytes), id);
+        index.put(indexEntryForProject(id, project, carriedIndexFields(entry)), id);
         return;
       }
       const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
       audio.onsuccess = () => {
         const saved = audio.result as SavedAudioFile | undefined;
-        index.put(indexEntryForProject(id, project, saved?.data.byteLength ?? 0), id);
+        const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt };
+        index.put(indexEntryForProject(id, project, carried), id);
       };
     };
   });
 }
 
+// -- Index --------------------------------------------------------------------
+
 function listProjectIndex(): Promise<ProjectIndexEntry[]> {
   return getAllFromStore<ProjectIndexEntry>(PROJECT_INDEX_STORE_NAME);
 }
 
-// -- Audio --------------------------------------------------------------------
+function loadProjectIndexEntry(id: string): Promise<ProjectIndexEntry | undefined> {
+  return getFromStore<ProjectIndexEntry>(PROJECT_INDEX_STORE_NAME, id);
+}
 
-function setIndexAudioBytes(tx: IDBTransaction, id: string, bytes: number): void {
+async function findProjectByVideoId(videoId: string): Promise<ProjectIndexEntry | undefined> {
+  const matches = (await listProjectIndex()).filter((entry) => entry.videoId === videoId);
+  return matches.toSorted((a, b) => b.updatedAt - a.updatedAt)[0];
+}
+
+function patchIndexEntry(tx: IDBTransaction, id: string, patch: IndexPatch): void {
   const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
   const request = index.get(id);
   request.onsuccess = () => {
     const entry = request.result as ProjectIndexEntry | undefined;
-    if (entry) index.put({ ...entry, storedAudioBytes: bytes }, id);
+    if (entry) index.put({ ...entry, ...patch }, id);
   };
 }
+
+function patchProjectIndex(id: string, patch: IndexPatch): Promise<void> {
+  return runTransaction([PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => patchIndexEntry(tx, id, patch));
+}
+
+function markProjectOpened(id: string, openedAt: number): Promise<void> {
+  return patchProjectIndex(id, { openedAt });
+}
+
+function setProjectLastTab(id: string, lastTab: ProjectTab): Promise<void> {
+  return patchProjectIndex(id, { lastTab });
+}
+
+// -- Audio --------------------------------------------------------------------
 
 async function saveProjectAudio(id: string, file: File): Promise<void> {
   const data = await file.arrayBuffer();
   const saved: SavedAudioFile = { name: file.name, type: file.type, data };
   await runTransaction([PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => {
     tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
-    setIndexAudioBytes(tx, id, data.byteLength);
+    patchIndexEntry(tx, id, { storedAudioBytes: data.byteLength });
   });
 }
 
@@ -97,7 +136,7 @@ async function loadProjectAudio(id: string): Promise<File | undefined> {
 function deleteProjectAudio(id: string): Promise<void> {
   return runTransaction([PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => {
     tx.objectStore(PROJECT_AUDIO_STORE_NAME).delete(id);
-    setIndexAudioBytes(tx, id, 0);
+    patchIndexEntry(tx, id, { storedAudioBytes: 0 });
   });
 }
 
@@ -119,8 +158,13 @@ export {
   clearOpenProjectId,
   saveProjectRecord,
   listProjectIndex,
+  loadProjectIndexEntry,
+  findProjectByVideoId,
+  markProjectOpened,
+  setProjectLastTab,
   saveProjectAudio,
   loadProjectAudio,
   deleteProjectAudio,
   deleteProject,
 };
+export type { IndexCarriedFields };
