@@ -3,7 +3,7 @@ import { useHiddenProjectIds } from "@/hooks/useHiddenProjectIds";
 import { subscribeProjectsDeleted } from "@/lib/project-channel";
 import { subscribeProjectIndexChanges } from "@/lib/project-index-changes";
 import { listProjectIndex } from "@/lib/project-repository";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
 // -- Types --------------------------------------------------------------------
@@ -19,6 +19,46 @@ interface ProjectIndexState {
 
 const LOG_PREFIX = "[ProjectIndex]";
 const PROJECT_INDEX_QUERY_KEY = ["project-index"] as const;
+
+// -- Query bridge: one index subscription per QueryClient ----------------------
+
+interface IndexBridge {
+  refCount: number;
+  stop: () => void;
+}
+
+const bridges = new Map<QueryClient, IndexBridge>();
+
+function acquireIndexBridge(queryClient: QueryClient): () => void {
+  const existing = bridges.get(queryClient);
+  if (existing) {
+    existing.refCount += 1;
+  } else {
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: PROJECT_INDEX_QUERY_KEY });
+    };
+    const stopLocal = subscribeProjectIndexChanges(refresh);
+    const stopRemote = subscribeProjectsDeleted(refresh);
+    bridges.set(queryClient, {
+      refCount: 1,
+      stop: () => {
+        stopLocal();
+        stopRemote();
+      },
+    });
+  }
+  return () => releaseIndexBridge(queryClient);
+}
+
+function releaseIndexBridge(queryClient: QueryClient): void {
+  const bridge = bridges.get(queryClient);
+  if (!bridge) return;
+  bridge.refCount -= 1;
+  if (bridge.refCount <= 0) {
+    bridge.stop();
+    bridges.delete(queryClient);
+  }
+}
 
 // -- Hook ---------------------------------------------------------------------
 
@@ -40,17 +80,7 @@ function useProjectIndex(): ProjectIndexState {
     if (error) console.error(LOG_PREFIX, "could not load the project index", error);
   }, [error]);
 
-  useEffect(() => {
-    const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: PROJECT_INDEX_QUERY_KEY });
-    };
-    const stopLocal = subscribeProjectIndexChanges(refresh);
-    const stopRemote = subscribeProjectsDeleted(refresh);
-    return () => {
-      stopLocal();
-      stopRemote();
-    };
-  }, [queryClient]);
+  useEffect(() => acquireIndexBridge(queryClient), [queryClient]);
 
   return { entries, stored: data, error, fetchedAt: dataUpdatedAt };
 }

@@ -1,8 +1,13 @@
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { PROJECT_CHANNEL_NAME } from "@/lib/project-channel";
-import { DB_NAME, DB_VERSION, PROJECT_RECORD_STORE_NAME, deleteFromStore } from "@/lib/persistence-idb";
-import { removeProjectData } from "@/lib/project-repository";
+import {
+  DB_NAME,
+  DB_VERSION,
+  PROJECT_INDEX_STORE_NAME,
+  PROJECT_RECORD_STORE_NAME,
+  deleteFromStore,
+} from "@/lib/persistence-idb";
 import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
@@ -187,7 +192,8 @@ describe("ProjectSwitcher", () => {
       await seedLibrary();
       const screen = await renderSwitcher();
       await expect.poll(() => screen.getByRole("option").elements().length).toBe(2);
-      await removeProjectData("c");
+      await deleteFromStore(PROJECT_RECORD_STORE_NAME, "c");
+      await deleteFromStore(PROJECT_INDEX_STORE_NAME, "c");
       const otherTab = new BroadcastChannel(PROJECT_CHANNEL_NAME);
       otherTab.postMessage({ type: "projects-deleted", ids: ["c"], sender: "another-tab" });
       otherTab.close();
@@ -202,7 +208,8 @@ describe("ProjectSwitcher", () => {
       await search.click();
       await userEvent.keyboard("{ArrowDown}");
       await expect.element(screen.getByRole("option").nth(1)).toHaveAttribute("aria-selected", "true");
-      await removeProjectData("b");
+      await deleteFromStore(PROJECT_RECORD_STORE_NAME, "b");
+      await deleteFromStore(PROJECT_INDEX_STORE_NAME, "b");
       const otherTab = new BroadcastChannel(PROJECT_CHANNEL_NAME);
       otherTab.postMessage({ type: "projects-deleted", ids: ["b"], sender: "another-tab" });
       otherTab.close();
