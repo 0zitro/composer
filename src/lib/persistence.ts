@@ -5,62 +5,23 @@ import type { LyricLine } from "@/domain/line/model";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
-import { migrateLegacyProject } from "@/lib/project-migration";
+import { ensureOpenProjectId, findOpenProjectId, forgetOpenProjectId } from "@/lib/open-project-session";
 import {
   clearOpenProjectId,
-  createProjectId,
   deleteProjectAudio,
   loadProjectAudio,
   removeProjectData,
   saveProjectAudio,
   saveProjectRecord,
-  setOpenProjectId,
 } from "@/lib/project-repository";
-import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
+import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";
 
-// -- Open project -------------------------------------------------------------
+// -- Records ------------------------------------------------------------------
 
-let openProjectIdLookup: Promise<string | undefined> | null = null;
-let openProjectIdCreation: Promise<string> | null = null;
-
-function findOpenProjectId(): Promise<string | undefined> {
-  openProjectIdLookup ??= getOpenProjectId()
-    .then((id) => id ?? migrateLegacyProject())
-    .catch((error: unknown) => {
-      openProjectIdLookup = null;
-      throw error;
-    });
-  return openProjectIdLookup;
-}
-
-function ensureOpenProjectId(): Promise<string> {
-  openProjectIdCreation ??= findOpenProjectId()
-    .then(async (existing) => {
-      if (existing) return existing;
-      const id = createProjectId();
-      await setOpenProjectId(id);
-      openProjectIdLookup = Promise.resolve(id);
-      return id;
-    })
-    .catch((error: unknown) => {
-      openProjectIdCreation = null;
-      openProjectIdLookup = null;
-      throw error;
-    });
-  return openProjectIdCreation;
-}
-
-function forgetOpenProjectId(): void {
-  openProjectIdLookup = null;
-  openProjectIdCreation = null;
-}
-
-// -- Public API ---------------------------------------------------------------
-
-async function saveCurrentProject(
+function buildSavedProject(
   metadata: ProjectMetadata,
   agents: Agent[],
   lines: LyricLine[],
@@ -74,9 +35,8 @@ async function saveCurrentProject(
   primingStripped: boolean,
   customSnapPoints: SnapPoint[],
   hasUnexportedImport = false,
-): Promise<void> {
-  const audioFileName = audioSource?.kind === "file" ? audioSource.name : undefined;
-  const project: SavedProject = {
+): SavedProject {
+  return {
     version: SAVED_PROJECT_VERSION,
     savedAt: Date.now(),
     metadata,
@@ -85,7 +45,7 @@ async function saveCurrentProject(
     groups,
     granularity,
     syllableSplitDefaults,
-    audioFileName,
+    audioFileName: audioSource?.kind === "file" ? audioSource.name : undefined,
     audioSource,
     dismissedSuggestions,
     dismissedExplicitSuggestions,
@@ -94,7 +54,19 @@ async function saveCurrentProject(
     customSnapPoints,
     hasUnexportedImport,
   };
-  await saveProjectRecord(await ensureOpenProjectId(), project);
+}
+
+type ProjectSaveArgs = Parameters<typeof buildSavedProject>;
+
+async function saveProjectTo(target: Promise<string>, ...args: ProjectSaveArgs): Promise<void> {
+  const project = buildSavedProject(...args);
+  await saveProjectRecord(await target, project);
+}
+
+// -- Public API ---------------------------------------------------------------
+
+function saveCurrentProject(...args: ProjectSaveArgs): Promise<void> {
+  return saveProjectTo(ensureOpenProjectId(), ...args);
 }
 
 async function loadCurrentProject(): Promise<SavedProject | undefined> {
@@ -131,6 +103,8 @@ async function clearAudioFile(): Promise<void> {
   const id = await findOpenProjectId();
   if (id) await deleteProjectAudio(id);
 }
+
+// -- Project Files ------------------------------------------------------------
 
 function exportProjectToFile(
   metadata: ProjectMetadata,
@@ -189,6 +163,8 @@ async function importProjectFromFile(file: File): Promise<SavedProject> {
 // -- Exports ------------------------------------------------------------------
 
 export {
+  buildSavedProject,
+  saveProjectTo,
   saveCurrentProject,
   loadCurrentProject,
   replaceCurrentProject,
@@ -198,5 +174,5 @@ export {
   saveAudioFile,
   loadAudioFile,
   clearAudioFile,
-  forgetOpenProjectId,
 };
+export type { ProjectSaveArgs };

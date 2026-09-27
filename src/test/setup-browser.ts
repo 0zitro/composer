@@ -1,4 +1,4 @@
-import { forgetOpenProjectId } from "@/lib/persistence";
+import { forgetOpenProjectId } from "@/lib/open-project-session";
 import { __resetPersistenceSettledForTests } from "@/lib/persistence-settled";
 import { addGlobalAllowedConsolePattern, registerConsoleGuard } from "@/test/console-guard";
 import { deleteDatabase } from "@/test/idb";

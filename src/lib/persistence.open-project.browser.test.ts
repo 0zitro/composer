@@ -1,9 +1,9 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { reconcileLine } from "@/domain/line/model";
+import { forgetOpenProjectId } from "@/lib/open-project-session";
 import {
   clearAudioFile,
   clearCurrentProject,
-  forgetOpenProjectId,
   loadAudioFile,
   loadCurrentProject,
   replaceCurrentProject,

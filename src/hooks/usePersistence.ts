@@ -206,7 +206,7 @@ function usePersistence(): void {
       // queued within the debounce window) land in IDB before the page closes.
       // The leave-confirmation prompt below stays gated on meaningful project
       // content so we don't nag on every audio-only reload.
-      flushPendingSave();
+      void flushPendingSave();
       const state = useProjectStore.getState();
       if (state.isDirty && state.lines.length > 0) {
         e.preventDefault();

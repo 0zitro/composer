@@ -1,102 +1,59 @@
-import type { Stem } from "@/audio/separation/types";
-import type { Agent } from "@/domain/agent/model";
-import type { LinkGroup } from "@/domain/group/template";
-import type { LyricLine } from "@/domain/line/model";
-import type { ProjectMetadata } from "@/domain/project/metadata";
-import type { SnapPoint } from "@/domain/snap-point/model";
-import type { SavedAudioSource } from "@/domain/project/audio-source";
-import { saveCurrentProject } from "@/lib/persistence";
-import type { GranularityMode } from "@/stores/project";
-import type { SyllableSplitDefaults } from "@/stores/project/types";
+import { bindSaveTarget } from "@/lib/open-project-session";
+import { type ProjectSaveArgs, saveProjectTo } from "@/lib/persistence";
 import { useSettingsStore } from "@/stores/settings";
 
 // -- Constants ----------------------------------------------------------------
 
 const LOG_PREFIX = "[Persistence]";
 
+// -- Types --------------------------------------------------------------------
+
+interface PendingSave {
+  target: Promise<string>;
+  args: ProjectSaveArgs;
+}
+
 // -- Module state -------------------------------------------------------------
 
-type SaveArgs = [
-  ProjectMetadata,
-  Agent[],
-  LyricLine[],
-  LinkGroup[],
-  GranularityMode,
-  SyllableSplitDefaults,
-  SavedAudioSource | undefined,
-  string[],
-  string[],
-  Stem,
-  boolean,
-  SnapPoint[],
-  boolean,
-];
-
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-let pendingSaveArgs: SaveArgs | null = null;
+let pendingSave: PendingSave | null = null;
+
+// -- Helpers ------------------------------------------------------------------
+
+function clearSaveTimer(): void {
+  if (!saveTimeout) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = null;
+}
+
+function writePendingSave(failureMessage: string): Promise<void> {
+  const pending = pendingSave;
+  pendingSave = null;
+  if (!pending) return Promise.resolve();
+  return saveProjectTo(pending.target, ...pending.args).catch((err: unknown) =>
+    console.error(LOG_PREFIX, failureMessage, err),
+  );
+}
 
 // -- Public API ---------------------------------------------------------------
 
-function debouncedSave(
-  metadata: ProjectMetadata,
-  agents: Agent[],
-  lines: LyricLine[],
-  groups: LinkGroup[],
-  granularity: GranularityMode,
-  syllableSplitDefaults: SyllableSplitDefaults,
-  audioSource: SavedAudioSource | undefined,
-  dismissedSuggestions: string[],
-  dismissedExplicitSuggestions: string[],
-  currentStem: Stem,
-  primingStripped: boolean,
-  customSnapPoints: SnapPoint[],
-  hasUnexportedImport: boolean,
-): void {
-  pendingSaveArgs = [
-    metadata,
-    agents,
-    lines,
-    groups,
-    granularity,
-    syllableSplitDefaults,
-    audioSource,
-    dismissedSuggestions,
-    dismissedExplicitSuggestions,
-    currentStem,
-    primingStripped,
-    customSnapPoints,
-    hasUnexportedImport,
-  ];
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-  }
-  const saveDelay = useSettingsStore.getState().autoSaveDelay;
+function debouncedSave(...args: ProjectSaveArgs): void {
+  pendingSave = { target: bindSaveTarget(), args };
+  clearSaveTimer();
   saveTimeout = setTimeout(() => {
-    if (pendingSaveArgs) {
-      saveCurrentProject(...pendingSaveArgs).catch((err) => console.error(LOG_PREFIX, "Auto-save failed:", err));
-      pendingSaveArgs = null;
-    }
     saveTimeout = null;
-  }, saveDelay);
+    void writePendingSave("Auto-save failed:");
+  }, useSettingsStore.getState().autoSaveDelay);
 }
 
 function cancelPendingSave(): void {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-    saveTimeout = null;
-  }
-  pendingSaveArgs = null;
+  clearSaveTimer();
+  pendingSave = null;
 }
 
-function flushPendingSave(): void {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-    saveTimeout = null;
-  }
-  if (pendingSaveArgs) {
-    saveCurrentProject(...pendingSaveArgs).catch((err) => console.error(LOG_PREFIX, "Flush save failed:", err));
-    pendingSaveArgs = null;
-  }
+function flushPendingSave(): Promise<void> {
+  clearSaveTimer();
+  return writePendingSave("Flush save failed:");
 }
 
 // -- Exports ------------------------------------------------------------------

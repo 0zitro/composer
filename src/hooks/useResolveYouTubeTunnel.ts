@@ -189,7 +189,7 @@ function useResolveYouTubeTunnel(): void {
         const bridgeIsrc = data.isrc ? normalizeIsrc(data.isrc) : undefined;
         if (bridgeIsrc) metadataPatch.isrc = bridgeIsrc;
         project.setMetadata(metadataPatch);
-        flushPendingSave();
+        void flushPendingSave();
       }
       if (
         data.instanceId !== BRIDGE_INSTANCE_ID &&

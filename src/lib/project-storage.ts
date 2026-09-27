@@ -17,6 +17,10 @@ const LEGACY_PROJECT_KEY = "current";
 const LEGACY_AUDIO_KEY = "current-audio";
 const PROJECT_DATA_STORES = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME];
 
+// -- Module state -------------------------------------------------------------
+
+const projectsClearedListeners = new Set<() => void>();
+
 // -- Reads --------------------------------------------------------------------
 
 function getOpenProjectId(): Promise<string | undefined> {
@@ -29,9 +33,9 @@ function loadProjectRecord(id: string): Promise<SavedProject | undefined> {
 
 // -- Removal ------------------------------------------------------------------
 
-function clearAllProjects(): Promise<void> {
+async function clearAllProjects(): Promise<void> {
   const stores = [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES, APP_STATE_STORE_NAME];
-  return runTransaction(stores, "readwrite", (tx) => {
+  await runTransaction(stores, "readwrite", (tx) => {
     const keyRequests = PROJECT_DATA_STORES.map((name) => tx.objectStore(name).getAllKeys());
     const appState = tx.objectStore(APP_STATE_STORE_NAME);
     const pointer = appState.get(OPEN_PROJECT_KEY);
@@ -43,6 +47,13 @@ function clearAllProjects(): Promise<void> {
       appState.delete(OPEN_PROJECT_KEY);
     };
   });
+  for (const listener of projectsClearedListeners) listener();
+}
+
+// -- Lifecycle hooks ------------------------------------------------------------------
+
+function onProjectsCleared(listener: () => void): void {
+  projectsClearedListeners.add(listener);
 }
 
 // -- Exports ------------------------------------------------------------------
@@ -55,4 +66,5 @@ export {
   getOpenProjectId,
   loadProjectRecord,
   clearAllProjects,
+  onProjectsCleared,
 };
