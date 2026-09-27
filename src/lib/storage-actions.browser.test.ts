@@ -4,12 +4,13 @@ import { adoptOpenProjectId } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectAudio } from "@/lib/project-audio";
-import { loadProjectIndexEntry } from "@/lib/project-repository";
+import { loadProjectIndexEntry, removeProjectData } from "@/lib/project-repository";
 import { currentSaveArgs } from "@/lib/project-snapshot";
 import { backUpAllProjects, clearVocalStems, clearYouTubeAudio, removeAudioFromProject } from "@/lib/storage-actions";
 import { useProjectStore } from "@/stores/project";
 import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
+import { allowConsole } from "@/test/console-guard";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { captureDownloads } from "@/test/downloads";
 import { seedStoredProject, songTitled } from "@/test/projects";
@@ -121,6 +122,21 @@ describe("backUpAllProjects", () => {
       expect(await backUpAllProjects()).toBeNull();
       downloads.stop();
       expect(downloads.names()).toEqual([]);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: still downloads the stored projects when the open project's pending save fails", async () => {
+      allowConsole(/could not flush the pending save/);
+      useSettingsStore.setState({ autoSaveDelay: 60_000 });
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await seedStoredProject("b", { project: songTitled("Bravo") });
+      await restoreOpenProject();
+      useProjectStore.getState().setMetadata({ title: "Alpha edited" });
+      debouncedSave(...currentSaveArgs());
+      await removeProjectData("a");
+      const bundle = await backUpAllProjects();
+      expect(bundle?.projects.map((project) => project.metadata.title)).toEqual(["Bravo"]);
     });
   });
 });

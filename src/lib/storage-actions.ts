@@ -7,6 +7,10 @@ import { type ProjectBundle, buildProjectBundle, downloadProjectBundle } from "@
 import { listProjectRecords } from "@/lib/project-storage";
 import { useSeparationStore } from "@/stores/separation";
 
+// -- Constants ----------------------------------------------------------------
+
+const LOG_PREFIX = "[StorageActions]";
+
 // -- Actions ------------------------------------------------------------------
 
 async function removeAudioFromProject(id: string): Promise<void> {
@@ -23,7 +27,11 @@ function clearVocalStems(): Promise<StemRemoval> {
 }
 
 async function backUpAllProjects(): Promise<ProjectBundle | null> {
-  if (openProjectIdSnapshot()) await flushPendingSave();
+  try {
+    await flushPendingSave();
+  } catch (error) {
+    console.error(LOG_PREFIX, "could not flush the pending save before backing up", error);
+  }
   const hidden = hiddenProjectIdsSnapshot();
   const records = (await listProjectRecords()).filter((record) => !hidden.has(record.id));
   if (records.length === 0) return null;

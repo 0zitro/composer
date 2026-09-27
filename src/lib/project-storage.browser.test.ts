@@ -123,7 +123,7 @@ describe("project-storage", () => {
     });
 
     describe("edge cases", () => {
-      it("is empty on a fresh device and skips deleted projects", async () => {
+      it("excludes a project once its data has been removed, starting from an empty store", async () => {
         expect(await listProjectRecords()).toEqual([]);
         await seedStoredProject("a");
         await removeProjectData("a");
