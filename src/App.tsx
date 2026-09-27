@@ -10,6 +10,7 @@ import { usePersistence } from "@/hooks/usePersistence";
 import { useProjectChannel } from "@/hooks/useProjectChannel";
 import { useProjectShortcuts } from "@/hooks/useProjectShortcuts";
 import { useResolveYouTubeTunnel } from "@/hooks/useResolveYouTubeTunnel";
+import { useStorageMaintenance } from "@/hooks/useStorageMaintenance";
 import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
 import { appQueryClient } from "@/lib/app-query-client";
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
@@ -98,6 +99,7 @@ const AppShell: React.FC = () => {
   );
 
   usePersistence();
+  useStorageMaintenance();
   useProjectChannel();
   useProjectShortcuts(isEditor);
   useImportFromHash();

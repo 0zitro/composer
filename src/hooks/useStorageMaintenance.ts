@@ -1,0 +1,63 @@
+import { storageLimitBytes } from "@/domain/storage/storage-limit";
+import { getPersistenceSettled } from "@/lib/persistence-settled";
+import type { CleanupResult } from "@/lib/storage-cleanup";
+import { type MaintenanceTrigger, createStorageMaintenance } from "@/lib/storage-maintenance";
+import { subscribeStorageSignals } from "@/lib/storage-signals";
+import { useSeparationStore } from "@/stores/separation";
+import { useSettingsStore } from "@/stores/settings";
+import { showStorageFullToast } from "@/utils/storage-toast";
+import { useEffect } from "react";
+
+// -- Constants ----------------------------------------------------------------
+
+const CHECK_DELAY_MS = 1000;
+
+// -- Helpers ------------------------------------------------------------------
+
+function readCleanupContext() {
+  const settings = useSettingsStore.getState();
+  return {
+    smartCleanup: settings.smartCleanup,
+    limitBytes: storageLimitBytes(settings.storageLimit),
+    openStemJobKey: useSeparationStore.getState().jobKey,
+  };
+}
+
+function reportCleanup(result: CleanupResult, trigger: MaintenanceTrigger): void {
+  if (trigger === "storage-full") showStorageFullToast(result.freedBytes);
+}
+
+// -- Hook ---------------------------------------------------------------------
+
+function useStorageMaintenance(): void {
+  useEffect(() => {
+    const maintenance = createStorageMaintenance({
+      readContext: readCleanupContext,
+      onCleaned: reportCleanup,
+      delayMs: CHECK_DELAY_MS,
+    });
+    let active = true;
+    void getPersistenceSettled().then(() => {
+      if (active) maintenance.schedule();
+    });
+    const stopSignals = subscribeStorageSignals((signal) => {
+      if (signal === "media-stored") maintenance.schedule();
+      else if (signal === "storage-full") void maintenance.checkNow("storage-full");
+    });
+    const stopSettings = useSettingsStore.subscribe((state, previous) => {
+      if (state.smartCleanup !== previous.smartCleanup || state.storageLimit !== previous.storageLimit) {
+        maintenance.schedule();
+      }
+    });
+    return () => {
+      active = false;
+      stopSignals();
+      stopSettings();
+      maintenance.dispose();
+    };
+  }, []);
+}
+
+// -- Exports ------------------------------------------------------------------
+
+export { useStorageMaintenance };
