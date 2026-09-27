@@ -1,5 +1,6 @@
 import { bindSaveTarget } from "@/lib/open-project-session";
 import { type ProjectSaveArgs, saveProjectTo } from "@/lib/persistence";
+import { setSavePending, trackSave } from "@/lib/save-status";
 import { useSettingsStore } from "@/stores/settings";
 
 // -- Constants ----------------------------------------------------------------
@@ -29,8 +30,9 @@ function clearSaveTimer(): void {
 function writePendingSave(failureMessage: string): Promise<void> {
   const pending = pendingSave;
   pendingSave = null;
+  setSavePending(false);
   if (!pending) return Promise.resolve();
-  return saveProjectTo(pending.target, ...pending.args).catch((err: unknown) =>
+  return trackSave(saveProjectTo(pending.target, ...pending.args)).catch((err: unknown) =>
     console.error(LOG_PREFIX, failureMessage, err),
   );
 }
@@ -39,6 +41,7 @@ function writePendingSave(failureMessage: string): Promise<void> {
 
 function debouncedSave(...args: ProjectSaveArgs): void {
   pendingSave = { target: bindSaveTarget(), args };
+  setSavePending(true);
   clearSaveTimer();
   saveTimeout = setTimeout(() => {
     saveTimeout = null;
@@ -49,6 +52,7 @@ function debouncedSave(...args: ProjectSaveArgs): void {
 function cancelPendingSave(): void {
   clearSaveTimer();
   pendingSave = null;
+  setSavePending(false);
 }
 
 function flushPendingSave(): Promise<void> {

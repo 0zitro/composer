@@ -5,6 +5,7 @@ import { PROJECT_RECORD_STORE_NAME, getAllFromStore } from "@/lib/persistence-id
 import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { clearRecoveryStorage } from "@/lib/recovery";
+import { getSaveStatus } from "@/lib/save-status";
 import { useSettingsStore } from "@/stores/settings";
 import { saveArgsTitled } from "@/test/projects";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -93,6 +94,23 @@ describe("persistence-debounce · save target", () => {
       expect(fresh).toBeDefined();
       expect(fresh).not.toBe(cleared);
       expect((await listProjectIndex()).map((entry) => entry.title)).toEqual(["After clear"]);
+    });
+  });
+
+  describe("save status", () => {
+    it("reads saving while a save waits and saved once it is written", async () => {
+      adoptOpenProjectId("project-a");
+      debouncedSave(...saveArgsTitled("Alpha"));
+      expect(getSaveStatus()).toBe("saving");
+      await flushPendingSave();
+      expect(getSaveStatus()).toBe("saved");
+    });
+
+    it("reads saved again after the pending save is cancelled", () => {
+      adoptOpenProjectId("project-a");
+      debouncedSave(...saveArgsTitled("Alpha"));
+      cancelPendingSave();
+      expect(getSaveStatus()).toBe("saved");
     });
   });
 });

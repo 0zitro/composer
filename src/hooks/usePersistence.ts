@@ -7,6 +7,7 @@ import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { setProjectLastTab } from "@/lib/project-repository";
 import { isRestoringProject } from "@/lib/project-restore";
 import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
+import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSeparationStore } from "@/stores/separation";
@@ -29,7 +30,7 @@ function commitProjectSaveNow(): void {
   const args = buildSaveArgs();
   if (!args) return;
   cancelPendingSave();
-  saveCurrentProject(...args).catch((err) => console.error(LOG_PREFIX, "Immediate save failed:", err));
+  trackSave(saveCurrentProject(...args)).catch((err) => console.error(LOG_PREFIX, "Immediate save failed:", err));
 }
 
 function rememberLastTab(tab: ProjectTab): void {
@@ -88,7 +89,7 @@ function usePersistence(): void {
       const nextFile = playableFile(state.source);
       const prevFile = playableFile(previous);
       if (nextFile && nextFile !== prevFile) {
-        saveAudioFile(nextFile).catch((err) => console.error(`${LOG_PREFIX} audio save failed:`, err));
+        trackSave(saveAudioFile(nextFile)).catch((err) => console.error(`${LOG_PREFIX} audio save failed:`, err));
         return;
       }
       if (!nextFile && prevFile) {
