@@ -38,7 +38,8 @@ const createUiSlice: StateCreator<ProjectStore, [], [], UiState & UiActions> = (
 
   setSyllableSplitDefaults: (syllableSplitDefaults) => set({ syllableSplitDefaults, isDirty: true }),
 
-  setPrimingStripped: (primingStripped) => set({ primingStripped, isDirty: true }),
+  setPrimingStripped: (primingStripped) =>
+    set((state) => (state.primingStripped === primingStripped ? state : { primingStripped, isDirty: true })),
 });
 
 // -- Exports ------------------------------------------------------------------
