@@ -48,7 +48,9 @@ describe("Menu", () => {
   it("opens as a named menu with the first item focused", async () => {
     const screen = await render(<Harness />);
     await screen.getByRole("button", { name: "More" }).click();
-    await expect.element(screen.getByRole("menu", { name: "Actions for Heat Waves" })).toBeInTheDocument();
+    const menu = screen.getByRole("menu", { name: "Actions for Heat Waves" });
+    await expect.element(menu).toBeInTheDocument();
+    await expect.element(menu).toHaveClass("shadow-pop");
     await expect.element(screen.getByRole("menuitem", { name: "Rename" })).toHaveFocus();
   });
 

@@ -1,3 +1,4 @@
+import { useModalStackStore } from "@/stores/modal-stack";
 import { render } from "@/test/render";
 import { BulkBar } from "@/views/library/bulk-bar";
 import { describe, expect, it } from "vitest";
@@ -24,8 +25,12 @@ describe("BulkBar", () => {
   it("counts the selection and offers every action", async () => {
     const calls: string[] = [];
     const screen = await renderBar(3, calls);
-    await expect.element(screen.getByRole("toolbar", { name: "Selected projects" })).toBeInTheDocument();
+    const toolbar = screen.getByRole("toolbar", { name: "Selected projects" });
+    await expect.element(toolbar).toBeInTheDocument();
+    await expect.element(toolbar).toHaveClass("shadow-pop");
     await expect.element(screen.getByText("3 selected")).toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: "Delete" })).toHaveClass("text-composer-negative");
+    await expect.element(screen.getByRole("button", { name: "Clear selection" })).toHaveClass("text-composer-text/60");
     await screen.getByRole("button", { name: "Select all 24" }).click();
     await screen.getByRole("button", { name: "Export" }).click();
     await screen.getByRole("button", { name: "Delete" }).click();
@@ -46,9 +51,15 @@ describe("BulkBar", () => {
       await expect.element(screen.getByRole("button", { name: /Select all/ })).not.toBeInTheDocument();
     });
 
-    it("shows a singular count of zero without crashing", async () => {
+    it("does not render when nothing is selected", async () => {
       const screen = await renderBar(0);
-      await expect.element(screen.getByText("0 selected")).toBeInTheDocument();
+      await expect.element(screen.getByRole("toolbar", { name: "Selected projects" })).not.toBeInTheDocument();
+    });
+
+    it("does not render while a modal is open", async () => {
+      useModalStackStore.setState({ count: 1 });
+      const screen = await renderBar(3);
+      await expect.element(screen.getByRole("toolbar", { name: "Selected projects" })).not.toBeInTheDocument();
     });
   });
 });

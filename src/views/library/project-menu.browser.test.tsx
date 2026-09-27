@@ -1,3 +1,4 @@
+import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { indexEntry } from "@/test/index-entries";
 import { render } from "@/test/render";
 import type { MenuAnchor } from "@/ui/menu";
@@ -10,7 +11,7 @@ import { userEvent } from "vitest/browser";
 
 const HEAT_WAVES = indexEntry("p17", { title: "Heat Waves" });
 
-const Harness: React.FC<{ calls: string[] }> = ({ calls }) => {
+const Harness: React.FC<{ project?: ProjectIndexEntry; calls: string[] }> = ({ project = HEAT_WAVES, calls }) => {
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   return (
     <>
@@ -19,7 +20,7 @@ const Harness: React.FC<{ calls: string[] }> = ({ calls }) => {
       </button>
       {anchor && (
         <ProjectMenu
-          project={HEAT_WAVES}
+          project={project}
           anchor={anchor}
           onClose={() => setAnchor(null)}
           onOpen={(id) => calls.push(`open ${id}`)}
@@ -66,29 +67,7 @@ describe("ProjectMenu", () => {
   describe("edge cases", () => {
     it("names the menu after an untitled project", async () => {
       const untitled = indexEntry("p18", { title: "" });
-      const Anonymous: React.FC = () => {
-        const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
-        return (
-          <>
-            <button type="button" onClick={(event) => setAnchor({ kind: "element", element: event.currentTarget })}>
-              More
-            </button>
-            {anchor && (
-              <ProjectMenu
-                project={untitled}
-                anchor={anchor}
-                onClose={() => setAnchor(null)}
-                onOpen={() => {}}
-                onRename={() => {}}
-                onDuplicate={() => {}}
-                onExport={() => {}}
-                onDelete={() => {}}
-              />
-            )}
-          </>
-        );
-      };
-      const screen = await render(<Anonymous />);
+      const screen = await render(<Harness project={untitled} calls={[]} />);
       await screen.getByRole("button", { name: "More" }).click();
       await expect.element(screen.getByRole("menu", { name: "Actions for Untitled" })).toBeInTheDocument();
     });

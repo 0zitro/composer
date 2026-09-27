@@ -44,10 +44,7 @@ interface MenuContextValue {
 
 // -- Constants ----------------------------------------------------------------
 
-const MENU_SURFACE = cn(
-  "z-100 w-[236px] p-1 rounded-xl bg-composer-bg select-none outline-none",
-  "shadow-[0_0_0_1px_var(--color-composer-border),0_12px_32px_-8px_rgb(0_0_0/0.5),0_2px_6px_rgb(0_0_0/0.25)]",
-);
+const MENU_SURFACE = "z-100 w-[236px] p-1 rounded-xl bg-composer-bg select-none outline-none shadow-pop";
 
 const MenuContext = createContext<MenuContextValue | null>(null);
 

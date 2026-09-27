@@ -1,5 +1,5 @@
-import { getNudgeAmount, formatTimeMs, parseTimeMs } from "@/utils/sync-helpers";
 import { focusAndSelectOnMount } from "@/utils/focus-and-select-on-mount";
+import { getNudgeAmount, formatTimeMs, parseTimeMs } from "@/utils/sync-helpers";
 import { useState } from "react";
 
 // -- Interfaces ---------------------------------------------------------------
