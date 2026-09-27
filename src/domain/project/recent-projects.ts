@@ -1,4 +1,6 @@
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
+import { byMostRecentlyEdited } from "@/domain/project/library-order";
+import { normalizeProjectQuery, projectMatchesQuery } from "@/domain/project/search";
 
 // -- Types --------------------------------------------------------------------
 
@@ -8,23 +10,13 @@ interface RecentProjectsOptions {
   limit: number;
 }
 
-// -- Helpers ------------------------------------------------------------------
-
-function searchable(field: string): string {
-  return field.normalize("NFC").toLowerCase();
-}
-
-function matchesQuery(entry: ProjectIndexEntry, needle: string): boolean {
-  return [entry.title, entry.album, ...entry.artists].some((field) => searchable(field).includes(needle));
-}
-
 // -- Derivations --------------------------------------------------------------
 
 function recentProjects(entries: readonly ProjectIndexEntry[], options: RecentProjectsOptions): ProjectIndexEntry[] {
-  const needle = searchable(options.query.trim());
+  const needle = normalizeProjectQuery(options.query);
   return entries
-    .filter((entry) => entry.id !== options.excludeId && (needle === "" || matchesQuery(entry, needle)))
-    .toSorted((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
+    .filter((entry) => entry.id !== options.excludeId && projectMatchesQuery(entry, needle))
+    .toSorted(byMostRecentlyEdited)
     .slice(0, options.limit);
 }
 

@@ -1,4 +1,4 @@
-import { projectStage, syncedPercent } from "@/domain/project/progress";
+import { progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
 import { describe, expect, it } from "vitest";
 
 describe("projectStage", () => {
@@ -41,6 +41,29 @@ describe("syncedPercent", () => {
     it("never leaves 0 to 100, even for inconsistent counts", () => {
       expect(syncedPercent({ lineCount: 2, syncedLineCount: 5 })).toBe(100);
       expect(syncedPercent({ lineCount: 2, syncedLineCount: -1 })).toBe(0);
+    });
+  });
+});
+
+describe("progressDescription", () => {
+  it("names the synced lines and the timing mode", () => {
+    expect(progressDescription({ lineCount: 38, syncedLineCount: 23, hasWordTiming: true })).toBe(
+      "23 of 38 lines synced, word by word",
+    );
+    expect(progressDescription({ lineCount: 34, syncedLineCount: 34, hasWordTiming: false })).toBe(
+      "34 of 34 lines synced, line by line",
+    );
+  });
+
+  describe("edge cases", () => {
+    it("says there are no lyrics yet", () => {
+      expect(progressDescription({ lineCount: 0, syncedLineCount: 0, hasWordTiming: false })).toBe("No lyrics yet");
+    });
+
+    it("leaves out the mode when nothing is timed", () => {
+      expect(progressDescription({ lineCount: 58, syncedLineCount: 0, hasWordTiming: false })).toBe(
+        "0 of 58 lines synced",
+      );
     });
   });
 });

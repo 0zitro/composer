@@ -85,6 +85,22 @@ describe("buildIndexEntry", () => {
     });
   });
 
+  describe("audio file name", () => {
+    it("records the file name for a file audio source", () => {
+      const entry = buildIndexEntry(input({ audioSource: { kind: "file", name: "Midnight City.flac" } }));
+      expect(entry.audioFileName).toBe("Midnight City.flac");
+    });
+
+    it("omits the file name for youtube audio and for no audio", () => {
+      expect("audioFileName" in buildIndexEntry(input({ audioSource: { kind: "youtube", videoId: "x" } }))).toBe(false);
+      expect("audioFileName" in buildIndexEntry(input({ audioSource: undefined }))).toBe(false);
+    });
+
+    it("omits an empty file name", () => {
+      expect("audioFileName" in buildIndexEntry(input({ audioSource: { kind: "file", name: "" } }))).toBe(false);
+    });
+  });
+
   describe("regressions", () => {
     it("regression: does not crash on a legacy record with a single artist field and missing lines", () => {
       const entry = buildIndexEntry(input({ metadata: { title: "Old", artist: "Someone" }, lines: undefined }));

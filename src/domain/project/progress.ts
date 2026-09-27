@@ -18,7 +18,18 @@ function syncedPercent({ lineCount, syncedLineCount }: ProgressCounts): number {
   return Math.round((synced / lineCount) * 100);
 }
 
+function progressDescription({
+  lineCount,
+  syncedLineCount,
+  hasWordTiming,
+}: ProgressCounts & Pick<ProjectIndexEntry, "hasWordTiming">): string {
+  if (lineCount === 0) return "No lyrics yet";
+  const synced = `${Math.min(Math.max(syncedLineCount, 0), lineCount)} of ${lineCount} lines synced`;
+  if (syncedLineCount <= 0) return synced;
+  return `${synced}, ${hasWordTiming ? "word by word" : "line by line"}`;
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { projectStage, syncedPercent };
+export { projectStage, syncedPercent, progressDescription };
 export type { ProjectStage, ProgressCounts };
