@@ -1,6 +1,7 @@
 import { usePersistence } from "@/hooks/usePersistence";
 import { restoreOpenProject } from "@/lib/open-project";
 import { PROJECT_INDEX_STORE_NAME, setInStore } from "@/lib/persistence-idb";
+import { flushPendingSave } from "@/lib/persistence-debounce";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectIndexEntry, setProjectLastTab } from "@/lib/project-repository";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/lib/project-restore";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
+import { getSaveStatus } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSeparationStore } from "@/stores/separation";
@@ -22,7 +24,6 @@ import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
 import { render } from "@/test/render";
 import { seedStoredProject } from "@/test/projects";
-import { sleep } from "@/test/async";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { describe, expect, it } from "vitest";
 
@@ -136,11 +137,12 @@ describe("project-restore", () => {
 
   describe("regressions", () => {
     it("regression: a boot restore does not save the project again or move its last edited time", async () => {
-      useSettingsStore.setState({ autoSaveDelay: 20 });
+      useSettingsStore.setState({ autoSaveDelay: 60_000 });
       await seedStoredProject("p1", { open: true, project: { savedAt: 111, currentStem: "vocals" } });
       await render(<PersistenceHost />);
       await getPersistenceSettled();
-      await sleep(150);
+      expect(getSaveStatus()).toBe("saved");
+      await flushPendingSave();
       expect((await loadProjectRecord("p1"))?.savedAt).toBe(111);
       expect((await loadProjectIndexEntry("p1"))?.updatedAt).toBe(111);
     });

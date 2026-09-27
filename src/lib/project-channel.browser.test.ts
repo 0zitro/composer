@@ -4,6 +4,10 @@ import { clearAllProjects } from "@/lib/project-storage";
 import { storedProject } from "@/test/projects";
 import { afterEach, describe, expect, it } from "vitest";
 
+// -- Constants ----------------------------------------------------------------
+
+const SENTINEL_ID = "sentinel";
+
 // -- Helpers ------------------------------------------------------------------
 
 const openChannels: BroadcastChannel[] = [];
@@ -20,8 +24,21 @@ function nextMessage(channel: BroadcastChannel): Promise<unknown> {
   });
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sentinelFrom(tab: BroadcastChannel): void {
+  tab.postMessage({ type: "projects-deleted", ids: [SENTINEL_ID], sender: "another-tab" });
+}
+
+function heardUntilSentinel(): { heard: string[][]; settled: Promise<void>; unsubscribe: () => void } {
+  const heard: string[][] = [];
+  let markSettled: () => void = () => {};
+  const settled = new Promise<void>((resolve) => {
+    markSettled = resolve;
+  });
+  const unsubscribe = subscribeProjectsDeleted((ids) => {
+    if (ids.includes(SENTINEL_ID)) markSettled();
+    else heard.push(ids);
+  });
+  return { heard, settled, unsubscribe };
 }
 
 // -- Tests --------------------------------------------------------------------
@@ -59,38 +76,42 @@ describe("project-channel", () => {
 
   describe("edge cases", () => {
     it("a subscriber ignores its own tab's announcements", async () => {
-      const heard: string[][] = [];
-      const unsubscribe = subscribeProjectsDeleted((ids) => heard.push(ids));
+      const { heard, settled, unsubscribe } = heardUntilSentinel();
       const tab = otherTab();
       const received = nextMessage(tab);
       announceProjectsDeleted(["mine"]);
       await received;
-      await sleep(50);
+      sentinelFrom(tab);
+      await settled;
       expect(heard).toEqual([]);
       unsubscribe();
     });
 
     it("a subscriber ignores malformed messages", async () => {
-      const heard: string[][] = [];
-      const unsubscribe = subscribeProjectsDeleted((ids) => heard.push(ids));
+      const { heard, settled, unsubscribe } = heardUntilSentinel();
       const tab = otherTab();
       tab.postMessage("projects-deleted");
       tab.postMessage({ type: "projects-deleted", ids: "p1", sender: "x" });
       tab.postMessage({ type: "something-else", ids: ["p1"], sender: "x" });
-      await sleep(50);
+      sentinelFrom(tab);
+      await settled;
       expect(heard).toEqual([]);
       unsubscribe();
     });
 
     it("announcing no ids posts nothing", async () => {
       const tab = otherTab();
-      let received = false;
-      tab.onmessage = () => {
-        received = true;
-      };
+      const received: unknown[] = [];
+      const sentinelArrived = new Promise<void>((resolve) => {
+        tab.onmessage = (event: MessageEvent<{ ids: string[] }>) => {
+          received.push(event.data);
+          if (event.data.ids.includes(SENTINEL_ID)) resolve();
+        };
+      });
       announceProjectsDeleted([]);
-      await sleep(50);
-      expect(received).toBe(false);
+      announceProjectsDeleted([SENTINEL_ID]);
+      await sentinelArrived;
+      expect(received).toHaveLength(1);
     });
   });
 });
