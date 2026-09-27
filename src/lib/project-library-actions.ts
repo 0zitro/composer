@@ -2,15 +2,15 @@ import { displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
-import { flushPendingSave } from "@/lib/persistence-debounce";
+import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
 import {
   createProjectId,
   loadProjectAudio,
-  saveProjectAudio,
-  saveProjectRecord,
+  saveProjectRecordWithAudio,
   updateProjectRecord,
 } from "@/lib/project-repository";
+import { currentSaveArgs } from "@/lib/project-snapshot";
 import { loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
 import { useProjectStore } from "@/stores/project";
@@ -39,6 +39,7 @@ async function renameProject(id: string, title: string): Promise<void> {
   const nextTitle = title.trim();
   if (id === openProjectIdSnapshot()) {
     useProjectStore.getState().setMetadata({ title: nextTitle });
+    debouncedSave(...currentSaveArgs());
     await flushPendingSave();
     return;
   }
@@ -53,12 +54,11 @@ async function duplicateProject(id: string): Promise<string> {
   const record = await latestRecord(id);
   const audio = await loadProjectAudio(id);
   const copyId = createProjectId();
-  if (audio) await saveProjectAudio(copyId, audio);
-  await saveProjectRecord(copyId, {
-    ...record,
-    metadata: { ...record.metadata, title: copyTitle(record.metadata.title) },
-    savedAt: Date.now(),
-  });
+  await saveProjectRecordWithAudio(
+    copyId,
+    { ...record, metadata: { ...record.metadata, title: copyTitle(record.metadata.title) }, savedAt: Date.now() },
+    audio,
+  );
   return copyId;
 }
 

@@ -2,6 +2,7 @@ import { usePersistence } from "@/hooks/usePersistence";
 import { restoreOpenProject } from "@/lib/open-project";
 import { hiddenProjectIdsSnapshot } from "@/lib/pending-deletions";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
+import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import {
   deleteProjectsWithUndo,
   duplicateProject,
@@ -14,6 +15,7 @@ import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile } from "@/test/audio-fixtures";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { saveArgsTitled, seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { Toaster } from "sonner";
@@ -31,6 +33,10 @@ function watchDownloads(): { names: () => string[]; stop: () => void } {
   });
   observer.observe(document.body, { childList: true });
   return { names: () => names, stop: () => observer.disconnect() };
+}
+
+async function bytesOf(file: File | undefined): Promise<Uint8Array> {
+  return file ? new Uint8Array(await file.arrayBuffer()) : new Uint8Array();
 }
 
 // -- Tests --------------------------------------------------------------------
@@ -54,11 +60,28 @@ describe("renameProject", () => {
     await expect.poll(async () => (await loadProjectIndexEntry("a"))?.title).toBe("Renamed");
   });
 
+  describe("regressions", () => {
+    it("regression: renames the open project even when nothing is listening for the edit", async () => {
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      await renameProject("a", "Renamed");
+      expect((await loadProjectRecord("a"))?.metadata.title).toBe("Renamed");
+    });
+  });
+
   describe("error paths", () => {
     it("rejects a project deleted in the meantime", async () => {
       await seedStoredProject("a");
       await removeProjectData("a");
       await expect(renameProject("a", "Late")).rejects.toBeInstanceOf(ProjectDeletedError);
+    });
+
+    it("regression: reports a failed save instead of succeeding silently", async () => {
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      await expect(renameProject("a", "Renamed")).rejects.toThrow();
+      await deleteDatabase(DB_NAME);
     });
   });
 });
@@ -69,7 +92,9 @@ describe("duplicateProject", () => {
     const copyId = await duplicateProject("a");
     expect(copyId).not.toBe("a");
     expect((await loadProjectRecord(copyId))?.metadata.title).toBe("Alpha copy");
-    expect((await loadProjectAudio(copyId))?.name).toBe("alpha.wav");
+    const [originalAudio, copyAudio] = await Promise.all([loadProjectAudio("a"), loadProjectAudio(copyId)]);
+    expect(copyAudio?.name).toBe("alpha.wav");
+    expect(await bytesOf(copyAudio)).toEqual(await bytesOf(originalAudio));
     const [original, copy] = await Promise.all([loadProjectIndexEntry("a"), loadProjectIndexEntry(copyId)]);
     expect(copy?.storedAudioBytes).toBe(original?.storedAudioBytes);
     expect((await loadProjectRecord("a"))?.metadata.title).toBe("Alpha");
@@ -98,6 +123,14 @@ describe("duplicateProject", () => {
     it("rejects a project that is not stored", async () => {
       await expect(duplicateProject("missing")).rejects.toThrow(/not stored/);
     });
+
+    it("regression: reports a failed save instead of copying a stale record", async () => {
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      await expect(duplicateProject("a")).rejects.toThrow();
+      await deleteDatabase(DB_NAME);
+    });
   });
 });
 
@@ -112,6 +145,40 @@ describe("exportProjectFiles", () => {
     expect(downloads.names()[0]).toMatch(/^Alpha-/);
     expect(downloads.names()[1]).toMatch(/^Bravo-/);
   });
+
+  describe("regressions", () => {
+    it("regression: exporting the open project includes the edit that was still waiting to save", async () => {
+      useSettingsStore.setState({ autoSaveDelay: 60_000 });
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      debouncedSave(...saveArgsTitled("Edited"));
+      const downloads = watchDownloads();
+      await exportProjectFiles(["a"]);
+      await expect.poll(() => downloads.names().length).toBe(1);
+      downloads.stop();
+      expect(downloads.names()[0]).toMatch(/^Edited-/);
+      await flushPendingSave();
+    });
+  });
+
+  describe("error paths", () => {
+    it("stops after the first failure, keeping any file already downloaded", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const downloads = watchDownloads();
+      await expect(exportProjectFiles(["a", "missing"])).rejects.toThrow(/not stored/);
+      await expect.poll(() => downloads.names().length).toBe(1);
+      downloads.stop();
+      expect(downloads.names()[0]).toMatch(/^Alpha-/);
+    });
+
+    it("regression: reports a failed save instead of exporting a stale record", async () => {
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      await expect(exportProjectFiles(["a"])).rejects.toThrow();
+      await deleteDatabase(DB_NAME);
+    });
+  });
 });
 
 describe("deleteProjectsWithUndo", () => {
@@ -125,10 +192,13 @@ describe("deleteProjectsWithUndo", () => {
 
   describe("edge cases", () => {
     it("does nothing for an empty list", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
       const screen = await render(<Toaster />);
       deleteProjectsWithUndo([]);
-      expect(hiddenProjectIdsSnapshot().size).toBe(0);
-      await expect.element(screen.getByText(/Deleted/)).not.toBeInTheDocument();
+      deleteProjectsWithUndo([{ id: "a", title: "Alpha" }]);
+      await expect.element(screen.getByText("Deleted “Alpha”")).toBeInTheDocument();
+      expect(hiddenProjectIdsSnapshot()).toEqual(new Set(["a"]));
+      expect(screen.getByText("Deleted 0 projects").query()).toBeNull();
     });
   });
 });

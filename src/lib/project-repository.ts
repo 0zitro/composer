@@ -99,6 +99,20 @@ function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
   }).then(notifyProjectIndexChanged);
 }
 
+async function saveProjectRecordWithAudio(id: string, project: SavedProject, audio: File | undefined): Promise<void> {
+  const saved: SavedAudioFile | undefined = audio
+    ? { name: audio.name, type: audio.type, data: await audio.arrayBuffer() }
+    : undefined;
+  await runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
+    whenProjectWritable(tx, abort, id, () => {
+      if (saved) tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
+      tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
+      writeIndexEntry(tx, id, project);
+    });
+  });
+  notifyProjectIndexChanged();
+}
+
 function updateProjectRecord(id: string, update: ProjectUpdate): Promise<void> {
   return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
     whenProjectWritable(tx, abort, id, () => {
@@ -223,6 +237,7 @@ export {
   setOpenProjectId,
   clearOpenProjectId,
   saveProjectRecord,
+  saveProjectRecordWithAudio,
   updateProjectRecord,
   listProjectIndex,
   loadProjectIndexEntry,

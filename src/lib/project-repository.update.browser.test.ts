@@ -1,16 +1,18 @@
 import { subscribeProjectIndexChanges } from "@/lib/project-index-changes";
 import {
+  loadProjectAudio,
   loadProjectIndexEntry,
   markProjectOpened,
   removeProjectData,
   saveProjectAudio,
+  saveProjectRecordWithAudio,
   setProjectLastTab,
   updateProjectRecord,
 } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { createAudioFile } from "@/test/audio-fixtures";
-import { seedStoredProject, songTitled } from "@/test/projects";
+import { seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -97,6 +99,35 @@ describe("index change notices", () => {
       await setProjectLastTab("ghost", "sync");
       expect(changes.read()).toBe(0);
       changes.stop();
+    });
+  });
+});
+
+describe("saveProjectRecordWithAudio", () => {
+  it("writes the record, the audio and the index entry in one transaction", async () => {
+    await saveProjectRecordWithAudio("c", storedProject(songTitled("Copy")), createAudioFile("copy.wav"));
+    expect((await loadProjectRecord("c"))?.metadata.title).toBe("Copy");
+    expect((await loadProjectAudio("c"))?.name).toBe("copy.wav");
+    expect((await loadProjectIndexEntry("c"))?.storedAudioBytes).toBeGreaterThan(0);
+  });
+
+  describe("edge cases", () => {
+    it("writes the record with no audio when there is none to copy", async () => {
+      await saveProjectRecordWithAudio("c", storedProject(songTitled("Copy")), undefined);
+      expect(await loadProjectAudio("c")).toBeUndefined();
+      expect((await loadProjectIndexEntry("c"))?.storedAudioBytes).toBe(0);
+    });
+  });
+
+  describe("error paths", () => {
+    it("regression: a refused write leaves no orphan audio blob", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await removeProjectData("a");
+      await expect(
+        saveProjectRecordWithAudio("a", storedProject(songTitled("Alpha")), createAudioFile("orphan.wav")),
+      ).rejects.toBeInstanceOf(ProjectDeletedError);
+      expect(await loadProjectAudio("a")).toBeUndefined();
+      expect(await loadProjectIndexEntry("a")).toBeUndefined();
     });
   });
 });
