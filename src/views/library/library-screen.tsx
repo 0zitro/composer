@@ -46,6 +46,14 @@ function menuKey(menu: OpenMenu): string {
     : `${menu.project.id}:button`;
 }
 
+function focusNextRow(root: HTMLElement | null, visible: readonly ProjectIndexEntry[], removed: Set<string>): boolean {
+  const lastRemoved = visible.findLastIndex((project) => removed.has(project.id));
+  const next = visible.slice(lastRemoved + 1).find((project) => !removed.has(project.id));
+  const target = next && root?.querySelector<HTMLElement>(`[data-project-id="${CSS.escape(next.id)}"] [data-row-open]`);
+  target?.focus();
+  return Boolean(target);
+}
+
 function focusedProjectId(): string | undefined {
   const active = document.activeElement;
   return active instanceof HTMLElement
@@ -70,6 +78,7 @@ const LibraryScreen: React.FC = () => {
   const [renaming, setRenaming] = useState<ProjectIndexEntry | null>(null);
   const [firstPaint, setFirstPaint] = useState(true);
   const searchRef = useRef<HTMLInputElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
   const actions = useLibraryActions();
 
@@ -83,6 +92,10 @@ const LibraryScreen: React.FC = () => {
   const byIdRef = useRef(byId);
   const { selectedIds, toggle, selectAll, clear } = useLibrarySelection(visibleIds);
   const selecting = selectedIds.size > 0;
+  const selectedProjects = useMemo(
+    () => visible.filter((project) => selectedIds.has(project.id)),
+    [visible, selectedIds],
+  );
 
   useLayoutEffect(() => {
     byIdRef.current = byId;
@@ -116,6 +129,8 @@ const LibraryScreen: React.FC = () => {
   const closeMenu = useCallback(() => setMenu(null), []);
 
   const deleteProjects = (projects: readonly ProjectIndexEntry[]) => {
+    const removed = new Set(projects.map((project) => project.id));
+    if (!focusNextRow(mainRef.current, visible, removed)) searchRef.current?.focus();
     actions.remove(projects);
     clear();
   };
@@ -134,7 +149,7 @@ const LibraryScreen: React.FC = () => {
     deleteSelection: () => {
       if (menu || renaming) return false;
       if (selecting) {
-        deleteProjects(visible.filter((project) => selectedIds.has(project.id)));
+        deleteProjects(selectedProjects);
         return true;
       }
       const id = focusedProjectId();
@@ -179,7 +194,7 @@ const LibraryScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-composer-bg">
-      <main className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+      <main ref={mainRef} className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
         <div data-first-paint={firstPaint} className="group/lib max-w-[1264px] mx-auto px-16 pt-8 pb-30">
           <div className="grid grid-cols-[minmax(0,1fr)_380px] gap-4 mb-10 max-[1180px]:grid-cols-[minmax(0,1fr)_320px] max-[880px]:grid-cols-1">
             {resume && <ResumeCard project={resume} now={fetchedAt} onOpen={actions.open} className={RISE} />}
@@ -212,8 +227,8 @@ const LibraryScreen: React.FC = () => {
           selectedCount={selectedIds.size}
           visibleCount={visible.length}
           onSelectAll={selectAll}
-          onExport={() => actions.exportFiles(visibleIds.filter((id) => selectedIds.has(id)))}
-          onDelete={() => deleteProjects(visible.filter((project) => selectedIds.has(project.id)))}
+          onExport={() => actions.exportFiles(selectedProjects.map((project) => project.id))}
+          onDelete={() => deleteProjects(selectedProjects)}
           onClear={clear}
         />
       )}
