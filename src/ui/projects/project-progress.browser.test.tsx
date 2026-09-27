@@ -26,5 +26,10 @@ describe("ProjectProgress", () => {
       const screen = await render(<ProjectProgress lineCount={3} syncedLineCount={0} />);
       await expect.element(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
     });
+
+    it("brightens the No lyrics text on an active row", async () => {
+      const screen = await render(<ProjectProgress lineCount={0} syncedLineCount={0} isActive />);
+      await expect.element(screen.getByText("No lyrics")).toHaveClass("text-composer-text-secondary");
+    });
   });
 });
