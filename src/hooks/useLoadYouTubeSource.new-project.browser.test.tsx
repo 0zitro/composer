@@ -1,6 +1,9 @@
 import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
+import { usePersistence } from "@/hooks/usePersistence";
 import { deleteProject, restoreOpenProject } from "@/lib/open-project";
 import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { getPersistenceSettled } from "@/lib/persistence-settled";
+import { loadProjectRecord } from "@/lib/project-storage";
 import { isProjectDeleted } from "@/lib/project-tombstones";
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
@@ -20,6 +23,11 @@ const OTHER_VIDEO_ID = "9bZkp7q19f0";
 const LOAD_ERROR_MESSAGE = "Could not load that video. Try again.";
 
 // -- Helpers ------------------------------------------------------------------
+
+const PersistenceHost: React.FC = () => {
+  usePersistence();
+  return <Toaster />;
+};
 
 async function openAlpha(lyrics: boolean): Promise<void> {
   await seedStoredProject("a", {
@@ -44,8 +52,7 @@ function videoFile(videoId: string): File {
 }
 
 function failLoad(previousSource: AudioSource): void {
-  useAudioStore.getState().setSource(previousSource);
-  useAudioStore.getState().setYouTubeLoadError(LOAD_ERROR_MESSAGE);
+  useAudioStore.getState().failYouTubeLoad(previousSource, LOAD_ERROR_MESSAGE);
 }
 
 // -- Tests --------------------------------------------------------------------
@@ -93,7 +100,8 @@ describe("useLoadYouTubeSource · projects", () => {
   });
 
   it("shows the switch-back toast even when the previous project has no id yet", async () => {
-    const screen = await render(<Toaster />);
+    const screen = await render(<PersistenceHost />);
+    await getPersistenceSettled();
     useAudioStore.getState().setSource({ type: "file", file: createAudioFile("alpha.wav") });
     useProjectStore.getState().setLines([createLine({ text: "Waiting in a car" })]);
     useProjectStore.getState().setMetadata({ title: "Alpha" });
@@ -107,6 +115,8 @@ describe("useLoadYouTubeSource · projects", () => {
     await expect(loading).resolves.toBeUndefined();
     await expect.element(screen.getByText(`Opened “${VIDEO_ID}” in a new project`)).toBeInTheDocument();
     await expect.element(screen.getByText("“Alpha” is still in Projects.")).toBeInTheDocument();
+    await expect.poll(async () => (await loadProjectRecord(previousId))?.metadata.title).toBe("Alpha");
+    expect((await loadProjectRecord(previousId))?.lines).toHaveLength(1);
   });
 
   describe("edge cases", () => {
@@ -132,6 +142,7 @@ describe("useLoadYouTubeSource · projects", () => {
       await expect(loading).rejects.toThrow();
       expect(openProjectIdSnapshot()).toBe(id);
       expect(await isProjectDeleted(id ?? "")).toBe(false);
+      expect(useAudioStore.getState().source).toBeNull();
     });
 
     it("a different video over a project without lyrics replaces it in place", async () => {

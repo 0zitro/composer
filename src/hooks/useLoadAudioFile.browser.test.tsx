@@ -1,13 +1,16 @@
 import { useLoadAudioFile } from "@/hooks/useLoadAudioFile";
 import { usePersistence } from "@/hooks/usePersistence";
 import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectAudio } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
+import { allowConsole } from "@/test/console-guard";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { createLine } from "@/test/factories";
+import { deleteDatabase } from "@/test/idb";
 import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { Toaster } from "sonner";
@@ -27,6 +30,18 @@ const PersistenceHost: React.FC = () => {
   usePersistence();
   return <Toaster />;
 };
+
+function openAndCloseAtVersion(name: string, version: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onupgradeneeded = () => {};
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
 
 async function openAlpha(options: { lyrics: boolean; audio: boolean }): Promise<OpenedAlpha> {
   const audio = options.audio ? createAudioFile("alpha.wav") : undefined;
@@ -110,7 +125,8 @@ describe("useLoadAudioFile · projects", () => {
     });
 
     it("shows the new-project toast even when the previous project has no id yet", async () => {
-      const screen = await render(<Toaster />);
+      const screen = await render(<PersistenceHost />);
+      await getPersistenceSettled();
       useAudioStore.getState().setSource({ type: "file", file: createAudioFile("alpha.wav") });
       useProjectStore.getState().setLines([createLine({ text: "Waiting in a car" })]);
       useProjectStore.getState().setMetadata({ title: "Alpha" });
@@ -121,6 +137,26 @@ describe("useLoadAudioFile · projects", () => {
       expect(previousId).not.toBe(openProjectIdSnapshot());
       await expect.element(screen.getByText("Opened “b-side” in a new project")).toBeInTheDocument();
       await expect.element(screen.getByText("“Alpha” is still in Projects.")).toBeInTheDocument();
+      await expect.poll(async () => (await loadProjectRecord(previousId))?.metadata.title).toBe("Alpha");
+      expect((await loadProjectRecord(previousId))?.lines).toHaveLength(1);
+    });
+
+    it("falls back to an in-place load when the previous project id cannot be resolved", async () => {
+      allowConsole(/\[Composer\]/);
+      useAudioStore.getState().setSource({ type: "file", file: createAudioFile("alpha.wav") });
+      useProjectStore.getState().setLines([createLine({ text: "Waiting in a car" })]);
+      useProjectStore.getState().setMetadata({ title: "Alpha" });
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      const load = await loader();
+      load(createAudioFile("b-side.wav"));
+      await expect
+        .poll(() => {
+          const source = useAudioStore.getState().source;
+          return source?.type === "file" ? source.file.name : undefined;
+        })
+        .toBe("b-side.wav");
+      expect(useProjectStore.getState().metadata.title).toBe("b-side");
+      await deleteDatabase(DB_NAME);
     });
   });
 });

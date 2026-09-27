@@ -24,7 +24,7 @@ describe("showNewProjectToast", () => {
     const newId = await openAlphaThenCreateNewProject();
     useProjectStore.getState().setLines([createLine({ text: "New words" })]);
     const screen = await render(<Toaster />);
-    showNewProjectToast("b-side", "Alpha", "a");
+    showNewProjectToast("b-side", "Alpha", "a", newId);
     await screen.getByRole("button", { name: "Switch back" }).click();
     await expect.poll(openProjectIdSnapshot).toBe("a");
     expect(await isProjectDeleted(newId)).toBe(false);
@@ -33,17 +33,28 @@ describe("showNewProjectToast", () => {
   it("deletes the new project when Switch back is clicked and it has no lyrics", async () => {
     const newId = await openAlphaThenCreateNewProject();
     const screen = await render(<Toaster />);
-    showNewProjectToast("b-side", "Alpha", "a");
+    showNewProjectToast("b-side", "Alpha", "a", newId);
     await screen.getByRole("button", { name: "Switch back" }).click();
     await expect.poll(openProjectIdSnapshot).toBe("a");
     await expect.poll(() => isProjectDeleted(newId)).toBe(true);
+  });
+
+  it("uses the id given by the caller, not whatever project happens to be open when the toast shows", async () => {
+    const newId = await openAlphaThenCreateNewProject();
+    const decoy = createProject();
+    const screen = await render(<Toaster />);
+    showNewProjectToast("b-side", "Alpha", "a", newId);
+    await screen.getByRole("button", { name: "Switch back" }).click();
+    await expect.poll(openProjectIdSnapshot).toBe("a");
+    expect(await isProjectDeleted(decoy)).toBe(false);
+    expect(await isProjectDeleted(newId)).toBe(false);
   });
 
   describe("edge cases", () => {
     it("does not delete anything when the user switched to a different project before clicking Switch back", async () => {
       const newId = await openAlphaThenCreateNewProject();
       const screen = await render(<Toaster />);
-      showNewProjectToast("b-side", "Alpha", "a");
+      showNewProjectToast("b-side", "Alpha", "a", newId);
       const elsewhere = createProject();
       await screen.getByRole("button", { name: "Switch back" }).click();
       await expect.poll(openProjectIdSnapshot).toBe("a");

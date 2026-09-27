@@ -17,12 +17,12 @@ function quotedTitle(title: string): string {
 
 // -- Switching back -------------------------------------------------------------
 
-function abandonedNewProjectId(newId: string | undefined): string | undefined {
-  if (newId === undefined || openProjectIdSnapshot() !== newId) return undefined;
+function abandonedNewProjectId(newId: string): string | undefined {
+  if (openProjectIdSnapshot() !== newId) return undefined;
   return hasLyricLines(useProjectStore.getState().lines) ? undefined : newId;
 }
 
-async function switchBackToPreviousProject(previousId: string, newId: string | undefined): Promise<void> {
+async function switchBackToPreviousProject(previousId: string, newId: string): Promise<void> {
   const abandonedId = abandonedNewProjectId(newId);
   try {
     await openProject(previousId);
@@ -39,8 +39,7 @@ async function switchBackToPreviousProject(previousId: string, newId: string | u
 
 // -- Toasts -------------------------------------------------------------------
 
-function showNewProjectToast(title: string, previousTitle: string, previousId: string): void {
-  const newId = openProjectIdSnapshot();
+function showNewProjectToast(title: string, previousTitle: string, previousId: string, newId: string): void {
   toast(`Opened ${quotedTitle(title)} in a new project`, {
     description: `${quotedTitle(previousTitle)} is still in Projects.`,
     duration: NEW_PROJECT_TOAST_DURATION_MS,

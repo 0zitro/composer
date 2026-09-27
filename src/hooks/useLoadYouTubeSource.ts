@@ -13,6 +13,15 @@ import { showNewProjectToast } from "@/utils/project-toast";
 
 const LOG_PREFIX = "[YouTubeSource]";
 
+// -- Errors ---------------------------------------------------------------------
+
+class YouTubeLoadSupersededError extends Error {
+  constructor() {
+    super("youtube_load_superseded");
+    this.name = "YouTubeLoadSupersededError";
+  }
+}
+
 // -- Hook ---------------------------------------------------------------------
 
 function useLoadYouTubeSource(): (videoId: string) => Promise<void> {
@@ -67,12 +76,8 @@ function resetSongIdentityForVideo(videoId: string, previous: AudioSource): () =
   };
 }
 
-function abandonsNewProject(newId: string, loadError: unknown): boolean {
-  return (
-    !(loadError instanceof Error && loadError.message === "youtube_load_superseded") &&
-    openProjectIdSnapshot() === newId &&
-    !hasLyricLines(useProjectStore.getState().lines)
-  );
+function isStillOnNewProject(newId: string): boolean {
+  return openProjectIdSnapshot() === newId;
 }
 
 async function revertToPreviousProject(previousId: string, newId: string): Promise<void> {
@@ -97,12 +102,16 @@ async function loadVideoInNewProject(videoId: string): Promise<void> {
   try {
     await waitForYouTubeLoad(videoId);
   } catch (error) {
-    if (abandonsNewProject(newId, error)) {
-      await revertToPreviousProject(previousId, newId);
+    if (!(error instanceof YouTubeLoadSupersededError) && isStillOnNewProject(newId)) {
+      if (hasLyricLines(useProjectStore.getState().lines)) {
+        useAudioStore.getState().setSource(null);
+      } else {
+        await revertToPreviousProject(previousId, newId);
+      }
     }
     throw error;
   }
-  showNewProjectToast(useProjectStore.getState().metadata.title, previousTitle, previousId);
+  showNewProjectToast(useProjectStore.getState().metadata.title, previousTitle, previousId, newId);
 }
 
 function withoutThumbnailOf(metadata: ProjectMetadata, videoId: string): ProjectMetadata {
@@ -112,36 +121,21 @@ function withoutThumbnailOf(metadata: ProjectMetadata, videoId: string): Project
 
 function waitForYouTubeLoad(videoId: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    let settled = false;
-    let evaluationQueued = false;
-    const evaluate = (): void => {
-      evaluationQueued = false;
-      if (settled) return;
-      const state = useAudioStore.getState();
+    const unsubscribe = useAudioStore.subscribe((state) => {
       if (matchesLoaded(state.source, videoId)) {
-        settled = true;
         unsubscribe();
         resolve();
         return;
       }
       if (state.youtubeLoadError) {
-        settled = true;
         unsubscribe();
         reject(new Error(state.youtubeLoadError));
         return;
       }
       if (!matchesPending(state.source, videoId)) {
-        settled = true;
         unsubscribe();
-        reject(new Error("youtube_load_superseded"));
+        reject(new YouTubeLoadSupersededError());
       }
-    };
-    // A failed load can revert the source and set the error in two separate synchronous
-    // notifications; wait a tick so evaluate reads the settled state, not the midpoint.
-    const unsubscribe = useAudioStore.subscribe(() => {
-      if (evaluationQueued || settled) return;
-      evaluationQueued = true;
-      queueMicrotask(evaluate);
     });
   });
 }

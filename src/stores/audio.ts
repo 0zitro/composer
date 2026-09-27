@@ -22,6 +22,7 @@ interface AudioActions {
   setSource: (source: AudioSource) => void;
   setYouTubeSource: (videoId: string, file?: File) => void;
   setYouTubeFile: (file: File) => void;
+  failYouTubeLoad: (previousSource: AudioSource, error: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
@@ -82,6 +83,14 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       return {
         source: { ...s.source, file },
       };
+    }),
+  failYouTubeLoad: (previousSource, error) =>
+    set({
+      source: previousSource,
+      currentTime: 0,
+      duration: 0,
+      isPlaying: false,
+      youtubeLoadError: error,
     }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setCurrentTime: (currentTime) => set({ currentTime }),

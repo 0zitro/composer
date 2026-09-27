@@ -62,13 +62,29 @@ function readTagsInBackground(file: File): void {
   });
 }
 
+function loadFileInPlace(file: File, replacesDifferentSong: boolean, title: string): void {
+  useAudioStore.getState().setSource({ type: "file", file });
+  void settleSongDetails(file, replacesDifferentSong, title)
+    .then((tagWrite) => (tagWrite === "apply" ? applyAudioTags(file) : undefined))
+    .catch((error) => {
+      console.warn(`${LOG_PREFIX} could not read audio tags`, error);
+    });
+}
+
 async function startFileInNewProject(file: File, title: string): Promise<void> {
-  const previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
+  let previousId: string;
+  try {
+    previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
+  } catch (error) {
+    console.error(LOG_PREFIX, "could not resolve the previous project, loading in place instead", error);
+    loadFileInPlace(file, true, title);
+    return;
+  }
   const previousTitle = useProjectStore.getState().metadata.title;
-  createProject();
+  const newId = createProject();
   useAudioStore.getState().setSource({ type: "file", file });
   useProjectStore.getState().setMetadata({ title });
-  showNewProjectToast(title, previousTitle, previousId);
+  showNewProjectToast(title, previousTitle, previousId, newId);
   readTagsInBackground(file);
 }
 
@@ -86,12 +102,7 @@ function useLoadAudioFile(): (file: File) => void {
       return;
     }
 
-    useAudioStore.getState().setSource({ type: "file", file });
-    void settleSongDetails(file, replacesDifferentSong, title)
-      .then((tagWrite) => (tagWrite === "apply" ? applyAudioTags(file) : undefined))
-      .catch((error) => {
-        console.warn(`${LOG_PREFIX} could not read audio tags`, error);
-      });
+    loadFileInPlace(file, replacesDifferentSong, title);
   }, []);
 }
 

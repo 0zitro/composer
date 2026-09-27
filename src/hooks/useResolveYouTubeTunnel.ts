@@ -233,9 +233,10 @@ function useResolveYouTubeTunnel(): void {
     }
     const current = useAudioStore.getState().source;
     if (current?.type === "youtube" && current.videoId === videoId) {
-      useAudioStore.getState().setSource(previousSourceRef.current);
+      useAudioStore.getState().failYouTubeLoad(previousSourceRef.current, message);
+    } else {
+      useAudioStore.getState().setYouTubeLoadError(message);
     }
-    useAudioStore.getState().setYouTubeLoadError(message);
   }, [query.error, videoId]);
 }
 
