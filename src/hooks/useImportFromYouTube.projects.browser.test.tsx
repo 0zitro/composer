@@ -30,6 +30,13 @@ const LinkHost: React.FC = () => {
   return <Toaster />;
 };
 
+const ReversedLinkHost: React.FC = () => {
+  usePersistence();
+  useImportFromYouTube();
+  useImportFromQuery();
+  return <Toaster />;
+};
+
 function setQuery(search: string): void {
   window.history.replaceState(null, "", `/${search}`);
 }
@@ -55,6 +62,15 @@ async function seedOrphanedVideoIndexEntry(id: string, videoId: string): Promise
 async function bootWithLink(search: string) {
   setQuery(search);
   const screen = await render(<LinkHost />);
+  await getPersistenceSettled();
+  const outcome = await getLinkProjectSettled();
+  await getQueryImportSettled();
+  return { screen, outcome };
+}
+
+async function bootWithReversedLink(search: string) {
+  setQuery(search);
+  const screen = await render(<ReversedLinkHost />);
   await getPersistenceSettled();
   const outcome = await getLinkProjectSettled();
   await getQueryImportSettled();
@@ -166,6 +182,17 @@ describe("useImportFromYouTube · projects", () => {
       const { outcome } = await bootWithLink("");
       expect(outcome).toBe("none");
       expect(openProjectIdSnapshot()).toBe("a");
+    });
+
+    it("waits for the link outcome even when useImportFromYouTube mounts before useImportFromQuery", async () => {
+      await seedOpenAlpha();
+      await seedStoredProject("b", {
+        project: { ...songTitled("Bravo"), audioSource: { kind: "youtube", videoId: LINKED_VIDEO_ID } },
+      });
+      const { outcome } = await bootWithReversedLink(`?title=Other%20Title&videoId=${LINKED_VIDEO_ID}`);
+      expect(outcome).toBe("reopened");
+      expect(useConfirmStore.getState().isOpen).toBe(false);
+      expect(useProjectStore.getState().metadata.title).toBe("Bravo");
     });
 
     it("a broken index entry settles as failed and leaves the open project alone", async () => {

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { getLinkProjectSettled, getPersistenceSettled, markQueryImportSettled } from "@/lib/persistence-settled";
 import { isProjectNonEmpty } from "@/lib/project-non-empty";
@@ -69,11 +69,18 @@ function buildMetadataFromUrl(params: URLSearchParams): Partial<ProjectMetadata>
   return Object.keys(patch).length === 0 ? null : patch;
 }
 
+function readsBootYouTubeParam(): boolean {
+  return typeof window !== "undefined" && readYouTubeParam(new URLSearchParams(window.location.search)) !== null;
+}
+
 function useImportFromQuery(): void {
+  // Captured at render time, before any effect (including useImportFromYouTube's,
+  // which strips this same param) can run, so this is independent of hook mount order.
+  const [waitsForLink] = useState(readsBootYouTubeParam);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const waitsForLink = readYouTubeParam(params) !== null;
     const prefill = buildPrefillFromUrl(params);
     const metaPatch = buildMetadataFromUrl(params);
     if (prefill === null && metaPatch === null) {
@@ -117,7 +124,7 @@ function useImportFromQuery(): void {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [waitsForLink]);
 }
 
 // -- Exports ------------------------------------------------------------------
