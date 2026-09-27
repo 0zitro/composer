@@ -1,5 +1,7 @@
 import type { LibrarySort } from "@/domain/project/library-order";
 import type { LaunchScreen, LibraryView } from "@/domain/project/library-preferences";
+import type { KeepYouTubeAudio } from "@/domain/storage/audio-retention";
+import type { StorageLimit } from "@/domain/storage/storage-limit";
 import { SETTINGS_PERSIST_VERSION, migrateSettings } from "@/stores/settings-migration";
 import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
 import { DEFAULT_MIN_WORD_DURATION } from "@/utils/word-spaces";
@@ -57,6 +59,9 @@ interface SettingsState {
   defaultGranularity: GranularityDefault;
 
   autoSaveDelay: number;
+  keepYouTubeAudio: KeepYouTubeAudio;
+  smartCleanup: boolean;
+  storageLimit: StorageLimit;
 
   libraryView: LibraryView;
   librarySort: LibrarySort;
@@ -131,6 +136,9 @@ const DEFAULTS: SettingsState = {
   defaultGranularity: "word",
 
   autoSaveDelay: 2000,
+  keepYouTubeAudio: "auto",
+  smartCleanup: true,
+  storageLimit: "2gb",
 
   libraryView: "list",
   librarySort: "edited",

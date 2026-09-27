@@ -1,5 +1,7 @@
 import { isLibrarySort } from "@/domain/project/library-order";
 import { isLaunchScreen, isLibraryView } from "@/domain/project/library-preferences";
+import { isKeepYouTubeAudio } from "@/domain/storage/audio-retention";
+import { isStorageLimit } from "@/domain/storage/storage-limit";
 import type { SettingsState } from "@/stores/settings";
 
 // -- Types --------------------------------------------------------------------
@@ -10,7 +12,7 @@ interface RetiredSettings {
 
 // -- Constants ----------------------------------------------------------------
 
-const SETTINGS_PERSIST_VERSION = 7;
+const SETTINGS_PERSIST_VERSION = 8;
 
 // -- Migration ----------------------------------------------------------------
 
@@ -29,12 +31,15 @@ function migrateSettings(persistedState: unknown, version: number): unknown {
   if (next.redoPreroll === undefined) next.redoPreroll = 1.5;
   // Old blobs carry an explicit false from before the default flipped, so an undefined guard never reaches them.
   if (version < 6) next.preserveBracketsOnExtraction = true;
-  const { librarySort, libraryView, launchScreen, ...rest } = next;
+  const { librarySort, libraryView, launchScreen, keepYouTubeAudio, smartCleanup, storageLimit, ...rest } = next;
   return {
     ...rest,
     ...(isLibrarySort(librarySort) ? { librarySort } : {}),
     ...(isLibraryView(libraryView) ? { libraryView } : {}),
     ...(isLaunchScreen(launchScreen) ? { launchScreen } : {}),
+    ...(isKeepYouTubeAudio(keepYouTubeAudio) ? { keepYouTubeAudio } : {}),
+    ...(typeof smartCleanup === "boolean" ? { smartCleanup } : {}),
+    ...(isStorageLimit(storageLimit) ? { storageLimit } : {}),
   };
 }
 
