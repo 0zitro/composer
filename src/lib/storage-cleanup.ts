@@ -3,8 +3,7 @@ import { planCleanup } from "@/domain/storage/cleanup-plan";
 import { bytesToFree } from "@/domain/storage/space";
 import { storageUsage } from "@/domain/storage/usage";
 import { readStorageEstimate } from "@/lib/browser-storage";
-import { isProjectInUse } from "@/lib/open-project";
-import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { isProjectInUse, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { removeCachedYouTubeAudio } from "@/lib/project-audio";
 import { listProjectIndex } from "@/lib/project-repository";
 

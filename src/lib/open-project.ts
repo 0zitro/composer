@@ -1,5 +1,7 @@
 import {
   adoptOpenProjectId,
+  beginOpeningProject,
+  endOpeningProject,
   ensureOpenProjectId,
   findOpenProjectId,
   forgetOpenProjectId,
@@ -46,7 +48,6 @@ const LOG_PREFIX = "[OpenProject]";
 let latestRequest = 0;
 let appliedRequest = 0;
 let openProjectChanges = 0;
-const openingIds = new Map<string, number>();
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -62,22 +63,6 @@ function claimRequest(): number {
 
 function markOpenProjectChanged(): void {
   openProjectChanges++;
-}
-
-function beginOpening(id: string): void {
-  openingIds.set(id, (openingIds.get(id) ?? 0) + 1);
-}
-
-function endOpening(id: string): void {
-  const count = openingIds.get(id) ?? 0;
-  if (count <= 1) openingIds.delete(id);
-  else openingIds.set(id, count - 1);
-}
-
-// -- Guards ---------------------------------------------------------------------
-
-function isProjectInUse(id: string): boolean {
-  return id === openProjectIdSnapshot() || openingIds.has(id);
 }
 
 // -- Boot ---------------------------------------------------------------------
@@ -105,7 +90,7 @@ async function openProject(id: string): Promise<void> {
   }
   flushPendingSaveQuietly();
   const request = ++latestRequest;
-  beginOpening(id);
+  beginOpeningProject(id);
   try {
     const payload = await loadProjectForRestore(id);
     const openable = await isOpenable(id, payload);
@@ -128,7 +113,7 @@ async function openProject(id: string): Promise<void> {
       markProjectOpened(id, Date.now()).catch(logFailure("could not record when the project was opened")),
     ]);
   } finally {
-    endOpening(id);
+    endOpeningProject(id);
   }
 }
 
@@ -214,6 +199,5 @@ export {
   reloadOpenProject,
   deleteProject,
   forkOpenProject,
-  isProjectInUse,
 };
 export type { NewSongProject };

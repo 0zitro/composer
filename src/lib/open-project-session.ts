@@ -10,6 +10,7 @@ let knownOpenProjectId: string | undefined;
 let knownSaveTarget: Promise<string> | null = null;
 let sessionGeneration = 0;
 const listeners = new Set<() => void>();
+const openingProjectIds = new Map<string, number>();
 
 // -- Publishing ---------------------------------------------------------------
 
@@ -101,6 +102,22 @@ function subscribeOpenProjectId(listener: () => void): () => void {
   };
 }
 
+// -- Projects in use ----------------------------------------------------------
+
+function beginOpeningProject(id: string): void {
+  openingProjectIds.set(id, (openingProjectIds.get(id) ?? 0) + 1);
+}
+
+function endOpeningProject(id: string): void {
+  const count = openingProjectIds.get(id) ?? 0;
+  if (count <= 1) openingProjectIds.delete(id);
+  else openingProjectIds.set(id, count - 1);
+}
+
+function isProjectInUse(id: string): boolean {
+  return id === knownOpenProjectId || openingProjectIds.has(id);
+}
+
 // -- Save targets -------------------------------------------------------------
 
 function bindSaveTarget(): Promise<string> {
@@ -125,4 +142,7 @@ export {
   openProjectIdSnapshot,
   subscribeOpenProjectId,
   bindSaveTarget,
+  beginOpeningProject,
+  endOpeningProject,
+  isProjectInUse,
 };
