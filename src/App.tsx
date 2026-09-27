@@ -11,6 +11,7 @@ import { useProjectChannel } from "@/hooks/useProjectChannel";
 import { useProjectShortcuts } from "@/hooks/useProjectShortcuts";
 import { useResolveYouTubeTunnel } from "@/hooks/useResolveYouTubeTunnel";
 import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
+import { appQueryClient } from "@/lib/app-query-client";
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
@@ -28,7 +29,7 @@ import { EDITOR_PATH, screenForPath } from "@/utils/app-routes";
 import { EditorScreen } from "@/views/editor-screen";
 import { LibraryScreen } from "@/views/library/library-screen";
 import { LyricsImportModalHost } from "@/views/lyrics-import-modal/lyrics-import-modal-host";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { LazyMotion, domAnimation } from "motion/react";
 import { Activity, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -37,12 +38,6 @@ import { Toaster } from "sonner";
 // -- Constants ----------------------------------------------------------------
 
 const TOUR_START_DELAY_MS = 500;
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, refetchOnWindowFocus: false },
-  },
-});
 
 // -- Shell --------------------------------------------------------------------
 
@@ -170,7 +165,7 @@ const AppShell: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={appQueryClient}>
       <LazyMotion features={domAnimation} strict>
         <AppShell />
         <ConfirmModalHost />

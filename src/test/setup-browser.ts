@@ -1,3 +1,4 @@
+import { appQueryClient } from "@/lib/app-query-client";
 import { forgetOpenProjectId } from "@/lib/open-project-session";
 import { __resetPendingDeletionsForTests } from "@/lib/pending-deletions";
 import { __resetPersistenceSettledForTests } from "@/lib/persistence-settled";
@@ -14,6 +15,7 @@ const COMPOSER_DBS = ["ttml-composer"];
 beforeEach(async () => {
   // Unmount first so a previous test's live subscriptions cannot race the wipe.
   await cleanup();
+  appQueryClient.clear();
   await Promise.all(COMPOSER_DBS.map(deleteDatabase));
   forgetOpenProjectId();
   __resetPendingDeletionsForTests();

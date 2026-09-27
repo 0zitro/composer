@@ -13,6 +13,7 @@ interface ProjectIndexState {
   stored: ProjectIndexEntry[] | undefined;
   error: Error | null;
   fetchedAt: number;
+  fresh: boolean;
 }
 
 // -- Constants ----------------------------------------------------------------
@@ -64,11 +65,11 @@ function releaseIndexBridge(queryClient: QueryClient): void {
 
 function useProjectIndex(): ProjectIndexState {
   const queryClient = useQueryClient();
-  const { data, error, dataUpdatedAt } = useQuery({
+  const { data, error, dataUpdatedAt, isFetchedAfterMount } = useQuery({
     queryKey: PROJECT_INDEX_QUERY_KEY,
     queryFn: listProjectIndex,
     staleTime: 0,
-    gcTime: 0,
+    gcTime: Number.POSITIVE_INFINITY,
   });
   const hidden = useHiddenProjectIds();
   const entries = useMemo(
@@ -82,7 +83,7 @@ function useProjectIndex(): ProjectIndexState {
 
   useEffect(() => acquireIndexBridge(queryClient), [queryClient]);
 
-  return { entries, stored: data, error, fetchedAt: dataUpdatedAt };
+  return { entries, stored: data, error, fetchedAt: dataUpdatedAt, fresh: isFetchedAfterMount };
 }
 
 // -- Exports ------------------------------------------------------------------

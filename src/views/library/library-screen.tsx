@@ -6,7 +6,7 @@ import { createProject } from "@/lib/open-project";
 import { useSettingsStore } from "@/stores/settings";
 import { EmptyState } from "@/ui/empty-state";
 import type { MenuAnchor } from "@/ui/menu";
-import { EDITOR_PATH } from "@/utils/app-routes";
+import { EDITOR_PATH, screenForPath } from "@/utils/app-routes";
 import { cn } from "@/utils/cn";
 import { BulkBar } from "@/views/library/bulk-bar";
 import { LibraryEmpty } from "@/views/library/library-empty";
@@ -22,7 +22,7 @@ import { useLibraryActions } from "@/views/library/use-library-actions";
 import { useLibrarySelection } from "@/views/library/use-library-selection";
 import { useLibraryShortcuts } from "@/views/library/use-library-shortcuts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 // -- Types --------------------------------------------------------------------
 
@@ -34,6 +34,7 @@ interface OpenMenu {
 // -- Constants ----------------------------------------------------------------
 
 const NO_PROJECTS: readonly ProjectIndexEntry[] = [];
+const PAGE_LOAD_LOCATION_KEY = "default";
 const FIRST_PAINT_MS = 700;
 const RISE = "group-data-[first-paint=true]/lib:animate-[library-rise_420ms_cubic-bezier(0.2,0,0,1)_both]";
 
@@ -55,7 +56,11 @@ function focusedProjectId(): string | undefined {
 // -- Component ----------------------------------------------------------------
 
 const LibraryScreen: React.FC = () => {
-  const { entries, stored, error, fetchedAt } = useProjectIndex();
+  const { entries, stored, error, fetchedAt, fresh } = useProjectIndex();
+  const location = useLocation();
+  const [landing, setLanding] = useState(
+    () => location.key === PAGE_LOAD_LOCATION_KEY && screenForPath(location.pathname) === "library",
+  );
   const view = useSettingsStore((state) => state.libraryView);
   const setSetting = useSettingsStore((state) => state.set);
   const [sort, setSort] = useState(() => useSettingsStore.getState().librarySort);
@@ -82,6 +87,10 @@ const LibraryScreen: React.FC = () => {
   useLayoutEffect(() => {
     byIdRef.current = byId;
   });
+
+  useEffect(() => {
+    if (landing && fresh) setLanding(false);
+  }, [landing, fresh]);
 
   useEffect(() => {
     const timer = setTimeout(() => setFirstPaint(false), FIRST_PAINT_MS);
@@ -136,7 +145,7 @@ const LibraryScreen: React.FC = () => {
     },
   });
 
-  if (stored && stored.length === 0) return <Navigate to={EDITOR_PATH} replace />;
+  if (landing && fresh && stored?.length === 0) return <Navigate to={EDITOR_PATH} replace />;
 
   const collection: ProjectCollectionProps = {
     projects: visible,

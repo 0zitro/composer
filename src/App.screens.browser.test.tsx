@@ -92,5 +92,29 @@ describe("App screens", () => {
       await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent("/editor");
       await expect.poll(tabBarVisible).toBe(true);
     });
+
+    it("the Projects crumb shows the empty library when there are no projects", async () => {
+      await deleteProject("alpha");
+      const screen = await renderApp("/editor");
+      await screen.getByRole("link", { name: "Projects" }).click();
+      await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent(/^\/$/);
+      await expect.element(screen.getByText("Start a new song above.")).toBeVisible();
+      expect(screen.getByRole("status", { name: "Current path" }).element().textContent).toBe("/");
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: returning to the library keeps the loaded projects on screen", async () => {
+      const screen = await renderApp("/");
+      const resume = screen.getByRole("region", { name: "Alpha" });
+      await expect.element(resume).toBeInTheDocument();
+      const resumeNode = resume.element();
+      await screen.getByRole("button", { name: "Alpha", exact: true }).click();
+      await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent("/editor");
+      await screen.getByRole("link", { name: "Projects" }).click();
+      await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent(/^\/$/);
+      expect(document.querySelectorAll("[data-project-id]")).toHaveLength(1);
+      expect(resume.element()).toBe(resumeNode);
+    });
   });
 });
