@@ -1,5 +1,7 @@
 import { Button } from "@/ui/button";
 import { cn } from "@/utils/cn";
+import { EDITOR_PATH, LIBRARY_PATH } from "@/utils/app-routes";
+import { IMPORT_HASH_PREFIX } from "@/utils/incoming-link";
 import { IconCopy, IconDownload, IconExternalLink } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -17,8 +19,6 @@ interface ConverterViewProps {
   convert: (args: ConvertArgs) => { ttml: string; projectPayload: string } | { error: string };
   downloadFilename: string;
 }
-
-const OPEN_IN_COMPOSER_HASH_PREFIX = "#import=";
 
 const ConverterView: React.FC<ConverterViewProps> = ({
   title,
@@ -69,8 +69,8 @@ const ConverterView: React.FC<ConverterViewProps> = ({
   };
 
   const openInComposerHref = projectPayload
-    ? `/${OPEN_IN_COMPOSER_HASH_PREFIX}${encodeURIComponent(projectPayload)}`
-    : "/";
+    ? `${EDITOR_PATH}${IMPORT_HASH_PREFIX}${encodeURIComponent(projectPayload)}`
+    : LIBRARY_PATH;
 
   return (
     <section className="px-6 py-14 max-w-6xl mx-auto">

@@ -3,6 +3,7 @@ import {
   DEFAULT_COBALT_INSTANCE_ID,
   getActiveCobaltInstance,
   isUsingDefaultCobaltInstance,
+  migrateSettingsForTest,
   useSettingsStore,
 } from "@/stores/settings";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
@@ -326,5 +327,24 @@ describe("re-record pre-roll setting", () => {
     const { migrateSettingsForTest } = await import("@/stores/settings");
     const migrated = migrateSettingsForTest({ redoPreroll: 0.25 }, 5) as { redoPreroll: number };
     expect(migrated.redoPreroll).toBe(0.25);
+  });
+});
+
+describe("library settings", () => {
+  it("defaults to the list view, last edited order and the Projects home", () => {
+    const state = useSettingsStore.getState();
+    expect(state.libraryView).toBe("list");
+    expect(state.librarySort).toBe("edited");
+    expect(state.launchScreen).toBe("projects");
+  });
+
+  describe("regressions", () => {
+    it("regression: a settings blob saved before these keys existed still gets the defaults", () => {
+      const migrated = migrateSettingsForTest({ defaultZoom: 120 }, 6) as Record<string, unknown>;
+      const merged = { ...DEFAULTS, ...migrated };
+      expect(merged.libraryView).toBe("list");
+      expect(merged.librarySort).toBe("edited");
+      expect(merged.launchScreen).toBe("projects");
+    });
   });
 });

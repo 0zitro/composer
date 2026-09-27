@@ -1,3 +1,4 @@
+import type { LibrarySort } from "@/domain/project/library-order";
 import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
 import { DEFAULT_MIN_WORD_DURATION } from "@/utils/word-spaces";
 import { create } from "zustand";
@@ -9,6 +10,8 @@ type GranularityDefault = "word" | "line";
 type LinkedDivergenceAction = "ask" | "apply" | "detach";
 type PreviewRenderer = "braccato" | "am-lyrics";
 type VocalModelVariant = "fp16" | "fp32";
+type LibraryView = "list" | "grid";
+type LaunchScreen = "projects" | "last-project";
 
 interface ExperimentFlags {
   youtubeBridge: boolean;
@@ -54,6 +57,10 @@ interface SettingsState {
   defaultGranularity: GranularityDefault;
 
   autoSaveDelay: number;
+
+  libraryView: LibraryView;
+  librarySort: LibrarySort;
+  launchScreen: LaunchScreen;
 
   showShortcutHints: boolean;
   showSyllableIndicators: boolean;
@@ -125,6 +132,10 @@ const DEFAULTS: SettingsState = {
   defaultGranularity: "word",
 
   autoSaveDelay: 2000,
+
+  libraryView: "list",
+  librarySort: "edited",
+  launchScreen: "projects",
 
   showShortcutHints: true,
   showSyllableIndicators: true,
@@ -269,4 +280,11 @@ export {
   isUsingDefaultCobaltInstance,
   migrateSettings as migrateSettingsForTest,
 };
-export type { SettingsState, CobaltInstanceStatus, LinkedDivergenceAction, VocalModelVariant };
+export type {
+  SettingsState,
+  CobaltInstanceStatus,
+  LinkedDivergenceAction,
+  VocalModelVariant,
+  LibraryView,
+  LaunchScreen,
+};

@@ -6,6 +6,7 @@ import { useConfirmStore } from "@/stores/confirm-store";
 import { useImportModalStore } from "@/stores/import-modal-store";
 import { useProjectStore } from "@/stores/project";
 import { normalizeIsrc } from "@/utils/isrc";
+import { SONG_QUERY_PARAM_NAMES } from "@/utils/incoming-link";
 import { stripQueryParams } from "@/utils/url-params";
 import { readYouTubeParam } from "@/utils/youtube-link-params";
 import type { LyricsSearchQuery } from "@/utils/lyrics-search/types";
@@ -13,7 +14,6 @@ import type { LyricsSearchQuery } from "@/utils/lyrics-search/types";
 // -- Constants ----------------------------------------------------------------
 
 const LOG_PREFIX = "[Composer]";
-const IMPORT_PARAM_NAMES = ["title", "artist", "album", "duration", "isrc"] as const;
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -86,7 +86,7 @@ function useImportFromQuery(): void {
       markQueryImportSettled();
       return;
     }
-    stripQueryParams(IMPORT_PARAM_NAMES);
+    stripQueryParams(SONG_QUERY_PARAM_NAMES);
     if (prefill !== null) useImportModalStore.getState().setDefaultPrefill(prefill);
 
     if (metaPatch === null) {

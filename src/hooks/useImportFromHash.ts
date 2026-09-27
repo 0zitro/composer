@@ -6,10 +6,9 @@ import type { Agent } from "@/domain/agent/model";
 import type { LyricLine } from "@/domain/line/model";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
+import { IMPORT_HASH_PREFIX } from "@/utils/incoming-link";
 import { useEffect } from "react";
 import { toast } from "sonner";
-
-const IMPORT_HASH_PREFIX = "#import=";
 
 interface ImportPayload {
   metadata: ProjectMetadata;
