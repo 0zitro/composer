@@ -17,7 +17,7 @@ import { memo } from "react";
 
 const CARD_STYLES = cn(
   "group/card relative flex flex-col gap-2.5 rounded-[10px] select-none",
-  "[content-visibility:auto] [contain-intrinsic-size:auto_260px]",
+  "[content-visibility:auto] [contain-intrinsic-size:auto_260px] [overflow-clip-margin:4px]",
   "has-[[data-row-open]:focus-visible]:outline-2 has-[[data-row-open]:focus-visible]:outline-offset-4 has-[[data-row-open]:focus-visible]:outline-composer-accent",
 );
 const REVEAL_ON_CARD = cn(
@@ -56,7 +56,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
       }}
       className={CARD_STYLES}
     >
-      <div className="relative transition-[translate] duration-160 ease-[cubic-bezier(0.2,0,0,1)] group-hover/card:-translate-y-0.5">
+      <div className="relative z-1 pointer-events-none transition-[translate] duration-160 ease-[cubic-bezier(0.2,0,0,1)] group-hover/card:-translate-y-0.5">
         <ProjectArt
           src={project.thumbnailDataUrl}
           size="card"
@@ -66,7 +66,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
           label={`Select ${title}`}
           checked={isSelected}
           onToggle={(range) => onToggleSelect(project.id, range)}
-          className={cn("absolute top-2.5 left-2.5 z-2 checked:opacity-100", REVEAL_ON_CARD)}
+          className={cn("absolute top-2.5 left-2.5 z-2 pointer-events-auto checked:opacity-100", REVEAL_ON_CARD)}
         />
         <Button
           variant="ghost"
@@ -75,7 +75,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
           {...menuTriggerProps(isMenuOpen)}
           onClick={(event) => onOpenMenu(project.id, { kind: "element", element: event.currentTarget })}
           className={cn(
-            "absolute top-2 right-2 z-2 bg-black/50 text-white hover:bg-black/70 hover:text-white group-data-menu/card:opacity-100",
+            "absolute top-2 right-2 z-2 pointer-events-auto bg-black/50 text-white hover:bg-black/70 hover:text-white group-data-menu/card:opacity-100",
             REVEAL_ON_CARD,
           )}
         >
@@ -87,7 +87,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
           type="button"
           data-row-open
           onClick={() => onOpen(project.id)}
-          className="mt-0.5 block max-w-full truncate text-left font-medium text-composer-text cursor-pointer outline-none after:absolute after:inset-0"
+          className="mt-0.5 block max-w-full truncate text-left font-medium text-composer-text cursor-pointer outline-none after:absolute after:inset-0 after:rounded-[inherit]"
         >
           {title}
         </button>

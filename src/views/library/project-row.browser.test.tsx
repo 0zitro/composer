@@ -1,7 +1,7 @@
-import { indexEntry } from "@/test/index-entries";
+import { countingIndexEntry, indexEntry } from "@/test/index-entries";
 import { render } from "@/test/render";
 import { ProjectRow } from "@/views/library/project-row";
-import { Profiler, useState } from "react";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -9,7 +9,6 @@ import { userEvent } from "vitest/browser";
 
 const NOW = new Date(2026, 8, 27, 12, 0, 0).getTime();
 const noop = () => {};
-const STABLE_PROJECT_B = indexEntry("b", { title: "Bravo" });
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -113,61 +112,53 @@ describe("ProjectRow", () => {
       expect(row?.getAttribute("data-project-id")).toBe("p01");
     });
 
-    it("does not re-render a sibling row when only one row's project changes", async () => {
-      const updateDurations: { a: number[]; b: number[] } = { a: [], b: [] };
-      const trackUpdate = (id: "a" | "b") => (_id: string, phase: string, actualDuration: number) => {
-        if (phase === "update") updateDurations[id].push(actualDuration);
-      };
-      const onRenderA = trackUpdate("a");
-      const onRenderB = trackUpdate("b");
+    it("does not re-read a sibling row's project when only one row's project changes", async () => {
+      let readsA = 0;
+      let readsB = 0;
+      const projectB = countingIndexEntry("b", { title: "Bravo" }, () => {
+        readsB += 1;
+      });
 
       const Harness: React.FC = () => {
-        const [renameCount, setRenameCount] = useState(0);
+        const [, setRenderCount] = useState(0);
         return (
           <ul>
-            <Profiler id="a" onRender={onRenderA}>
-              <ProjectRow
-                project={indexEntry("a", { title: `Alpha ${renameCount}` })}
-                now={NOW}
-                isSelected={false}
-                isMenuOpen={false}
-                onOpen={noop}
-                onToggleSelect={noop}
-                onOpenMenu={noop}
-              />
-            </Profiler>
-            <Profiler id="b" onRender={onRenderB}>
-              <ProjectRow
-                project={STABLE_PROJECT_B}
-                now={NOW}
-                isSelected={false}
-                isMenuOpen={false}
-                onOpen={noop}
-                onToggleSelect={noop}
-                onOpenMenu={noop}
-              />
-            </Profiler>
-            <button type="button" onClick={() => setRenameCount((count) => count + 1)}>
-              Rename
+            <ProjectRow
+              project={countingIndexEntry("a", { title: "Alpha" }, () => {
+                readsA += 1;
+              })}
+              now={NOW}
+              isSelected={false}
+              isMenuOpen={false}
+              onOpen={noop}
+              onToggleSelect={noop}
+              onOpenMenu={noop}
+            />
+            <ProjectRow
+              project={projectB}
+              now={NOW}
+              isSelected={false}
+              isMenuOpen={false}
+              onOpen={noop}
+              onToggleSelect={noop}
+              onOpenMenu={noop}
+            />
+            <button type="button" onClick={() => setRenderCount((count) => count + 1)}>
+              Rerender
             </button>
           </ul>
         );
       };
 
       const screen = await render(<Harness />);
-      const renameButton = screen.getByRole("button", { name: "Rename" });
-      const renameRounds = 20;
-      for (let round = 0; round < renameRounds; round += 1) {
-        await renameButton.click();
+      const rerenderButton = screen.getByRole("button", { name: "Rerender" });
+      for (let round = 0; round < 20; round += 1) {
+        await rerenderButton.click();
       }
-      await expect.element(screen.getByText(`Alpha ${renameRounds}`)).toBeInTheDocument();
 
-      // Summed over many commits, not one: a real re-render's cost scales with update count, a memo bailout's residual overhead does not.
-      const totalA = updateDurations.a.reduce((sum, duration) => sum + duration, 0);
-      const totalB = updateDurations.b.reduce((sum, duration) => sum + duration, 0);
-      expect(updateDurations.a).toHaveLength(renameRounds);
-      expect(updateDurations.b).toHaveLength(renameRounds);
-      expect(totalB).toBeLessThan(totalA / 4);
+      // memo's shallow compare never reads a prop's fields, so a genuine bailout never touches the getter again.
+      expect(readsA).toBeGreaterThan(1);
+      expect(readsB).toBe(1);
     });
   });
 });

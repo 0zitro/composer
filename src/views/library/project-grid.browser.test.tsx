@@ -33,4 +33,40 @@ describe("ProjectGrid", () => {
     expect(toggled).toEqual(["a"]);
     expect(menus).toEqual(["point"]);
   });
+
+  describe("edge cases", () => {
+    it("renders no cards for an empty project list", async () => {
+      const screen = await render(
+        <ProjectGrid
+          projects={[]}
+          now={Date.now()}
+          selectedIds={new Set()}
+          menuProjectId={null}
+          onOpen={() => {}}
+          onToggleSelect={() => {}}
+          onOpenMenu={() => {}}
+        />,
+      );
+      const grid = screen.getByRole("list", { name: "Projects" });
+      await expect.element(grid).toBeInTheDocument();
+      expect(grid.element().querySelectorAll("[role='listitem']")).toHaveLength(0);
+    });
+  });
+
+  describe("invariants", () => {
+    it("has no data-selecting when nothing is selected", async () => {
+      const screen = await render(
+        <ProjectGrid
+          projects={[indexEntry("a", { title: "Alpha" })]}
+          now={Date.now()}
+          selectedIds={new Set()}
+          menuProjectId={null}
+          onOpen={() => {}}
+          onToggleSelect={() => {}}
+          onOpenMenu={() => {}}
+        />,
+      );
+      await expect.element(screen.getByRole("list", { name: "Projects" })).toHaveAttribute("data-selecting", "false");
+    });
+  });
 });

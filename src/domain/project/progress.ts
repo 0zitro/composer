@@ -12,12 +12,12 @@ function hasLyrics({ lineCount }: Pick<ProjectIndexEntry, "lineCount">): boolean
 }
 
 function projectStage({ lineCount, syncedLineCount }: ProgressCounts): ProjectStage {
-  if (lineCount === 0 || syncedLineCount <= 0) return "not-synced";
+  if (!hasLyrics({ lineCount }) || syncedLineCount <= 0) return "not-synced";
   return syncedLineCount >= lineCount ? "synced" : "syncing";
 }
 
 function syncedPercent({ lineCount, syncedLineCount }: ProgressCounts): number {
-  if (lineCount === 0) return 0;
+  if (!hasLyrics({ lineCount })) return 0;
   const synced = Math.min(Math.max(syncedLineCount, 0), lineCount);
   return Math.round((synced / lineCount) * 100);
 }

@@ -1,4 +1,5 @@
 import { displayArtists, displayTitle } from "@/domain/project/display-title";
+import { hasLyrics } from "@/domain/project/progress";
 import { projectFileSummary } from "@/lib/project-import";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
 import { Button } from "@/ui/button";
@@ -14,7 +15,7 @@ const DESCRIBED_BY_ID = "import-conflict-body";
 // -- Helpers ------------------------------------------------------------------
 
 function syncedCounts({ lineCount, syncedLineCount }: { lineCount: number; syncedLineCount: number }): string {
-  return lineCount === 0 ? "no lyrics" : `${syncedLineCount} of ${lineCount} lines synced`;
+  return hasLyrics({ lineCount }) ? `${syncedLineCount} of ${lineCount} lines synced` : "no lyrics";
 }
 
 // -- Component ----------------------------------------------------------------

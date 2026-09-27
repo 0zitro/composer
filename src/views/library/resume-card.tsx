@@ -1,6 +1,6 @@
 import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
-import { progressDescription, syncedPercent } from "@/domain/project/progress";
+import { hasLyrics, progressDescription, syncedPercent } from "@/domain/project/progress";
 import type { ProjectTab } from "@/domain/project/tab";
 import { Button } from "@/ui/button";
 import { KawarpBackdrop } from "@/ui/kawarp-backdrop";
@@ -46,7 +46,7 @@ const CARD_STYLES = cn(
 
 const ResumeProgress: React.FC<{ project: ProjectIndexEntry }> = ({ project }) => {
   const description = progressDescription(project);
-  if (project.lineCount === 0) {
+  if (!hasLyrics(project)) {
     return <div className="text-[13px] text-white/80">{description}</div>;
   }
   const percent = syncedPercent(project);
