@@ -5,21 +5,12 @@ import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { ProjectTab } from "@/domain/project/tab";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import type { WordTiming } from "@/domain/word/timing";
+import type { SyllableSplitDefaults } from "@/domain/project/syllable-split-defaults";
 
 // -- Store-local Types --------------------------------------------------------
 
 type GranularityMode = "line" | "word";
 type EditorMode = "simple" | "advanced";
-
-interface SyllableSplitDefaults {
-  applyToAll: boolean;
-  caseInsensitive: boolean;
-}
-
-const DEFAULT_SYLLABLE_SPLIT_DEFAULTS: SyllableSplitDefaults = {
-  applyToAll: false,
-  caseInsensitive: false,
-};
 
 interface HistoryEntry {
   lines: LyricLine[];
@@ -216,7 +207,6 @@ type ProjectStore = ProjectState & ProjectActions;
 
 export type {
   GranularityMode,
-  SyllableSplitDefaults,
   MetadataState,
   SongIdentity,
   AgentsState,
@@ -237,4 +227,3 @@ export type {
   ProjectState,
   ProjectStore,
 };
-export { DEFAULT_SYLLABLE_SPLIT_DEFAULTS };

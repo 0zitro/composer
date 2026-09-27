@@ -16,24 +16,27 @@ function projectStage({ lineCount, syncedLineCount }: ProgressCounts): ProjectSt
   return syncedLineCount >= lineCount ? "synced" : "syncing";
 }
 
-function syncedPercent({ lineCount, syncedLineCount }: ProgressCounts): number {
-  if (!hasLyrics({ lineCount })) return 0;
-  const synced = Math.min(Math.max(syncedLineCount, 0), lineCount);
-  return Math.round((synced / lineCount) * 100);
+function clampedSyncedLines({ lineCount, syncedLineCount }: ProgressCounts): number {
+  return Math.min(Math.max(syncedLineCount, 0), lineCount);
 }
 
-function progressDescription({
-  lineCount,
-  syncedLineCount,
-  hasWordTiming,
-}: ProgressCounts & Pick<ProjectIndexEntry, "hasWordTiming">): string {
-  if (!hasLyrics({ lineCount })) return "No lyrics yet";
-  const synced = `${Math.min(Math.max(syncedLineCount, 0), lineCount)} of ${lineCount} lines synced`;
-  if (syncedLineCount <= 0) return synced;
-  return `${synced}, ${hasWordTiming ? "word by word" : "line by line"}`;
+function syncedPercent(counts: ProgressCounts): number {
+  if (!hasLyrics(counts)) return 0;
+  return Math.round((clampedSyncedLines(counts) / counts.lineCount) * 100);
+}
+
+function syncedLinesLabel(counts: ProgressCounts): string {
+  return `${clampedSyncedLines(counts)} of ${counts.lineCount} lines synced`;
+}
+
+function progressDescription(counts: ProgressCounts & Pick<ProjectIndexEntry, "hasWordTiming">): string {
+  if (!hasLyrics(counts)) return "No lyrics yet";
+  const synced = syncedLinesLabel(counts);
+  if (counts.syncedLineCount <= 0) return synced;
+  return `${synced}, ${counts.hasWordTiming ? "word by word" : "line by line"}`;
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { hasLyrics, projectStage, syncedPercent, progressDescription };
+export { hasLyrics, projectStage, syncedPercent, syncedLinesLabel, progressDescription };
 export type { ProjectStage, ProgressCounts };

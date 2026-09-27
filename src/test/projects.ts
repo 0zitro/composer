@@ -4,7 +4,7 @@ import { findOpenProjectId } from "@/lib/open-project-session";
 import { loadProjectAudio, saveProjectAudio, saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
+import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/domain/project/syllable-split-defaults";
 import { createLine } from "@/test/factories";
 
 // -- Types --------------------------------------------------------------------

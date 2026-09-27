@@ -1,10 +1,6 @@
+import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/domain/project/syllable-split-defaults";
 import { useAudioStore } from "@/stores/audio";
-import {
-  DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
-  type ProjectStore,
-  type UiActions,
-  type UiState,
-} from "@/stores/project/types";
+import type { ProjectStore, UiActions, UiState } from "@/stores/project/types";
 import { useSettingsStore } from "@/stores/settings";
 import type { StateCreator } from "zustand";
 

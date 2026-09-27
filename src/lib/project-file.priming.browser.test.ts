@@ -1,5 +1,6 @@
 import { parseLamePriming } from "@/audio/lame-priming";
-import { projectFileFrom, readProjectFile, savedProjectFromFile } from "@/lib/project-file";
+import { projectFileFrom } from "@/lib/project-file";
+import { readProjectFile, savedProjectFromFile } from "@/lib/project-file-read";
 import { createProjectId, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
 import { loadProjectForRestore } from "@/lib/project-restore";
 import { createMp3File } from "@/test/audio-fixtures";

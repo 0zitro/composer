@@ -37,7 +37,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ percent, label, tone = "defau
       className={cn("relative overflow-hidden rounded-full", TRACK_STYLES[tone], className)}
     >
       <span
-        className={cn("absolute inset-y-0 left-0 rounded-full", FILL_STYLES[tone])}
+        className={cn("absolute inset-y-0 left-0 rounded-full transition-[width] duration-150", FILL_STYLES[tone])}
         style={{ width: `${clamped}%` }}
       />
     </div>

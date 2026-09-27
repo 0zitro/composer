@@ -9,8 +9,14 @@ import { seedProject } from "@/test/idb";
 const STORE_NAME = PROJECT_STORE_NAME;
 const CURRENT_KEY = "current";
 
-function captureDownload(): { resolve: () => Promise<{ filename: string; size: number }>; cleanup: () => void } {
-  let captured: { filename: string; size: number } | null = null;
+interface CapturedDownload {
+  filename: string;
+  size: number;
+  text: string;
+}
+
+function captureDownload(): { resolve: () => Promise<CapturedDownload>; cleanup: () => void } {
+  let captured: CapturedDownload | null = null;
   const originalCreate = document.createElement.bind(document);
   const originalAppend = document.body.appendChild.bind(document.body);
 
@@ -20,13 +26,13 @@ function captureDownload(): { resolve: () => Promise<{ filename: string; size: n
       const anchor = el as HTMLAnchorElement;
       const originalClick = anchor.click.bind(anchor);
       anchor.click = () => {
-        captured = { filename: anchor.download, size: 0 };
+        captured = { filename: anchor.download, size: 0, text: "" };
         const blob = anchor.href;
         if (blob.startsWith("blob:")) {
           fetch(blob)
-            .then((res) => res.blob())
-            .then((b) => {
-              if (captured) captured.size = b.size;
+            .then((res) => res.text())
+            .then((text) => {
+              if (captured) Object.assign(captured, { size: text.length, text });
             })
             .catch(() => {});
         }
@@ -180,6 +186,30 @@ describe("recovery", () => {
       expect(result.found).toBe(true);
       expect(result.title).toBe("Seven");
       expect(result.lineCount).toBe(1);
+    });
+
+    it("downloads the open project as a portable project file", async () => {
+      await saveProjectRecord("p1", {
+        version: 1,
+        savedAt: 1715000000000,
+        metadata: { title: "Seven", artists: [], album: "", duration: 0 },
+        agents: [],
+        lines: [{ id: "a", text: "first", agentId: "v1" }],
+        granularity: "word",
+        currentStem: "vocals",
+        hasUnexportedImport: true,
+      });
+      await setOpenProjectId("p1");
+      const capture = captureDownload();
+      try {
+        await downloadRecoveryFile();
+        const file = JSON.parse((await capture.resolve()).text) as Record<string, unknown>;
+        expect(file.projectId).toBe("p1");
+        expect(file).not.toHaveProperty("currentStem");
+        expect(file).not.toHaveProperty("hasUnexportedImport");
+      } finally {
+        capture.cleanup();
+      }
     });
 
     it("clearRecoveryStorage also clears per-project storage", async () => {

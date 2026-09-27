@@ -10,7 +10,7 @@ import { ensureOpenProjectId, findOpenProjectId } from "@/lib/open-project-sessi
 import { deleteProjectAudio, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
 import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
-import type { SyllableSplitDefaults } from "@/stores/project/types";
+import type { SyllableSplitDefaults } from "@/domain/project/syllable-split-defaults";
 
 // -- Records ------------------------------------------------------------------
 

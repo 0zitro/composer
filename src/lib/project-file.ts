@@ -1,5 +1,4 @@
-import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
+import type { SavedProject } from "@/lib/saved-project";
 
 // -- Types --------------------------------------------------------------------
 
@@ -10,8 +9,6 @@ interface ProjectFile extends SavedProject {
 // -- Constants ----------------------------------------------------------------
 
 const PROJECT_FILE_SUFFIX = ".ttml-project.json";
-const PROJECT_FILE_ACCEPT = ".json,.ttml-project.json";
-const SUPPORTED_VERSIONS: readonly number[] = Array.from({ length: SAVED_PROJECT_VERSION }, (_, index) => index + 1);
 
 // -- Building -----------------------------------------------------------------
 
@@ -25,51 +22,19 @@ function projectFileName(title: string, date: Date): string {
   return `${title || "project"}-${date.toISOString().slice(0, 10)}${PROJECT_FILE_SUFFIX}`;
 }
 
-function downloadProjectFile(file: ProjectFile): void {
+function downloadProjectFile(file: ProjectFile, filename = projectFileName(file.metadata.title, new Date())): void {
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = projectFileName(file.metadata.title, new Date());
+  anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
 }
 
-// -- Reading ------------------------------------------------------------------
-
-function isProjectFilePayload(value: unknown): value is SavedProject & { projectId?: unknown } {
-  return (
-    typeof value === "object" && value !== null && !Array.isArray(value) && "lines" in value && "metadata" in value
-  );
-}
-
-async function readProjectFile(file: File): Promise<ProjectFile> {
-  const parsed: unknown = JSON.parse(await file.text());
-  if (!isProjectFilePayload(parsed)) throw new Error("Not a Composer project file");
-  const { projectId, ...project } = parsed;
-  if (!SUPPORTED_VERSIONS.includes(project.version)) {
-    throw new Error(`Unsupported project version: ${project.version}`);
-  }
-  if (!project.syllableSplitDefaults) project.syllableSplitDefaults = DEFAULT_SYLLABLE_SPLIT_DEFAULTS;
-  upgradeSavedProject(project);
-  return typeof projectId === "string" && projectId !== "" ? { ...project, projectId } : project;
-}
-
-function savedProjectFromFile(file: ProjectFile, savedAt: number): SavedProject {
-  const { projectId: _projectId, ...project } = file;
-  return { ...project, version: SAVED_PROJECT_VERSION, savedAt, hasUnexportedImport: true };
-}
-
 // -- Exports ------------------------------------------------------------------
 
-export {
-  PROJECT_FILE_ACCEPT,
-  projectFileFrom,
-  projectFileName,
-  downloadProjectFile,
-  readProjectFile,
-  savedProjectFromFile,
-};
+export { projectFileFrom, projectFileName, downloadProjectFile };
 export type { ProjectFile };

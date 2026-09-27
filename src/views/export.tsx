@@ -1,6 +1,6 @@
 import { useExportTtml } from "@/hooks/use-export-ttml";
 import { useProjectFileActions } from "@/hooks/useProjectFileActions";
-import { PROJECT_FILE_ACCEPT } from "@/lib/project-file";
+import { PROJECT_FILE_ACCEPT } from "@/lib/project-file-read";
 import { useProjectStore } from "@/stores/project";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";

@@ -7,7 +7,7 @@ import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import type { GranularityMode } from "@/stores/project";
-import type { SyllableSplitDefaults } from "@/stores/project/types";
+import type { SyllableSplitDefaults } from "@/domain/project/syllable-split-defaults";
 
 // -- Types --------------------------------------------------------------------
 

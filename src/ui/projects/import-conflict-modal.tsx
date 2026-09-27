@@ -1,5 +1,5 @@
 import { displayArtists, displayTitle } from "@/domain/project/display-title";
-import { hasLyrics } from "@/domain/project/progress";
+import { type ProgressCounts, hasLyrics, syncedLinesLabel } from "@/domain/project/progress";
 import { projectFileSummary } from "@/lib/project-import";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
 import { Button } from "@/ui/button";
@@ -14,8 +14,8 @@ const DESCRIBED_BY_ID = "import-conflict-body";
 
 // -- Helpers ------------------------------------------------------------------
 
-function syncedCounts({ lineCount, syncedLineCount }: { lineCount: number; syncedLineCount: number }): string {
-  return hasLyrics({ lineCount }) ? `${syncedLineCount} of ${lineCount} lines synced` : "no lyrics";
+function syncedCounts(counts: ProgressCounts): string {
+  return hasLyrics(counts) ? syncedLinesLabel(counts) : "no lyrics";
 }
 
 // -- Component ----------------------------------------------------------------

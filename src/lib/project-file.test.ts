@@ -1,5 +1,6 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
-import { projectFileFrom, projectFileName, readProjectFile, savedProjectFromFile } from "@/lib/project-file";
+import { projectFileFrom, projectFileName } from "@/lib/project-file";
+import { readProjectFile, savedProjectFromFile } from "@/lib/project-file-read";
 import { describe, expect, it } from "vitest";
 
 describe("persistence: syllableSplitDefaults", () => {

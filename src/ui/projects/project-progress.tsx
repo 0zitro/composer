@@ -1,4 +1,4 @@
-import { hasLyrics, projectStage, syncedPercent } from "@/domain/project/progress";
+import { hasLyrics, projectStage, syncedLinesLabel, syncedPercent } from "@/domain/project/progress";
 import { ProgressBar } from "@/ui/progress-bar";
 import { SyncedBadge } from "@/ui/projects/synced-badge";
 import { cn } from "@/utils/cn";
@@ -25,7 +25,7 @@ const ProjectProgress: React.FC<ProjectProgressProps> = ({ lineCount, syncedLine
   if (projectStage(counts) === "synced") {
     return <SyncedBadge className="justify-self-end" />;
   }
-  return <ProgressBar percent={syncedPercent(counts)} label={`${syncedLineCount} of ${lineCount} lines synced`} />;
+  return <ProgressBar percent={syncedPercent(counts)} label={syncedLinesLabel(counts)} />;
 };
 
 // -- Exports ------------------------------------------------------------------

@@ -1,4 +1,10 @@
-import { hasLyrics, progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
+import {
+  hasLyrics,
+  progressDescription,
+  projectStage,
+  syncedLinesLabel,
+  syncedPercent,
+} from "@/domain/project/progress";
 import { describe, expect, it } from "vitest";
 
 describe("projectStage", () => {
@@ -77,6 +83,30 @@ describe("hasLyrics", () => {
   describe("edge cases", () => {
     it("is false for a project with no lines", () => {
       expect(hasLyrics({ lineCount: 0 })).toBe(false);
+    });
+  });
+});
+
+describe("syncedLinesLabel", () => {
+  it("counts the synced lines out of every line", () => {
+    expect(syncedLinesLabel({ lineCount: 12, syncedLineCount: 5 })).toBe("5 of 12 lines synced");
+  });
+
+  describe("edge cases", () => {
+    it("labels a project without lines as zero of zero", () => {
+      expect(syncedLinesLabel({ lineCount: 0, syncedLineCount: 0 })).toBe("0 of 0 lines synced");
+    });
+  });
+
+  describe("invariants", () => {
+    it("clamps corrupt counts into range", () => {
+      expect(syncedLinesLabel({ lineCount: 2, syncedLineCount: 5 })).toBe("2 of 2 lines synced");
+      expect(syncedLinesLabel({ lineCount: 2, syncedLineCount: -1 })).toBe("0 of 2 lines synced");
+    });
+
+    it("matches the description's count", () => {
+      const counts = { lineCount: 4, syncedLineCount: 3, hasWordTiming: true };
+      expect(progressDescription(counts).startsWith(syncedLinesLabel(counts))).toBe(true);
     });
   });
 });

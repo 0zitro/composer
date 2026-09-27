@@ -1,10 +1,7 @@
-// Standalone recovery helper. Reads the autosaved project directly from
-// IndexedDB and triggers a file download, with zero dependencies on any
-// store, hook, or component so it remains usable from error boundaries
-// and `/recover` even when the rest of the app is in a broken state.
-
 import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
+import { downloadProjectFile, projectFileFrom, projectFileName } from "@/lib/project-file";
 import { LEGACY_PROJECT_KEY, clearAllProjects, getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
+import type { SavedProject } from "@/lib/saved-project";
 
 // -- Types --------------------------------------------------------------------
 
@@ -13,6 +10,11 @@ interface RecoveredProject {
   savedAt?: number;
   metadata?: { title?: string };
   lines?: unknown[];
+}
+
+interface StoredRecovery {
+  projectId: string | undefined;
+  project: SavedProject;
 }
 
 interface RecoveryResult {
@@ -35,48 +37,37 @@ const NOT_FOUND_RESULT: RecoveryResult = {
 
 // -- Helpers ------------------------------------------------------------------
 
-async function readProjectFromIDB(): Promise<RecoveredProject | undefined> {
+async function readProjectFromIDB(): Promise<StoredRecovery | undefined> {
   const openId = await getOpenProjectId();
   const open = openId ? await loadProjectRecord(openId) : undefined;
-  return open ?? getFromStore<RecoveredProject>(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY);
+  if (open) return { projectId: openId, project: open };
+  const legacy = await getFromStore<SavedProject>(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY);
+  return legacy ? { projectId: undefined, project: legacy } : undefined;
 }
 
 function buildRecoveryResult(project: RecoveredProject): RecoveryResult {
   const title = project.metadata?.title?.trim() || "recovered";
-  const date = new Date().toISOString().slice(0, 10);
   return {
     found: true,
-    filename: `${title}-${date}.ttml-project.json`,
+    filename: projectFileName(title, new Date()),
     lineCount: project.lines?.length ?? 0,
     savedAt: project.savedAt,
     title,
   };
 }
 
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 // -- Public API ---------------------------------------------------------------
 
 async function readRecoveryMetadata(): Promise<RecoveryResult> {
-  const project = await readProjectFromIDB();
-  return project ? buildRecoveryResult(project) : NOT_FOUND_RESULT;
+  const stored = await readProjectFromIDB();
+  return stored ? buildRecoveryResult(stored.project) : NOT_FOUND_RESULT;
 }
 
 async function downloadRecoveryFile(): Promise<RecoveryResult> {
-  const project = await readProjectFromIDB();
-  if (!project) return NOT_FOUND_RESULT;
-  const result = buildRecoveryResult(project);
-  const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
-  triggerDownload(blob, result.filename);
+  const stored = await readProjectFromIDB();
+  if (!stored) return NOT_FOUND_RESULT;
+  const result = buildRecoveryResult(stored.project);
+  downloadProjectFile(projectFileFrom(stored.projectId, stored.project), result.filename);
   return result;
 }
 

@@ -4,8 +4,10 @@ import { getModelDescriptor } from "@/audio/separation/model-registry";
 import { useAudioStore } from "@/stores/audio";
 import { Button } from "@/ui/button";
 import { Popover } from "@/ui/popover";
+import { ProgressBar } from "@/ui/progress-bar";
 import { VocalOnsetSnapToggle } from "@/ui/vocal-onset-snap-toggle";
 import { cn } from "@/utils/cn";
+import { formatMegabytes } from "@/utils/format-file-size";
 import { IconCheck, type IconProps, IconLoader2, IconMicrophone, IconMusic, IconWaveSine } from "@tabler/icons-react";
 import { type ComponentType, useEffect } from "react";
 import type { Stem } from "@/audio/separation/types";
@@ -21,19 +23,6 @@ const STEM_ICONS: Record<Stem, ComponentType<IconProps>> = {
   vocals: IconMicrophone,
   instrumental: IconMusic,
 };
-
-function formatMb(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-const ProgressBar: React.FC<{ pct: number }> = ({ pct }) => (
-  <div className="h-1.5 w-full bg-composer-button rounded overflow-hidden">
-    <div
-      className="h-full bg-composer-accent transition-[width] duration-150"
-      style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
-    />
-  </div>
-);
 
 const VocalSeparationDropdown: React.FC = () => {
   const source = useAudioStore((s) => s.source);
@@ -101,7 +90,7 @@ const VocalSeparationDropdown: React.FC = () => {
             {status === "downloading" && (
               <ProgressState
                 title="Downloading model…"
-                detail={`${formatMb(progress.loaded)} / ${formatMb(progress.total || (descriptor?.approxBytes ?? 0))}`}
+                detail={`${formatMegabytes(progress.loaded)} / ${formatMegabytes(progress.total || (descriptor?.approxBytes ?? 0))}`}
                 pct={pct}
                 onCancel={cancel}
               />
@@ -161,7 +150,7 @@ const ProgressState: React.FC<{ title: string; detail: string; pct: number; onCa
   <div className="flex flex-col gap-2 min-w-60">
     <p className="text-sm font-medium text-composer-text">{title}</p>
     <p className="text-xs text-composer-text-muted tabular-nums">{detail}</p>
-    <ProgressBar pct={pct} />
+    <ProgressBar percent={pct} label={title} className="h-1.5 w-full" />
     <div className="flex justify-end pt-1">
       <Button size="sm" variant="ghost" onClick={onCancel}>
         Cancel

@@ -1,6 +1,6 @@
 import { FileDropZone } from "@/audio/file-drop-zone";
 import { useStartNewSong } from "@/hooks/useStartNewSong";
-import { PROJECT_FILE_ACCEPT } from "@/lib/project-file";
+import { PROJECT_FILE_ACCEPT } from "@/lib/project-file-read";
 import { importProjectFromInput } from "@/lib/project-import";
 import { Button } from "@/ui/button";
 import { IconField } from "@/ui/icon-field";

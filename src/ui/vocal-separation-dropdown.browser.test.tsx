@@ -46,4 +46,14 @@ describe("VocalSeparationDropdown", () => {
     expect(stemEl.compareDocumentPosition(toggleEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(toggleEl.closest(".border-t")).not.toBeNull();
   });
+
+  it("shows download progress in megabytes with a labelled progress bar", async () => {
+    useSeparationStore.setState({ status: "downloading", progress: { loaded: 1_048_576, total: 4_194_304 } });
+    const screen = await render(<VocalSeparationDropdown />);
+    await screen.getByRole("button", { name: "Vocal separation" }).click();
+
+    await expect.element(screen.getByText("1.0 MB / 4.0 MB")).toBeInTheDocument();
+    const bar = screen.getByRole("progressbar", { name: "Downloading model…" });
+    await expect.element(bar).toHaveAttribute("aria-valuenow", "25");
+  });
 });
