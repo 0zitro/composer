@@ -10,7 +10,7 @@ import { loadOpenProjectRecord } from "@/test/projects";
 // -- Helpers ------------------------------------------------------------------
 
 function saveWithSnapPoints(customSnapPoints: SnapPoint[]): Promise<void> {
-  return saveCurrentProject(
+  return saveCurrentProject([
     { title: "snap", artists: [], album: "", duration: 0 },
     DEFAULT_AGENTS,
     [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
@@ -23,7 +23,7 @@ function saveWithSnapPoints(customSnapPoints: SnapPoint[]): Promise<void> {
     "original",
     false,
     customSnapPoints,
-  );
+  ]);
 }
 
 // -- Tests --------------------------------------------------------------------

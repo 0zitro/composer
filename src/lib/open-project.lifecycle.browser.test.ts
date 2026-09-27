@@ -47,7 +47,7 @@ describe("createProject", () => {
     const id = createProject();
     await expect.poll(getOpenProjectId).toBe(id);
     expect((await listProjectIndex()).map((entry) => entry.id)).toEqual(["a"]);
-    await saveCurrentProject(...saveArgsTitled("Fresh"));
+    await saveCurrentProject(saveArgsTitled("Fresh"));
     expect((await listProjectIndex()).map((entry) => entry.id).toSorted()).toEqual(["a", id].toSorted());
   });
 
@@ -89,7 +89,7 @@ describe("deleteProject", () => {
   it("the next save after deleting the open project starts a new project", async () => {
     await seedOpenProject();
     await deleteProject("a");
-    await saveCurrentProject(...saveArgsTitled("Fresh"));
+    await saveCurrentProject(saveArgsTitled("Fresh"));
     const index = await listProjectIndex();
     expect(index.map((entry) => entry.title)).toEqual(["Fresh"]);
     expect(index[0].id).not.toBe("a");
@@ -116,7 +116,7 @@ describe("deleteProject", () => {
 
     it("regression: an immediate save already in flight when the project is deleted writes nothing", async () => {
       await seedOpenProject();
-      const inFlight = saveCurrentProject(...saveArgsTitled("Alpha (late)"));
+      const inFlight = saveCurrentProject(saveArgsTitled("Alpha (late)"));
       await deleteProject("a");
       await expect(inFlight).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await loadProjectRecord("a")).toBeUndefined();

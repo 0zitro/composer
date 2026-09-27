@@ -51,7 +51,7 @@ describe("usePersistence · customSnapPoints hydration", () => {
 
   it("regression: usePersistence hydrates saved customSnapPoints into the project store", async () => {
     await saveAudioFile(createMp3File());
-    await saveCurrentProject(
+    await saveCurrentProject([
       { title: "with-markers", artists: [], album: "", duration: 0 },
       DEFAULT_AGENTS,
       [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
@@ -64,7 +64,7 @@ describe("usePersistence · customSnapPoints hydration", () => {
       "original",
       false,
       snapPoints([4, 9]),
-    );
+    ]);
 
     await renderHook(() => usePersistence());
     await waitForProjectHydration();
@@ -104,7 +104,7 @@ describe("usePersistence · customSnapPoints hydration", () => {
 
   it("regression: a saved project's markers survive the audio-source clear fired during load", async () => {
     await saveAudioFile(createMp3File());
-    await saveCurrentProject(
+    await saveCurrentProject([
       { title: "survives-load", artists: [], album: "", duration: 0 },
       DEFAULT_AGENTS,
       [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
@@ -117,7 +117,7 @@ describe("usePersistence · customSnapPoints hydration", () => {
       "original",
       false,
       snapPoints([5, 12]),
-    );
+    ]);
 
     useProjectStore.setState({ customSnapPoints: [] });
 

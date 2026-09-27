@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { loadOpenProjectRecord, loadOpenProjectAudio } from "@/test/projects";
 
 function save(title: string): Promise<void> {
-  return saveCurrentProject(
+  return saveCurrentProject([
     { title, artists: [], album: "", duration: 0 },
     DEFAULT_AGENTS,
     [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
@@ -25,7 +25,7 @@ function save(title: string): Promise<void> {
     "original",
     false,
     [],
-  );
+  ]);
 }
 
 describe("persistence · open project", () => {

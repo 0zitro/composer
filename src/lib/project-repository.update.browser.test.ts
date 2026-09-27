@@ -5,6 +5,7 @@ import {
   markProjectOpened,
   removeProjectData,
   saveProjectAudio,
+  saveProjectRecord,
   saveProjectRecordWithAudio,
   setProjectLastTab,
   updateProjectRecord,
@@ -128,6 +129,29 @@ describe("saveProjectRecordWithAudio", () => {
       ).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await loadProjectAudio("a")).toBeUndefined();
       expect(await loadProjectIndexEntry("a")).toBeUndefined();
+    });
+  });
+});
+
+describe("saveProjectRecord: last tab", () => {
+  it("writes the tab on the first save of a project", async () => {
+    await saveProjectRecord("a", storedProject(songTitled("Alpha")), "edit");
+    expect((await loadProjectIndexEntry("a"))?.lastTab).toBe("edit");
+  });
+
+  it("replaces the remembered tab when a save carries one", async () => {
+    await seedStoredProject("a");
+    await setProjectLastTab("a", "sync");
+    await saveProjectRecord("a", storedProject(), "timeline");
+    expect((await loadProjectIndexEntry("a"))?.lastTab).toBe("timeline");
+  });
+
+  describe("invariants", () => {
+    it("keeps the remembered tab when a save carries none", async () => {
+      await seedStoredProject("a");
+      await setProjectLastTab("a", "sync");
+      await saveProjectRecord("a", storedProject());
+      expect((await loadProjectIndexEntry("a"))?.lastTab).toBe("sync");
     });
   });
 });

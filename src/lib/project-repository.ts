@@ -72,29 +72,30 @@ function clearOpenProjectId(): Promise<void> {
 
 // -- Records ------------------------------------------------------------------
 
-function writeIndexEntry(tx: IDBTransaction, id: string, project: SavedProject): void {
+function writeIndexEntry(tx: IDBTransaction, id: string, project: SavedProject, lastTab?: ProjectTab): void {
   const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
   const previous = index.get(id);
   previous.onsuccess = () => {
     const entry = previous.result as ProjectIndexEntry | undefined;
     if (entry) {
-      index.put(indexEntryForProject(id, project, carriedIndexFields(entry)), id);
+      const carried = carriedIndexFields(entry);
+      index.put(indexEntryForProject(id, project, { ...carried, lastTab: lastTab ?? carried.lastTab }), id);
       return;
     }
     const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
     audio.onsuccess = () => {
       const saved = audio.result as SavedAudioFile | undefined;
-      const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt };
+      const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt, lastTab };
       index.put(indexEntryForProject(id, project, carried), id);
     };
   };
 }
 
-function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
+function saveProjectRecord(id: string, project: SavedProject, lastTab?: ProjectTab): Promise<void> {
   return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
     whenProjectWritable(tx, abort, id, () => {
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-      writeIndexEntry(tx, id, project);
+      writeIndexEntry(tx, id, project, lastTab);
     });
   }).then(notifyProjectIndexChanged);
 }

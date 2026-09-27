@@ -30,7 +30,7 @@ function commitProjectSaveNow(): void {
   const args = buildSaveArgs();
   if (!args) return;
   cancelPendingSave();
-  trackSave("stem", saveCurrentProject(...args)).catch((err) =>
+  trackSave("stem", saveCurrentProject(args, useProjectStore.getState().activeTab)).catch((err) =>
     console.error(LOG_PREFIX, "Immediate save failed:", err),
   );
 }

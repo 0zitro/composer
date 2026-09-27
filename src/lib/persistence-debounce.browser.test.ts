@@ -84,7 +84,7 @@ describe("persistence-debounce · save target", () => {
 
   describe("regressions", () => {
     it("regression: the unload flush after a recovery clear writes no orphan record", async () => {
-      await saveCurrentProject(...saveArgsTitled("Before clear"));
+      await saveCurrentProject(saveArgsTitled("Before clear"));
       debouncedSave(...saveArgsTitled("After clear"));
       await clearRecoveryStorage();
       await flushPendingSave();
@@ -93,10 +93,10 @@ describe("persistence-debounce · save target", () => {
     });
 
     it("regression: the first save after a recovery clear starts a fresh project", async () => {
-      await saveCurrentProject(...saveArgsTitled("Before clear"));
+      await saveCurrentProject(saveArgsTitled("Before clear"));
       const cleared = openProjectIdSnapshot();
       await clearRecoveryStorage();
-      await saveCurrentProject(...saveArgsTitled("After clear"));
+      await saveCurrentProject(saveArgsTitled("After clear"));
       const fresh = openProjectIdSnapshot();
       expect(fresh).toBeDefined();
       expect(fresh).not.toBe(cleared);

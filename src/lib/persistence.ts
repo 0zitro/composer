@@ -4,6 +4,7 @@ import type { LinkGroup } from "@/domain/group/template";
 import type { LyricLine } from "@/domain/line/model";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
+import type { ProjectTab } from "@/domain/project/tab";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import { ensureOpenProjectId, findOpenProjectId } from "@/lib/open-project-session";
 import { deleteProjectAudio, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
@@ -50,15 +51,15 @@ function buildSavedProject(
 
 type ProjectSaveArgs = Parameters<typeof buildSavedProject>;
 
-async function saveProjectTo(target: Promise<string>, ...args: ProjectSaveArgs): Promise<void> {
+async function saveProjectTo(target: Promise<string>, args: ProjectSaveArgs, lastTab?: ProjectTab): Promise<void> {
   const project = buildSavedProject(...args);
-  await saveProjectRecord(await target, project);
+  await saveProjectRecord(await target, project, lastTab);
 }
 
 // -- Public API ---------------------------------------------------------------
 
-function saveCurrentProject(...args: ProjectSaveArgs): Promise<void> {
-  return saveProjectTo(ensureOpenProjectId(), ...args);
+function saveCurrentProject(args: ProjectSaveArgs, lastTab?: ProjectTab): Promise<void> {
+  return saveProjectTo(ensureOpenProjectId(), args, lastTab);
 }
 
 // -- Audio File Persistence ---------------------------------------------------
