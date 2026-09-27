@@ -20,6 +20,7 @@ interface AudioState {
   youtubeLoadError: string | null;
   youtubeLoadFailure: YouTubeLoadFailure | null;
   youtubeFallbackSource: AudioSource;
+  youtubeFallbackExpectedAudio: SavedAudioSource | null;
   expectedAudio: SavedAudioSource | null;
 }
 
@@ -59,6 +60,7 @@ function createInitialState(): AudioState {
     youtubeLoadError: null,
     youtubeLoadFailure: null,
     youtubeFallbackSource: null,
+    youtubeFallbackExpectedAudio: null,
     expectedAudio: null,
   };
 }
@@ -70,6 +72,10 @@ const INITIAL_STATE: AudioState = createInitialState();
 function fallbackBeforeYouTubeLoad(state: AudioState): AudioSource {
   const { source } = state;
   return source?.type === "youtube" && !source.file ? state.youtubeFallbackSource : source;
+}
+
+function fallbackExpectedAudioBeforeYouTubeLoad(state: AudioState): SavedAudioSource | null {
+  return state.expectedAudio ?? state.youtubeFallbackExpectedAudio;
 }
 
 // -- Store --------------------------------------------------------------------
@@ -86,6 +92,7 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       youtubeLoadError: null,
       youtubeLoadFailure: null,
       youtubeFallbackSource: null,
+      youtubeFallbackExpectedAudio: null,
       expectedAudio: null,
     }),
   setYouTubeSource: (videoId, file) =>
@@ -97,6 +104,7 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       youtubeLoadError: null,
       youtubeLoadFailure: null,
       youtubeFallbackSource: file ? null : fallbackBeforeYouTubeLoad(s),
+      youtubeFallbackExpectedAudio: file ? null : fallbackExpectedAudioBeforeYouTubeLoad(s),
       expectedAudio: null,
     })),
   setYouTubeFile: (file) =>
@@ -105,6 +113,7 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       return {
         source: { ...s.source, file },
         youtubeFallbackSource: null,
+        youtubeFallbackExpectedAudio: null,
         youtubeLoadFailure: null,
         expectedAudio: null,
       };
@@ -118,6 +127,7 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       youtubeLoadError: null,
       youtubeLoadFailure: null,
       youtubeFallbackSource: null,
+      youtubeFallbackExpectedAudio: null,
       expectedAudio: saved,
     }),
   failYouTubeLoad: (error, failure = "fetch-failed") =>
@@ -129,6 +139,8 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       youtubeLoadError: error,
       youtubeLoadFailure: failure,
       youtubeFallbackSource: null,
+      youtubeFallbackExpectedAudio: null,
+      expectedAudio: fallbackExpectedAudioBeforeYouTubeLoad(s),
     })),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setCurrentTime: (currentTime) => set({ currentTime }),

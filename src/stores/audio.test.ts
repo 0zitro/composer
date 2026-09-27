@@ -253,5 +253,36 @@ describe("useAudioStore - expected audio", () => {
       useAudioStore.getState().reset();
       expect(useAudioStore.getState().expectedAudio).toBeNull();
     });
+
+    it("keeps the first expected audio across videos that never loaded", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+      useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+      useAudioStore.getState().setYouTubeSource("9bZkp7q19f0");
+      useAudioStore.getState().failYouTubeLoad("boom");
+      expect(useAudioStore.getState().expectedAudio).toEqual({ kind: "file", name: "city.wav" });
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: a failed replacement load restores the file it was replacing", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+      useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+      useAudioStore.getState().failYouTubeLoad("boom");
+      expect(useAudioStore.getState().expectedAudio).toEqual({ kind: "file", name: "city.wav" });
+    });
+
+    it("regression: a failed replacement load restores the YouTube video it was replacing", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "9bZkp7q19f0" });
+      useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+      useAudioStore.getState().failYouTubeLoad("boom");
+      expect(useAudioStore.getState().expectedAudio).toEqual({ kind: "youtube", videoId: "9bZkp7q19f0" });
+    });
+
+    it("regression: a successful replacement load leaves no expected audio to restore", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+      useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+      useAudioStore.getState().setYouTubeFile(new File([new Uint8Array([1])], "song.opus"));
+      expect(useAudioStore.getState().expectedAudio).toBeNull();
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { usePersistence } from "@/hooks/usePersistence";
 import { useResolveYouTubeTunnel } from "@/hooks/useResolveYouTubeTunnel";
 import { flushPendingSave } from "@/lib/persistence-debounce";
@@ -14,6 +15,7 @@ import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook } from "vitest-browser-react";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -90,6 +92,24 @@ describe("opening a YouTube project with Composer Bridge on", () => {
       useProjectStore.getState().setMetadata({ title: "Song (edited)" });
       await flushPendingSave();
       expect((await loadProjectRecord("p"))?.audioSource).toEqual({ kind: "youtube", videoId: VIDEO_ID });
+    });
+
+    it("regression: a failed replacement load keeps the missing file's identity in the saved record", async () => {
+      allowConsole(/tunnel fetch failed/);
+      await seedStoredProject("p", {
+        open: true,
+        project: { ...songTitled("City"), audioSource: { kind: "file", name: "city.wav" } },
+      });
+      await render(<AppHost />);
+      await getPersistenceSettled();
+      bridge.goOffline();
+
+      const { result } = await renderHook(() => useLoadYouTubeSource());
+      await expect(result.current(VIDEO_ID)).rejects.toThrow();
+
+      useProjectStore.getState().setMetadata({ title: "City (edited)" });
+      await flushPendingSave();
+      expect((await loadProjectRecord("p"))?.audioSource).toEqual({ kind: "file", name: "city.wav" });
     });
   });
 });
