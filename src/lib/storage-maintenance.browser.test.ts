@@ -90,6 +90,25 @@ describe("createStorageMaintenance", () => {
     expect(runs).toEqual([{ result: NOTHING_CLEANED, trigger: "storage-full" }]);
   });
 
+  it("keeps checking later even if onCleaned itself throws on every call", async () => {
+    allowConsole(/smart cleanup failed|onCleaned failed/);
+    let calls = 0;
+    const controller = createStorageMaintenance({
+      readContext: () => {
+        throw new Error("boom");
+      },
+      onCleaned: () => {
+        calls++;
+        throw new Error("onCleaned exploded");
+      },
+      delayMs: 20,
+    });
+    disposers.push(controller.dispose);
+    await expect(controller.checkNow("storage-full")).resolves.toEqual(NOTHING_CLEANED);
+    await expect(controller.checkNow("storage-full")).resolves.toEqual(NOTHING_CLEANED);
+    expect(calls).toBe(2);
+  });
+
   describe("edge cases", () => {
     it("a disposed scheduler never runs its pending check", async () => {
       const { controller, runs } = maintenance(undefined);
