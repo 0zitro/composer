@@ -111,6 +111,16 @@ describe("persistence-debounce · save target", () => {
       expect(fresh).not.toBe(cleared);
       expect((await listProjectIndex()).map((entry) => entry.title)).toEqual(["After clear"]);
     });
+
+    it("regression: a save bound during creation never lands in a project adopted before the flush", async () => {
+      debouncedSave(...saveArgsTitled("Fresh session"));
+      adoptOpenProjectId("x");
+      await flushPendingSave();
+      expect(await loadProjectRecord("x")).toBeUndefined();
+      const [entry] = await listProjectIndex();
+      expect(entry?.title).toBe("Fresh session");
+      expect(entry?.id).not.toBe("x");
+    });
   });
 
   describe("save status", () => {

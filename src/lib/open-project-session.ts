@@ -48,8 +48,8 @@ function ensureOpenProjectId(): Promise<string> {
   openProjectIdCreation ??= findOpenProjectId()
     .then(async (existing) => {
       if (existing) return existing;
-      if (generation !== sessionGeneration) return ensureOpenProjectId();
       const id = createProjectId();
+      if (generation !== sessionGeneration) return id;
       await setOpenProjectId(id);
       // A switch during this write already lost the race; keep restoring the current id until nothing supersedes us mid-write.
       let restoredThrough = generation;
@@ -57,7 +57,7 @@ function ensureOpenProjectId(): Promise<string> {
         restoredThrough = sessionGeneration;
         await persistOpenProjectId(knownOpenProjectId);
       }
-      if (generation !== sessionGeneration) return ensureOpenProjectId();
+      if (generation !== sessionGeneration) return id;
       openProjectIdLookup = Promise.resolve(id);
       publishOpenProjectId(id, generation);
       return id;

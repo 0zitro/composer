@@ -9,7 +9,27 @@ import {
 } from "@/lib/open-project-session";
 import { setOpenProjectId } from "@/lib/project-repository";
 import { getOpenProjectId } from "@/lib/project-storage";
+import { APP_STATE_STORE_NAME, openDB } from "@/lib/persistence-idb";
+import { sleep } from "@/test/async";
 import { describe, expect, it } from "vitest";
+
+// -- Helpers ------------------------------------------------------------------
+
+async function holdAppStateWrites(): Promise<() => void> {
+  const db = await openDB();
+  const tx = db.transaction(APP_STATE_STORE_NAME, "readwrite");
+  let held = true;
+  const keepAlive = () => {
+    if (held) tx.objectStore(APP_STATE_STORE_NAME).get("hold").onsuccess = keepAlive;
+  };
+  keepAlive();
+  tx.oncomplete = () => db.close();
+  return () => {
+    held = false;
+  };
+}
+
+// -- Tests --------------------------------------------------------------------
 
 describe("open-project-session", () => {
   it("publishes the stored pointer once the lookup resolves", async () => {
@@ -81,7 +101,19 @@ describe("open-project-session", () => {
       const creation = ensureOpenProjectId();
       adoptOpenProjectId("adopted");
       await setOpenProjectId("adopted");
-      await creation;
+      expect(await creation).not.toBe("adopted");
+      expect(await getOpenProjectId()).toBe("adopted");
+      expect(openProjectIdSnapshot()).toBe("adopted");
+    });
+
+    it("regression: a creation superseded during its write resolves to its own id", async () => {
+      await findOpenProjectId();
+      const release = await holdAppStateWrites();
+      const creation = ensureOpenProjectId();
+      await sleep(0);
+      adoptOpenProjectId("adopted");
+      release();
+      expect(await creation).not.toBe("adopted");
       expect(await getOpenProjectId()).toBe("adopted");
       expect(openProjectIdSnapshot()).toBe("adopted");
     });
