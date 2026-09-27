@@ -23,11 +23,11 @@ interface StemRemoval {
 const MAX_ENTRIES = 3;
 const STEM_CACHE_VERSION = 2;
 
-// -- Module state ---------------------------------------------------------------
+// -- Module state -------------------------------------------------------------
 
 const loadingStemJobs = new Map<string, number>();
 
-// -- Stem jobs in use -----------------------------------------------------------
+// -- Stem jobs in use ---------------------------------------------------------
 
 function beginLoadingStemJob(jobKey: string): void {
   loadingStemJobs.set(jobKey, (loadingStemJobs.get(jobKey) ?? 0) + 1);
