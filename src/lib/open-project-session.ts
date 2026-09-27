@@ -1,5 +1,5 @@
 import { migrateLegacyProject } from "@/lib/project-migration";
-import { createProjectId, setOpenProjectId } from "@/lib/project-repository";
+import { clearOpenProjectId, createProjectId, setOpenProjectId } from "@/lib/project-repository";
 import { getOpenProjectId, onProjectsCleared } from "@/lib/project-storage";
 
 // -- Module state -------------------------------------------------------------
@@ -39,14 +39,26 @@ function findOpenProjectId(): Promise<string | undefined> {
   return openProjectIdLookup;
 }
 
+function persistOpenProjectId(id: string | undefined): Promise<void> {
+  return id === undefined ? clearOpenProjectId() : setOpenProjectId(id);
+}
+
 function ensureOpenProjectId(): Promise<string> {
   const generation = sessionGeneration;
   openProjectIdCreation ??= findOpenProjectId()
     .then(async (existing) => {
       if (existing) return existing;
+      if (generation !== sessionGeneration) return ensureOpenProjectId();
       const id = createProjectId();
       await setOpenProjectId(id);
-      if (generation === sessionGeneration) openProjectIdLookup = Promise.resolve(id);
+      // A switch during this write already lost the race; keep restoring the current id until nothing supersedes us mid-write.
+      let restoredThrough = generation;
+      while (restoredThrough !== sessionGeneration) {
+        restoredThrough = sessionGeneration;
+        await persistOpenProjectId(knownOpenProjectId);
+      }
+      if (generation !== sessionGeneration) return ensureOpenProjectId();
+      openProjectIdLookup = Promise.resolve(id);
       publishOpenProjectId(id, generation);
       return id;
     })

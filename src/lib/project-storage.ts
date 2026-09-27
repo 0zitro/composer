@@ -12,6 +12,7 @@ import type { SavedProject } from "@/lib/saved-project";
 
 // -- Constants ----------------------------------------------------------------
 
+const LOG_PREFIX = "[ProjectStorage]";
 const OPEN_PROJECT_KEY = "open-project-id";
 const LEGACY_PROJECT_KEY = "current";
 const LEGACY_AUDIO_KEY = "current-audio";
@@ -47,13 +48,22 @@ async function clearAllProjects(): Promise<void> {
       appState.delete(OPEN_PROJECT_KEY);
     };
   });
-  for (const listener of projectsClearedListeners) listener();
+  for (const listener of projectsClearedListeners) {
+    try {
+      listener();
+    } catch (error) {
+      console.error(LOG_PREFIX, "onProjectsCleared listener failed", error);
+    }
+  }
 }
 
-// -- Lifecycle hooks ------------------------------------------------------------------
+// -- Lifecycle hooks ----------------------------------------------------------
 
-function onProjectsCleared(listener: () => void): void {
+function onProjectsCleared(listener: () => void): () => void {
   projectsClearedListeners.add(listener);
+  return () => {
+    projectsClearedListeners.delete(listener);
+  };
 }
 
 // -- Exports ------------------------------------------------------------------

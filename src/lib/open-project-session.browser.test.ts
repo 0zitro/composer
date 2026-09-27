@@ -75,5 +75,15 @@ describe("open-project-session", () => {
       expect(openProjectIdSnapshot()).toBe("adopted");
       expect(await ensureOpenProjectId()).toBe("adopted");
     });
+
+    it("regression: a creation superseded by an adopt never overwrites the pointer", async () => {
+      await findOpenProjectId();
+      const creation = ensureOpenProjectId();
+      adoptOpenProjectId("adopted");
+      await setOpenProjectId("adopted");
+      await creation;
+      expect(await getOpenProjectId()).toBe("adopted");
+      expect(openProjectIdSnapshot()).toBe("adopted");
+    });
   });
 });

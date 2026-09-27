@@ -14,9 +14,11 @@ import {
   clearAllProjects,
   getOpenProjectId,
   loadProjectRecord,
+  onProjectsCleared,
 } from "@/lib/project-storage";
 import { isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
+import { allowConsole } from "@/test/console-guard";
 import { describe, expect, it } from "vitest";
 
 function project(): SavedProject {
@@ -91,6 +93,31 @@ describe("project-storage", () => {
 
     it("clearAllProjects on an empty database resolves without throwing", async () => {
       await expect(clearAllProjects()).resolves.toBeUndefined();
+    });
+  });
+
+  describe("onProjectsCleared", () => {
+    it("returns an unsubscribe function that stops further notifications", async () => {
+      let calls = 0;
+      const unsubscribe = onProjectsCleared(() => calls++);
+      unsubscribe();
+      await clearAllProjects();
+      expect(calls).toBe(0);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: clearAllProjects still resolves and notifies other listeners when one throws", async () => {
+      allowConsole(/onProjectsCleared listener failed/);
+      let calls = 0;
+      const unsubscribeThrow = onProjectsCleared(() => {
+        throw new Error("boom");
+      });
+      const unsubscribeCount = onProjectsCleared(() => calls++);
+      await expect(clearAllProjects()).resolves.toBeUndefined();
+      expect(calls).toBe(1);
+      unsubscribeThrow();
+      unsubscribeCount();
     });
   });
 });
