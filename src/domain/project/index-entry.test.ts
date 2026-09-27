@@ -173,4 +173,16 @@ describe("buildIndexEntry", () => {
       expect(buildIndexEntry(input({ openedAt: 0 })).openedAt).toBe(0);
     });
   });
+
+  describe("record size", () => {
+    it("carries the record size when it is given", () => {
+      const entry = buildIndexEntry(input({ recordBytes: 321 }));
+      expect(entry.recordBytes).toBe(321);
+    });
+
+    it("leaves the record size out when it is not given", () => {
+      const entry = buildIndexEntry(input());
+      expect("recordBytes" in entry).toBe(false);
+    });
+  });
 });
