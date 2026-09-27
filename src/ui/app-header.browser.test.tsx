@@ -35,4 +35,10 @@ describe("AppHeader", () => {
     await screen.getByRole("button", { name: "Product tour" }).click();
     expect(calls).toBe(1);
   });
+
+  it("shows the project breadcrumb next to the logo", async () => {
+    const screen = await render(<AppHeader onSettingsOpen={() => {}} onHelpOpen={() => {}} onTourStart={() => {}} />);
+    await expect.element(screen.getByRole("navigation", { name: "Project" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("heading", { name: /Composer/ })).toBeInTheDocument();
+  });
 });
