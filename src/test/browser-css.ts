@@ -53,6 +53,11 @@ function installStyleSheet(css: string): HTMLStyleElement {
 
 // -- Rules ---------------------------------------------------------------------
 
+const THEME_TOKENS_CSS = `:root {${extractCssBlock(/@theme\s*\{/)}}`;
+
+const TEXT_COLOR_UTILITIES_CSS =
+  ".text-composer-text{color:var(--color-composer-text)}.text-composer-text-muted{color:var(--color-composer-text-muted)}.opacity-50{opacity:.5}";
+
 const WAVEFORM_SWEEP_CSS = [utilityRule(WAVEFORM_DOTS_UTILITY), keyframesRule(WAVEFORM_SWEEP_ANIMATION)].join("\n");
 
 // -- Exports -------------------------------------------------------------------
@@ -61,6 +66,8 @@ export {
   HIT_TESTING_UTILITIES_CSS,
   installStyleSheet,
   POSITION_UTILITIES_CSS,
+  TEXT_COLOR_UTILITIES_CSS,
+  THEME_TOKENS_CSS,
   TRUNCATION_UTILITIES_CSS,
   WAVEFORM_SWEEP_ANIMATION,
   WAVEFORM_SWEEP_CSS,

@@ -1,6 +1,7 @@
+import { TEXT_COLOR_UTILITIES_CSS, THEME_TOKENS_CSS, installStyleSheet } from "@/test/browser-css";
 import { render } from "@/test/render";
 import { ProjectArt } from "@/ui/projects/project-art";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 const PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
 
@@ -19,6 +20,20 @@ describe("ProjectArt", () => {
   });
 
   describe("invariants", () => {
+    const sheets: HTMLStyleElement[] = [];
+    afterEach(() => {
+      for (const sheet of sheets.splice(0)) sheet.remove();
+    });
+
+    it("regression: paints the placeholder icon in an opaque color and fades it with opacity", async () => {
+      sheets.push(installStyleSheet(THEME_TOKENS_CSS), installStyleSheet(TEXT_COLOR_UTILITIES_CSS));
+      const screen = await render(<ProjectArt size="row" />);
+      const icon = screen.container.querySelector("svg");
+      if (!icon) throw new Error("placeholder icon missing");
+      expect(getComputedStyle(icon).color).toBe("rgb(255, 255, 255)");
+      expect(getComputedStyle(icon).opacity).toBe("0.5");
+    });
+
     it("hides the placeholder icon from assistive technology", async () => {
       const screen = await render(<ProjectArt size="md" />);
       expect(screen.container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");

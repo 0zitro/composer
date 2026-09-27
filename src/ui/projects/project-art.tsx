@@ -36,7 +36,7 @@ const ICON_SIZES: Record<ProjectArtSize, string> = {
 const ProjectArt: React.FC<ProjectArtProps> = ({ src, size, className }) => (
   <span
     className={cn(
-      "relative grid place-items-center shrink-0 overflow-hidden bg-composer-bg-elevated text-composer-text-muted",
+      "relative grid place-items-center shrink-0 overflow-hidden bg-composer-bg-elevated",
       "after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)] after:pointer-events-none",
       FRAME_SIZES[size],
       className,
@@ -45,7 +45,7 @@ const ProjectArt: React.FC<ProjectArtProps> = ({ src, size, className }) => (
     {src ? (
       <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
     ) : (
-      <IconMusic aria-hidden="true" className={ICON_SIZES[size]} />
+      <IconMusic aria-hidden="true" className={cn("text-composer-text opacity-50", ICON_SIZES[size])} />
     )}
   </span>
 );
