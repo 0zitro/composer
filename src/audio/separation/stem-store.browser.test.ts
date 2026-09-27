@@ -8,7 +8,7 @@ import {
   stemJobKey,
 } from "@/audio/separation/stem-store";
 import { type StorageSignal, subscribeStorageSignals } from "@/lib/storage-signals";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -90,6 +90,19 @@ describe("stem store", () => {
       for (const hash of ["h1", "h2", "h3", "h4"]) await separate(hash);
       const keys = (await listStemJobs()).map((job) => job.jobKey).toSorted();
       expect(keys).toEqual(["h2", "h3", "h4"].map((hash) => stemJobKey(hash, "fp32")).toSorted());
+    });
+  });
+
+  describe("invariants", () => {
+    it("breaks a created-at tie by job key order, regardless of write order", async () => {
+      const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+      try {
+        for (const hash of ["d", "b", "a", "c"]) await separate(hash);
+      } finally {
+        now.mockRestore();
+      }
+      const keys = (await listStemJobs()).map((job) => job.jobKey).toSorted();
+      expect(keys).toEqual(["b", "c", "d"].map((hash) => stemJobKey(hash, "fp32")).toSorted());
     });
   });
 });

@@ -22,10 +22,18 @@ function playableFile(source: AudioSource): File | null {
   return null;
 }
 
+function keepsYouTubeAudioNow(): boolean {
+  const settings = useSettingsStore.getState();
+  return keepsYouTubeAudio(settings.keepYouTubeAudio, settings.experiments.youtubeBridge);
+}
+
 function storedAudioFile(source: AudioSource): File | null {
   if (source?.type !== "youtube") return playableFile(source);
-  const settings = useSettingsStore.getState();
-  return keepsYouTubeAudio(settings.keepYouTubeAudio, settings.experiments.youtubeBridge) ? playableFile(source) : null;
+  return keepsYouTubeAudioNow() ? playableFile(source) : null;
+}
+
+function hadStoredAudio(source: AudioSource): boolean {
+  return playableFile(source) !== null;
 }
 
 // -- Save arguments -----------------------------------------------------------
@@ -59,4 +67,4 @@ function buildSaveArgs(): ProjectSaveArgs | null {
 
 // -- Exports ------------------------------------------------------------------
 
-export { storedAudioFile, buildSaveArgs, currentSaveArgs };
+export { storedAudioFile, hadStoredAudio, keepsYouTubeAudioNow, buildSaveArgs, currentSaveArgs };
