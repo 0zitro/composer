@@ -15,7 +15,7 @@ describe("useProjectFileActions · export", () => {
       }
     });
     observer.observe(document.body, { childList: true });
-    const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+    const { result } = await renderHook(() => useProjectFileActions());
     result.current.handleExportProject();
     await expect.poll(() => added.length).toBe(1);
     observer.disconnect();

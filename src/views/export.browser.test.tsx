@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { ExportPanel } from "@/views/export";
 import { useProjectStore } from "@/stores/project";
 import { createLine, createWord, snapPoints } from "@/test/factories";
@@ -201,9 +202,10 @@ describe("ExportPanel · project file customSnapPoints", () => {
     }
   });
 
-  it("applies customSnapPoints from an imported project file to the store", async () => {
+  it("opens an imported project file as its own new project, carrying over its customSnapPoints", async () => {
     useProjectStore.setState({ lines: [], customSnapPoints: snapPoints([1, 2]) });
     await render(<ExportPanel />);
+    const previousId = openProjectIdSnapshot();
 
     const payload = {
       version: 1 as const,
@@ -219,6 +221,8 @@ describe("ExportPanel · project file customSnapPoints", () => {
 
     dispatchFileChange(getProjectImportInput(), file);
 
-    await expect.poll(() => useProjectStore.getState().customSnapPoints.map((p) => p.time)).toEqual([7, 8]);
+    await expect.poll(() => useProjectStore.getState().metadata.title).toBe("Imported");
+    expect(useProjectStore.getState().customSnapPoints.map((p) => p.time)).toEqual([7, 8]);
+    expect(openProjectIdSnapshot()).not.toBe(previousId);
   });
 });

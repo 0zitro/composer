@@ -1,13 +1,11 @@
-import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
 import { createProject, deleteProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave } from "@/lib/persistence-debounce";
-import { downloadProjectFile, projectFileFrom, readProjectFile } from "@/lib/project-file";
+import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
+import { importProjectFile } from "@/lib/project-import";
 import { currentSaveArgs } from "@/lib/project-snapshot";
 import { useConfirm } from "@/stores/confirm-store";
-import { useProjectStore } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
@@ -17,59 +15,18 @@ const LOG_PREFIX = "[ProjectFileActions]";
 
 // -- Hook ---------------------------------------------------------------------
 
-function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | null>) {
-  const setMetadata = useProjectStore((s) => s.setMetadata);
-  const setLines = useProjectStore((s) => s.setLines);
-  const setGranularity = useProjectStore((s) => s.setGranularity);
-  const setAgents = useProjectStore((s) => s.setAgents);
-  const markClean = useProjectStore((s) => s.markClean);
+function useProjectFileActions() {
   const confirm = useConfirm();
 
   const handleExportProject = useCallback(() => {
     downloadProjectFile(projectFileFrom(openProjectIdSnapshot(), buildSavedProject(...currentSaveArgs())));
   }, []);
 
-  const handleImportProject = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const existingLineCount = useProjectStore.getState().lines.length;
-      if (existingLineCount > 0) {
-        const ok = await confirm({
-          title: "Replace current project?",
-          description: `Loading this project file will replace your ${existingLineCount} existing line${existingLineCount === 1 ? "" : "s"} and metadata. This cannot be undone.`,
-          confirmLabel: "Replace",
-          variant: "destructive",
-          settingsKey: "confirmReplaceLyrics",
-        });
-        if (!ok) {
-          if (fileInputRef.current) fileInputRef.current.value = "";
-          return;
-        }
-      }
-
-      const project = await readProjectFile(file);
-      const store = useProjectStore.getState();
-      store.startProjectSession();
-      setMetadata(normalizeLoadedMetadata(project.metadata));
-      setLines(project.lines);
-      store.setGroups(project.groups ?? []);
-      store.setDismissedSuggestions(project.dismissedSuggestions ?? []);
-      store.setDismissedExplicitSuggestions(project.dismissedExplicitSuggestions ?? []);
-      setGranularity(project.granularity);
-      store.setSyllableSplitDefaults(project.syllableSplitDefaults ?? DEFAULT_SYLLABLE_SPLIT_DEFAULTS);
-      setAgents(project.agents);
-      store.setCustomSnapPoints(project.customSnapPoints ?? []);
-      store.markSongDetailsImported();
-      markClean();
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    },
-    [setMetadata, setLines, setGranularity, setAgents, markClean, confirm, fileInputRef],
-  );
+  const handleImportProject = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) await importProjectFile(file);
+  }, []);
 
   const handleClearProject = useCallback(async () => {
     const ok = await confirm({

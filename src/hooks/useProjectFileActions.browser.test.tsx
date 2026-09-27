@@ -20,7 +20,7 @@ describe("useProjectFileActions · clear", () => {
     useSettingsStore.setState({ confirmClearProject: false });
     await seedStoredProject("a", { open: true });
     await restoreOpenProject();
-    const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+    const { result } = await renderHook(() => useProjectFileActions());
     await result.current.handleClearProject();
     expect(useProjectStore.getState().lines).toEqual([]);
     expect(await loadProjectRecord("a")).toBeUndefined();
@@ -30,7 +30,7 @@ describe("useProjectFileActions · clear", () => {
   it("clearing before anything was saved still leaves a blank editor", async () => {
     useSettingsStore.setState({ confirmClearProject: false });
     useProjectStore.getState().setMetadata({ title: "Unsaved" });
-    const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+    const { result } = await renderHook(() => useProjectFileActions());
     await result.current.handleClearProject();
     expect(useProjectStore.getState().metadata.title).toBe("");
   });
@@ -42,7 +42,7 @@ describe("useProjectFileActions · clear", () => {
       await seedStoredProject("a", { open: true });
       await restoreOpenProject();
       const screen = await render(<Toaster />);
-      const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+      const { result } = await renderHook(() => useProjectFileActions());
       await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
       await expect(result.current.handleClearProject()).resolves.toBeUndefined();
       await expect.element(screen.getByText("Couldn't clear the project")).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe("useProjectFileActions · clear", () => {
     it("regression: clearing before anything was saved discards a pending save instead of persisting it", async () => {
       useSettingsStore.setState({ confirmClearProject: false, autoSaveDelay: 60_000 });
       debouncedSave(...saveArgsTitled("Unsaved"));
-      const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+      const { result } = await renderHook(() => useProjectFileActions());
       await result.current.handleClearProject();
       await flushPendingSave();
       expect(await listProjectIndex()).toEqual([]);

@@ -23,6 +23,7 @@ import { AppHeader } from "@/ui/app-header";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
 import { DivergenceModalHost } from "@/ui/divergence-modal";
 import { HelpModal } from "@/ui/help-modal";
+import { ImportConflictModalHost } from "@/ui/projects/import-conflict-modal";
 import { SettingsModal } from "@/ui/settings-modal";
 import { TabBar } from "@/ui/tab-bar";
 import { EditPanel } from "@/views/edit";
@@ -178,6 +179,7 @@ const App: React.FC = () => {
         <ConfirmModalHost />
         <DivergenceModalHost />
         <LyricsImportModalHost />
+        <ImportConflictModalHost />
         <Toaster
           theme="dark"
           position="bottom-center"

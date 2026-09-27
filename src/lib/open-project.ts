@@ -135,6 +135,19 @@ async function startSongInNewProject<T>(title: string, begin: (song: NewSongProj
   return await begin({ newId, previousId, previousTitle });
 }
 
+// -- Reloading ----------------------------------------------------------------
+
+async function reloadOpenProject(): Promise<void> {
+  const id = openProjectIdSnapshot();
+  if (!id) return;
+  const request = claimRequest();
+  markOpenProjectChanged();
+  cancelPendingSave();
+  const payload = await loadProjectForRestore(id);
+  if (request !== latestRequest || id !== openProjectIdSnapshot()) return;
+  applyProjectToStores(payload);
+}
+
 // -- Removal ------------------------------------------------------------------
 
 function closeIfOpen(id: string): void {
@@ -170,5 +183,13 @@ async function forkOpenProject(): Promise<string> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { restoreOpenProject, openProject, createProject, startSongInNewProject, deleteProject, forkOpenProject };
+export {
+  restoreOpenProject,
+  openProject,
+  createProject,
+  startSongInNewProject,
+  reloadOpenProject,
+  deleteProject,
+  forkOpenProject,
+};
 export type { NewSongProject };

@@ -38,7 +38,7 @@ const ExportPanel: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { handleExportProject, handleImportProject, handleClearProject } = useProjectFileActions(fileInputRef);
+  const { handleExportProject, handleImportProject, handleClearProject } = useProjectFileActions();
 
   const hasSyncedContent = syncedLineCount > 0;
 
