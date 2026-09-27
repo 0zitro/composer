@@ -1,6 +1,6 @@
 import { storageLimitBytes } from "@/domain/storage/storage-limit";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
-import type { CleanupResult } from "@/lib/storage-cleanup";
+import type { CleanupContext, CleanupResult } from "@/lib/storage-cleanup";
 import { type MaintenanceTrigger, createStorageMaintenance } from "@/lib/storage-maintenance";
 import { subscribeStorageSignals } from "@/lib/storage-signals";
 import { useSeparationStore } from "@/stores/separation";
@@ -14,7 +14,7 @@ const CHECK_DELAY_MS = 1000;
 
 // -- Helpers ------------------------------------------------------------------
 
-function readCleanupContext() {
+function readCleanupContext(): Omit<CleanupContext, "storageFull"> {
   const settings = useSettingsStore.getState();
   return {
     smartCleanup: settings.smartCleanup,
@@ -37,12 +37,17 @@ function useStorageMaintenance(): void {
       delayMs: CHECK_DELAY_MS,
     });
     let active = true;
+    let storageFullCheck: Promise<CleanupResult> | null = null;
     void getPersistenceSettled().then(() => {
       if (active) maintenance.schedule();
     });
     const stopSignals = subscribeStorageSignals((signal) => {
       if (signal === "media-stored") maintenance.schedule();
-      else if (signal === "storage-full") void maintenance.checkNow("storage-full");
+      else if (signal === "storage-full" && !storageFullCheck) {
+        storageFullCheck = maintenance.checkNow("storage-full").finally(() => {
+          storageFullCheck = null;
+        });
+      }
     });
     const stopSettings = useSettingsStore.subscribe((state, previous) => {
       if (state.smartCleanup !== previous.smartCleanup || state.storageLimit !== previous.storageLimit) {

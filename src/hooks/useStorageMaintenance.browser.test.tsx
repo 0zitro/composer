@@ -37,6 +37,21 @@ describe("useStorageMaintenance", () => {
       .toBeInTheDocument();
   });
 
+  it("coalesces a burst of storage-full signals so a later zero result never replaces the freed-bytes toast", async () => {
+    await seedStems();
+    markPersistenceSettled();
+    const screen = await render(<MaintenanceHost />);
+    notifyStorageSignal("storage-full");
+    notifyStorageSignal("storage-full");
+    notifyStorageSignal("storage-full");
+    await expect.poll(listStemJobs).toEqual([]);
+    await expect
+      .element(
+        screen.getByText("Freed 2.0 KB by removing vocal stems and YouTube audio you haven't opened in a while."),
+      )
+      .toBeInTheDocument();
+  });
+
   it("opens Save & Storage from the toast", async () => {
     await seedStems();
     markPersistenceSettled();
