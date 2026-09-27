@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import type { ProjectMetadata } from "@/domain/project/metadata";
-import { getPersistenceSettled } from "@/lib/persistence-settled";
+import { getLinkProjectSettled, getPersistenceSettled, markQueryImportSettled } from "@/lib/persistence-settled";
 import { isProjectNonEmpty } from "@/lib/project-non-empty";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useImportModalStore } from "@/stores/import-modal-store";
 import { useProjectStore } from "@/stores/project";
 import { normalizeIsrc } from "@/utils/isrc";
 import { stripQueryParams } from "@/utils/url-params";
+import { readYouTubeParam } from "@/utils/youtube-link-params";
 import type { LyricsSearchQuery } from "@/utils/lyrics-search/types";
 
 // -- Constants ----------------------------------------------------------------
@@ -72,38 +73,46 @@ function useImportFromQuery(): void {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const waitsForLink = readYouTubeParam(params) !== null;
     const prefill = buildPrefillFromUrl(params);
     const metaPatch = buildMetadataFromUrl(params);
-    if (prefill === null && metaPatch === null) return;
+    if (prefill === null && metaPatch === null) {
+      markQueryImportSettled();
+      return;
+    }
     stripQueryParams(IMPORT_PARAM_NAMES);
     if (prefill !== null) useImportModalStore.getState().setDefaultPrefill(prefill);
 
-    if (metaPatch === null) return;
+    if (metaPatch === null) {
+      markQueryImportSettled();
+      return;
+    }
 
     let cancelled = false;
     void (async () => {
       await getPersistenceSettled();
-      if (cancelled) return;
+      const link = waitsForLink ? await getLinkProjectSettled() : "none";
+      if (cancelled || link === "reopened") return;
 
-      // Only the metadata fields are at stake here, so an unreadable saved
-      // project is treated as nothing to overwrite rather than blocking the link.
-      const hasProjectToOverwrite = await isProjectNonEmpty().catch((error) => {
-        console.warn(`${LOG_PREFIX} could not read the saved project`, error);
-        return false;
-      });
-
-      if (hasProjectToOverwrite) {
-        const accepted = await useConfirmStore.getState().open({
-          title: "Replace song metadata?",
-          description: "This link carries song details that will overwrite the metadata on your current project.",
-          confirmLabel: "Replace metadata",
-          variant: "destructive",
+      if (link !== "created") {
+        // A saved project that fails to read has nothing to overwrite.
+        const hasProjectToOverwrite = await isProjectNonEmpty().catch((error) => {
+          console.warn(`${LOG_PREFIX} could not read the saved project`, error);
+          return false;
         });
-        if (!accepted) return;
+        if (hasProjectToOverwrite) {
+          const accepted = await useConfirmStore.getState().open({
+            title: "Replace song metadata?",
+            description: "This link carries song details that will overwrite the metadata on your current project.",
+            confirmLabel: "Replace metadata",
+            variant: "destructive",
+          });
+          if (!accepted) return;
+        }
       }
       if (cancelled) return;
       useProjectStore.getState().setMetadata(metaPatch);
-    })();
+    })().finally(markQueryImportSettled);
 
     return () => {
       cancelled = true;

@@ -39,9 +39,9 @@ async function switchBackToPreviousProject(previousId: string, newId: string): P
 
 // -- Toasts -------------------------------------------------------------------
 
-function showNewProjectToast(title: string, previousTitle: string, previousId: string, newId: string): void {
-  toast(`Opened ${quotedTitle(title)} in a new project`, {
-    description: `${quotedTitle(previousTitle)} is still in Projects.`,
+function showSwitchBackToast(message: string, description: string, previousId: string, newId: string): void {
+  toast(message, {
+    description,
     duration: NEW_PROJECT_TOAST_DURATION_MS,
     action: {
       label: "Switch back",
@@ -52,6 +52,24 @@ function showNewProjectToast(title: string, previousTitle: string, previousId: s
   });
 }
 
+function showNewProjectToast(title: string, previousTitle: string, previousId: string, newId: string): void {
+  showSwitchBackToast(
+    `Opened ${quotedTitle(title)} in a new project`,
+    `${quotedTitle(previousTitle)} is still in Projects.`,
+    previousId,
+    newId,
+  );
+}
+
+function showLinkedProjectToast(title: string, previousTitle: string, previousId: string, newId: string): void {
+  showSwitchBackToast(
+    `Opened ${quotedTitle(title)} from Better Lyrics`,
+    `New project. ${quotedTitle(previousTitle)} is still in Projects.`,
+    previousId,
+    newId,
+  );
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { quotedTitle, showNewProjectToast };
+export { quotedTitle, showNewProjectToast, showLinkedProjectToast };

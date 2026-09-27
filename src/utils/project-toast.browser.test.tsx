@@ -5,7 +5,7 @@ import { useProjectStore } from "@/stores/project";
 import { createLine } from "@/test/factories";
 import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
-import { showNewProjectToast } from "@/utils/project-toast";
+import { showLinkedProjectToast, showNewProjectToast } from "@/utils/project-toast";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 
@@ -61,5 +61,28 @@ describe("showNewProjectToast", () => {
       expect(await isProjectDeleted(newId)).toBe(false);
       expect(await isProjectDeleted(elsewhere)).toBe(false);
     });
+  });
+});
+
+describe("showLinkedProjectToast", () => {
+  it("shows the Better Lyrics copy and deletes the new project on Switch back when it has no lyrics", async () => {
+    const newId = await openAlphaThenCreateNewProject();
+    const screen = await render(<Toaster />);
+    showLinkedProjectToast("Blinding Lights", "Alpha", "a", newId);
+    await expect.element(screen.getByText("Opened “Blinding Lights” from Better Lyrics")).toBeInTheDocument();
+    await expect.element(screen.getByText("New project. “Alpha” is still in Projects.")).toBeInTheDocument();
+    await screen.getByRole("button", { name: "Switch back" }).click();
+    await expect.poll(openProjectIdSnapshot).toBe("a");
+    await expect.poll(() => isProjectDeleted(newId)).toBe(true);
+  });
+
+  it("keeps the new project on Switch back when it has lyrics", async () => {
+    const newId = await openAlphaThenCreateNewProject();
+    useProjectStore.getState().setLines([createLine({ text: "New words" })]);
+    const screen = await render(<Toaster />);
+    showLinkedProjectToast("Blinding Lights", "Alpha", "a", newId);
+    await screen.getByRole("button", { name: "Switch back" }).click();
+    await expect.poll(openProjectIdSnapshot).toBe("a");
+    expect(await isProjectDeleted(newId)).toBe(false);
   });
 });
