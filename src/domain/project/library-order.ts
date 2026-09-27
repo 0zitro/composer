@@ -1,4 +1,5 @@
 import { displayTitle } from "@/domain/project/display-title";
+import { compareIds } from "@/domain/project/id-order";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { syncedPercent } from "@/domain/project/progress";
 
@@ -16,7 +17,7 @@ const collator = new Intl.Collator(undefined, TEXT_ORDER);
 // -- Comparators --------------------------------------------------------------
 
 function byMostRecentlyEdited(a: ProjectIndexEntry, b: ProjectIndexEntry): number {
-  return b.updatedAt - a.updatedAt || a.id.localeCompare(b.id);
+  return b.updatedAt - a.updatedAt || compareIds(a.id, b.id);
 }
 
 function byTitle(a: ProjectIndexEntry, b: ProjectIndexEntry): number {

@@ -13,6 +13,16 @@ describe("freeBytes", () => {
     it("never goes below zero when usage passes the quota", () => {
       expect(freeBytes({ usage: 1200, quota: 1000 })).toBe(0);
     });
+
+    it("treats a non-finite quota as zero instead of producing NaN", () => {
+      expect(freeBytes({ usage: 100, quota: Number.NaN })).toBe(0);
+      expect(freeBytes({ usage: 100, quota: Number.POSITIVE_INFINITY })).toBe(0);
+    });
+
+    it("treats a non-finite usage as zero instead of producing NaN", () => {
+      expect(freeBytes({ usage: Number.NaN, quota: 1000 })).toBe(1000);
+      expect(freeBytes({ usage: Number.POSITIVE_INFINITY, quota: 1000 })).toBe(1000);
+    });
   });
 });
 
@@ -49,9 +59,35 @@ describe("bytesToFree", () => {
         bytesToFree({ usedBytes: 10, limitBytes: 100, estimate: { usage: 0, quota: 0 }, storageFull: false }),
       ).toBe(0);
     });
+
+    it("treats a fully invalid estimate as no low space signal", () => {
+      const estimate = { usage: Number.NaN, quota: Number.NaN };
+      expect(bytesToFree({ usedBytes: 0, limitBytes: undefined, estimate, storageFull: false })).toBe(0);
+    });
+
+    it("still frees the low space amount when the estimate is unbounded", () => {
+      const estimate = { usage: Number.POSITIVE_INFINITY, quota: Number.POSITIVE_INFINITY };
+      expect(bytesToFree({ usedBytes: 0, limitBytes: undefined, estimate, storageFull: false })).toBe(LOW_SPACE_BYTES);
+    });
   });
 
   describe("invariants", () => {
+    it("is always finite and non-negative for any combination of NaN or infinite estimate values", () => {
+      const badValues = [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 1000];
+      for (const usage of badValues) {
+        for (const quota of badValues) {
+          const result = bytesToFree({
+            usedBytes: 0,
+            limitBytes: undefined,
+            estimate: { usage, quota },
+            storageFull: false,
+          });
+          expect(Number.isFinite(result)).toBe(true);
+          expect(result).toBeGreaterThanOrEqual(0);
+        }
+      }
+    });
+
     it("takes the largest of the three reasons", () => {
       const estimate = { usage: 950 * MEBIBYTE, quota: 1000 * MEBIBYTE };
       const lowSpace = LOW_SPACE_BYTES - 50 * MEBIBYTE;

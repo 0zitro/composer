@@ -18,8 +18,12 @@ const LOW_SPACE_BYTES = 512 * 1024 ** 2;
 
 // -- Derivations --------------------------------------------------------------
 
+function finiteOrZero(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
+
 function freeBytes(estimate: StorageEstimateBytes): number {
-  return Math.max(0, estimate.quota - estimate.usage);
+  return Math.max(0, finiteOrZero(estimate.quota) - finiteOrZero(estimate.usage));
 }
 
 function bytesToFree(target: CleanupTarget): number {

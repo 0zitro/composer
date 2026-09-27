@@ -57,6 +57,20 @@ describe("formatApproximateFileSize", () => {
       expect(formatApproximateFileSize(500 * 1024 ** 2)).toBe("500.0 MB");
       expect(formatApproximateFileSize(0)).toBe("0 B");
     });
+
+    it("regression: agrees with itself on both sides of the 1 GB boundary", () => {
+      expect(formatApproximateFileSize(1024 ** 3 - 1)).toBe("1 GB");
+      expect(formatApproximateFileSize(1024 ** 3)).toBe("1 GB");
+    });
+
+    it("regression: matches formatFileSize exactly for a NaN size", () => {
+      expect(formatApproximateFileSize(Number.NaN)).toBe(formatFileSize(Number.NaN));
+    });
+
+    it("regression: matches formatFileSize exactly for negative sizes", () => {
+      expect(formatApproximateFileSize(-500)).toBe(formatFileSize(-500));
+      expect(formatApproximateFileSize(-2 * 1024 ** 3)).toBe(formatFileSize(-2 * 1024 ** 3));
+    });
   });
 });
 

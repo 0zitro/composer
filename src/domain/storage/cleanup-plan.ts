@@ -1,6 +1,7 @@
+import { compareIds } from "@/domain/project/id-order";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { lastOpenedAt } from "@/domain/project/opened-at";
-import { compareIds, isCachedYouTubeAudio } from "@/domain/storage/stored-audio";
+import { isCachedYouTubeAudio } from "@/domain/storage/stored-audio";
 import type { StemJobUsage } from "@/domain/storage/usage";
 
 // -- Types --------------------------------------------------------------------
@@ -38,7 +39,7 @@ function youtubeAudioSteps(input: CleanupInput): CleanupStep[] {
 // -- Plan ---------------------------------------------------------------------
 
 function planCleanup(input: CleanupInput): CleanupStep[] {
-  if (input.bytesToFree <= 0) return [];
+  if (!(input.bytesToFree > 0)) return [];
   const steps: CleanupStep[] = [];
   let planned = 0;
   for (const step of [...stemSteps(input), ...youtubeAudioSteps(input)]) {

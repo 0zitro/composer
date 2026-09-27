@@ -1,3 +1,4 @@
+import { compareIds } from "@/domain/project/id-order";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 
 // -- Types --------------------------------------------------------------------
@@ -17,10 +18,6 @@ function matchesAudioFilter(entry: AudioFields, filter: AudioFilter): boolean {
   return filter === "youtube" ? entry.audioKind === "youtube" : entry.audioKind !== "youtube";
 }
 
-function compareIds(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 // -- Derivations --------------------------------------------------------------
 
 function storedAudioProjects<T extends StoredAudioEntry>(entries: readonly T[], filter: AudioFilter): T[] {
@@ -37,5 +34,5 @@ function hasStoredYouTubeAudio(entries: readonly AudioFields[]): boolean {
 
 // -- Exports ------------------------------------------------------------------
 
-export { isCachedYouTubeAudio, storedAudioProjects, hasStoredYouTubeAudio, compareIds };
+export { isCachedYouTubeAudio, storedAudioProjects, hasStoredYouTubeAudio };
 export type { AudioFilter };

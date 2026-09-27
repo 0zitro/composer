@@ -19,7 +19,8 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatApproximateFileSize(bytes: number): string {
-  return bytes >= GIGABYTE ? `${Math.round(bytes / GIGABYTE)} GB` : formatFileSize(bytes);
+  const exact = formatFileSize(bytes);
+  return Number.isFinite(bytes) && exact.endsWith(" GB") ? `${Math.round(bytes / GIGABYTE)} GB` : exact;
 }
 
 // -- Exports ------------------------------------------------------------------

@@ -47,6 +47,12 @@ describe("planCleanup", () => {
     expect(plan(-5)).toEqual([]);
   });
 
+  describe("regressions", () => {
+    it("regression: a NaN target plans nothing instead of everything", () => {
+      expect(plan(Number.NaN)).toEqual([]);
+    });
+  });
+
   describe("never removes", () => {
     it("local files", () => {
       expect(plan(10_000).some((step) => step.kind === "youtube-audio" && step.projectId === "local")).toBe(false);
@@ -102,6 +108,7 @@ describe("planCleanup", () => {
 
     it("plans everything removable when the target is larger than all of it", () => {
       expect(plan(10 ** 12)).toHaveLength(4);
+      expect(plan(Number.POSITIVE_INFINITY)).toHaveLength(4);
     });
   });
 
