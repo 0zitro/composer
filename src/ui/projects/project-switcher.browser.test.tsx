@@ -12,6 +12,7 @@ import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
+import { LocationProbe } from "@/test/location-probe";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { ProjectSwitcher } from "@/ui/projects/project-switcher";
@@ -35,7 +36,7 @@ async function seedLibrary(): Promise<void> {
 }
 
 async function renderSwitcher(onClose: () => void = () => undefined) {
-  const screen = await render(<ProjectSwitcher onClose={onClose} />);
+  const screen = await render(<ProjectSwitcher onClose={onClose} />, { withRouter: true });
   await expect.element(screen.getByRole("option").first()).toBeInTheDocument();
   return screen;
 }
@@ -168,7 +169,7 @@ describe("ProjectSwitcher", () => {
     it("says there are no other projects when only the open one exists", async () => {
       await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
       await restoreOpenProject();
-      const screen = await render(<ProjectSwitcher onClose={() => undefined} />);
+      const screen = await render(<ProjectSwitcher onClose={() => undefined} />, { withRouter: true });
       await expect.element(screen.getByText("No other projects yet")).toBeInTheDocument();
       await expect
         .element(screen.getByRole("combobox", { name: "Search projects" }))
@@ -222,9 +223,23 @@ describe("ProjectSwitcher", () => {
     it("regression: shows an error when the project index fails to load", async () => {
       allowConsole(/could not load the project index/);
       await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
-      const screen = await render(<ProjectSwitcher onClose={() => undefined} />);
+      const screen = await render(<ProjectSwitcher onClose={() => undefined} />, { withRouter: true });
       await expect.element(screen.getByText("Couldn't load projects")).toBeInTheDocument();
       await deleteDatabase(DB_NAME);
     });
+  });
+
+  it("All projects closes the switcher and goes to the library", async () => {
+    let closes = 0;
+    const screen = await render(
+      <>
+        <ProjectSwitcher onClose={() => closes++} />
+        <LocationProbe />
+      </>,
+      { withRouter: { initialEntries: ["/editor"] } },
+    );
+    await screen.getByRole("link", { name: "All projects" }).click();
+    await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent(/^\/$/);
+    expect(closes).toBe(1);
   });
 });

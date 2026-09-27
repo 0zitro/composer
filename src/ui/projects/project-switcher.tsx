@@ -10,10 +10,12 @@ import { InlineKeyBadge } from "@/ui/inline-key-badge";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { ProjectProgress } from "@/ui/projects/project-progress";
 import { Scroll } from "@/ui/scroll";
+import { LIBRARY_PATH } from "@/utils/app-routes";
 import { cn } from "@/utils/cn";
 import { formatRelativeTime } from "@/utils/format-relative-time";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconArrowRight, IconPlus, IconSearch } from "@tabler/icons-react";
 import { useId, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
@@ -199,6 +201,14 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
           New project
           <InlineKeyBadge keys={getEffectiveKeysArray("global.newProject")} />
         </Button>
+        <Link
+          to={LIBRARY_PATH}
+          onClick={onClose}
+          className="inline-flex items-center gap-2 h-7 px-2.5 rounded-lg text-[13px] font-medium text-composer-text-secondary hover:bg-composer-button transition-colors cursor-pointer"
+        >
+          All projects
+          <IconArrowRight aria-hidden="true" className="size-[15px] text-composer-text-muted" />
+        </Link>
       </div>
     </div>
   );

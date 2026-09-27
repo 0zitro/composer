@@ -7,8 +7,10 @@ import { Popover } from "@/ui/popover";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { ProjectSwitcher } from "@/ui/projects/project-switcher";
 import { SaveStatusLabel } from "@/ui/projects/save-status-label";
+import { LIBRARY_PATH } from "@/utils/app-routes";
 import { formatShortcut } from "@/utils/format-key";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -28,15 +30,12 @@ const ProjectBreadcrumb: React.FC = () => {
   return (
     <div className="flex items-center gap-0.5 min-w-0 select-none">
       <nav aria-label="Project" className="flex items-center gap-0.5 min-w-0">
-        <Button
-          variant="ghost"
-          onClick={() => setOpen(true)}
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          className="h-8 px-2 text-[15px] font-medium"
+        <Link
+          to={LIBRARY_PATH}
+          className="inline-flex items-center h-8 px-2 rounded-lg text-[15px] font-medium text-composer-text-muted hover:text-composer-text hover:bg-composer-button transition-colors cursor-pointer"
         >
           Projects
-        </Button>
+        </Link>
         <IconChevronRight aria-hidden="true" className="size-4 shrink-0 text-composer-text-faint" />
         <Popover
           open={isOpen}

@@ -11,8 +11,9 @@ const NEW_PROJECT_SHORTCUT_ID = "global.newProject";
 
 // -- Hook ---------------------------------------------------------------------
 
-function useProjectShortcuts(): void {
+function useProjectShortcuts(enabled = true): void {
   useEffect(() => {
+    if (!enabled) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || isAnyModalOpen()) return;
       const matched = findMatchingShortcut(event, "global");
@@ -29,7 +30,7 @@ function useProjectShortcuts(): void {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [enabled]);
 }
 
 // -- Exports ------------------------------------------------------------------

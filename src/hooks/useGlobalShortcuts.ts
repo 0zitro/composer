@@ -1,7 +1,7 @@
+import type { ProjectTab } from "@/domain/project/tab";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import type { Shortcut } from "@/hooks/useKeyboardShortcuts";
 import { useAudioStore } from "@/stores/audio";
-import type { ProjectTab } from "@/domain/project/tab";
 import { getEffectiveBinding, useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { useMemo } from "react";
 
@@ -9,17 +9,36 @@ interface GlobalShortcutActions {
   setActiveTab: (tab: ProjectTab) => void;
   setHelpOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
+  editorActive?: boolean;
 }
 
 function useGlobalShortcuts(actions: GlobalShortcutActions): void {
-  const { setActiveTab, setHelpOpen, setSettingsOpen } = actions;
+  const { setActiveTab, setHelpOpen, setSettingsOpen, editorActive = true } = actions;
   const overrides = useShortcutBindingsStore((s) => s.overrides);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: overrides triggers recomputation when bindings change
   const shortcuts: Shortcut[] = useMemo(() => {
-    const playPause = getEffectiveBinding("global.playPause");
     const help = getEffectiveBinding("global.help");
     const settings = getEffectiveBinding("global.settings");
+    const general: Shortcut[] = [
+      {
+        key: help.key,
+        shift: help.shift,
+        alt: help.alt,
+        action: () => setHelpOpen(true),
+        description: "Show keyboard shortcuts",
+      },
+      {
+        key: settings.key,
+        shift: settings.shift,
+        alt: settings.alt,
+        action: () => setSettingsOpen(true),
+        description: "Open settings",
+      },
+    ];
+    if (!editorActive) return general;
+
+    const playPause = getEffectiveBinding("global.playPause");
     const goToImport = getEffectiveBinding("global.goToImport");
     const goToEdit = getEffectiveBinding("global.goToEdit");
     const goToLanguages = getEffectiveBinding("global.goToLanguages");
@@ -45,22 +64,9 @@ function useGlobalShortcuts(actions: GlobalShortcutActions): void {
         },
         description: "Play / Pause",
       },
-      {
-        key: help.key,
-        shift: help.shift,
-        alt: help.alt,
-        action: () => setHelpOpen(true),
-        description: "Show keyboard shortcuts",
-      },
-      {
-        key: settings.key,
-        shift: settings.shift,
-        alt: settings.alt,
-        action: () => setSettingsOpen(true),
-        description: "Open settings",
-      },
+      ...general,
     ];
-  }, [setActiveTab, setHelpOpen, setSettingsOpen, overrides]);
+  }, [setActiveTab, setHelpOpen, setSettingsOpen, editorActive, overrides]);
 
   useKeyboardShortcuts(shortcuts);
 }

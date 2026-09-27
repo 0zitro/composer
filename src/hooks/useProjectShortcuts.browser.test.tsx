@@ -75,5 +75,12 @@ describe("useProjectShortcuts", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "o", code: "KeyO", bubbles: true }));
       expect(useUIStore.getState().projectSwitcherOpen).toBe(false);
     });
+
+    it("does nothing while disabled", async () => {
+      await renderHook(() => useProjectShortcuts(false));
+      const event = pressWithMod("o", "KeyO");
+      expect(useUIStore.getState().projectSwitcherOpen).toBe(false);
+      expect(event.defaultPrevented).toBe(false);
+    });
   });
 });

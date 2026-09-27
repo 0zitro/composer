@@ -28,7 +28,7 @@ const helpModalOpen = () => document.querySelector("[data-help-content]") !== nu
 describe("App", () => {
   it("renders the app header and tab bar", async () => {
     useProjectStore.setState({ activeTab: "import" });
-    const screen = await render(<App />);
+    const screen = await render(<App />, { withRouter: { initialEntries: ["/editor"] } });
     expect(screen.container.textContent).toContain("Composer");
     expect(screen.container.querySelector("nav")).not.toBeNull();
   });
@@ -36,7 +36,7 @@ describe("App", () => {
   it("switches the active tab when a tab button is clicked", async () => {
     localStorage.setItem(TOUR_SEEN_KEY, "true");
     useProjectStore.setState({ activeTab: "import" });
-    const screen = await render(<App />);
+    const screen = await render(<App />, { withRouter: { initialEntries: ["/editor"] } });
     const editButton = screen.container.querySelector('[data-tour="tab-edit"]') as HTMLButtonElement;
     expect(editButton).not.toBeNull();
     editButton.click();
@@ -47,7 +47,7 @@ describe("App", () => {
     allowConsole(/cannot be a descendant of/);
     allowConsole(/cannot contain a nested/);
     localStorage.setItem(TOUR_SEEN_KEY, "true");
-    await render(<App />);
+    await render(<App />, { withRouter: { initialEntries: ["/editor"] } });
 
     useUIStore.getState().openSettings("bridge-section");
     await expect.poll(bridgeSectionVisible).toBe(true);
@@ -64,7 +64,7 @@ describe("App", () => {
     allowConsole(/cannot be a descendant of/);
     allowConsole(/cannot contain a nested/);
     localStorage.setItem(TOUR_SEEN_KEY, "true");
-    await render(<App />);
+    await render(<App />, { withRouter: { initialEntries: ["/editor"] } });
 
     helpButton().click();
     await expect.poll(helpModalOpen).toBe(true);
@@ -83,7 +83,7 @@ describe("App", () => {
 
   it("wires the frame loop so a store write wakes it", async () => {
     localStorage.setItem(TOUR_SEEN_KEY, "true");
-    await render(<App />);
+    await render(<App />, { withRouter: { initialEntries: ["/editor"] } });
 
     let frames = 0;
     const unsubscribe = subscribeFrame(() => {

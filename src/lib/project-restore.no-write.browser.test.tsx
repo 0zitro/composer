@@ -46,7 +46,7 @@ async function expectUntouched(id: string): Promise<void> {
 
 async function bootApp(): Promise<void> {
   localStorage.setItem(TOUR_SEEN_KEY, "true");
-  await render(<App />);
+  await render(<App />, { withRouter: { initialEntries: ["/editor"] } });
 }
 
 // -- Tests --------------------------------------------------------------------

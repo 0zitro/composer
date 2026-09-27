@@ -32,4 +32,23 @@ describe("useGlobalShortcuts", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", shiftKey: true, bubbles: true }));
     expect(helpOpen).toBe(true);
   });
+
+  it("leaves tab shortcuts alone outside the editor but still opens help", async () => {
+    useProjectStore.setState({ activeTab: "preview" });
+    let helpOpen = false;
+    await renderHook(() =>
+      useGlobalShortcuts({
+        setActiveTab: (tab) => useProjectStore.setState({ activeTab: tab }),
+        setHelpOpen: (open) => {
+          helpOpen = open;
+        },
+        setSettingsOpen: () => {},
+        editorActive: false,
+      }),
+    );
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", metaKey: true, ctrlKey: true, bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", shiftKey: true, bubbles: true }));
+    expect(useProjectStore.getState().activeTab).toBe("preview");
+    expect(helpOpen).toBe(true);
+  });
 });
