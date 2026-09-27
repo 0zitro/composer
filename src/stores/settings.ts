@@ -69,7 +69,6 @@ interface SettingsState {
   mergeStandaloneBackgroundLines: boolean;
   preserveBracketsOnExtraction: boolean;
 
-  confirmReplaceProjectFromHash: boolean;
   confirmReplaceLyrics: boolean;
   confirmSyncReset: boolean;
   confirmClearProject: boolean;
@@ -144,7 +143,6 @@ const DEFAULTS: SettingsState = {
   mergeStandaloneBackgroundLines: true,
   preserveBracketsOnExtraction: true,
 
-  confirmReplaceProjectFromHash: true,
   confirmReplaceLyrics: true,
   confirmSyncReset: true,
   confirmClearProject: true,
@@ -175,11 +173,13 @@ const BUILTIN_COBALT_INSTANCE: CobaltInstance = {
   url: "https://cobalt.boidu.dev",
 };
 
-const SETTINGS_PERSIST_VERSION = 6;
+const SETTINGS_PERSIST_VERSION = 7;
 
 function migrateSettings(persistedState: unknown, version: number): unknown {
   if (!persistedState || typeof persistedState !== "object") return persistedState;
-  const state = persistedState as Partial<SettingsState>;
+  const { confirmReplaceProjectFromHash: _retired, ...state } = persistedState as Partial<SettingsState> & {
+    confirmReplaceProjectFromHash?: boolean;
+  };
   const next: Partial<SettingsState> = { ...state };
   if (version < 2 || next.vocalModelVariant === "fp16") {
     next.vocalModelVariant = "fp32";
@@ -206,7 +206,6 @@ const useSettingsStore = create<SettingsState & SettingsActions>()(
       resetToDefaults: () =>
         set((state) => ({
           ...DEFAULTS,
-          confirmReplaceProjectFromHash: state.confirmReplaceProjectFromHash,
           confirmReplaceLyrics: state.confirmReplaceLyrics,
           confirmSyncReset: state.confirmSyncReset,
           confirmClearProject: state.confirmClearProject,

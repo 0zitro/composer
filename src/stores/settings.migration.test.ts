@@ -73,3 +73,19 @@ describe("syllablesFollowRolling", () => {
     expect(useSettingsStore.getState().syllablesFollowRolling).toBe(true);
   });
 });
+
+describe("retired confirmReplaceProjectFromHash", () => {
+  it("drops the retired key from a persisted blob", async () => {
+    await rehydrateAt(6, legacyBlob({ confirmReplaceProjectFromHash: false }));
+    expect("confirmReplaceProjectFromHash" in useSettingsStore.getState()).toBe(false);
+  });
+
+  it("keeps the other confirmations while dropping it", () => {
+    const migrated = migrateSettingsForTest(
+      legacyBlob({ confirmReplaceProjectFromHash: false, confirmReplaceLyrics: false }),
+      6,
+    ) as Record<string, unknown>;
+    expect(migrated).not.toHaveProperty("confirmReplaceProjectFromHash");
+    expect(migrated.confirmReplaceLyrics).toBe(false);
+  });
+});

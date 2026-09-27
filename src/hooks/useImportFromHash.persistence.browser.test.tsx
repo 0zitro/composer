@@ -3,7 +3,6 @@ import { useImportFromHash } from "@/hooks/useImportFromHash";
 import { usePersistence } from "@/hooks/usePersistence";
 import { getHashImportSettled, getPersistenceSettled } from "@/lib/persistence-settled";
 import { useProjectStore } from "@/stores/project";
-import { useSettingsStore } from "@/stores/settings";
 import { allowConsole } from "@/test/console-guard";
 import { seedProject } from "@/test/idb";
 import { render } from "@/test/render";
@@ -37,10 +36,6 @@ function setQuery(search: string): void {
 
 function encodeHashPayload(payload: unknown): string {
   return `#import=${encodeURIComponent(JSON.stringify(payload))}`;
-}
-
-function autoAcceptHashConfirm(): void {
-  useSettingsStore.setState({ confirmReplaceProjectFromHash: false });
 }
 
 // Both writers signal completion via dedicated promises (persistenceSettled,
@@ -85,7 +80,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
 
   it("hash import wins when persistence has a saved project", async () => {
     await seedProject(savedSnapshot());
-    autoAcceptHashConfirm();
     setHash(encodeHashPayload(importedPayload()));
 
     await render(<HookHost />);
@@ -98,7 +92,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
   });
 
   it("marks the imported song details as not exported yet", async () => {
-    autoAcceptHashConfirm();
     setHash(encodeHashPayload(importedPayload()));
 
     await render(<HookHost />);
@@ -109,7 +102,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
 
   it("hash import lines survive even when persistence has different saved lines", async () => {
     await seedProject(savedSnapshot());
-    autoAcceptHashConfirm();
     setHash(encodeHashPayload(importedPayload()));
 
     await render(<HookHost />);
@@ -121,7 +113,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
   it("hash import is no-op when payload is malformed; persistence's saved project survives", async () => {
     allowConsole(/Invalid import payload structure/);
     await seedProject(savedSnapshot());
-    autoAcceptHashConfirm();
     setHash(`#import=${encodeURIComponent('{"not":"a payload"}')}`);
 
     await render(<HookHost />);
@@ -145,7 +136,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
   });
 
   it("hash import + empty IDB still applies", async () => {
-    autoAcceptHashConfirm();
     setHash(encodeHashPayload(importedPayload()));
 
     await render(<HookHost />);
@@ -159,7 +149,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
       ...savedSnapshot(),
       granularity: "line" as const,
     });
-    autoAcceptHashConfirm();
     setHash(encodeHashPayload({ ...importedPayload(), granularity: "word" as const }));
 
     await render(<HookHost />);
@@ -171,7 +160,6 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
   it("regression: a payload with null metadata is rejected and the saved project survives", async () => {
     allowConsole(/Invalid import payload structure/);
     await seedProject(savedSnapshot());
-    autoAcceptHashConfirm();
     setHash(encodeHashPayload({ ...importedPayload(), metadata: null }));
 
     await render(<HookHost />);

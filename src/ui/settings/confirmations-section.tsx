@@ -14,11 +14,6 @@ const ConfirmationsSection: React.FC = () => {
       </div>
       <div className="divide-y divide-composer-border">
         <ToggleSetting
-          label="Confirm replacing project from URL"
-          description="Show a warning when an import URL would replace your current project."
-          settingKey="confirmReplaceProjectFromHash"
-        />
-        <ToggleSetting
           label="Confirm replacing lyrics on import"
           description="Show a warning when importing lyrics into a project that already has lines."
           settingKey="confirmReplaceLyrics"
