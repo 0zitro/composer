@@ -124,7 +124,7 @@ async function deleteProject(id: string): Promise<void> {
   closeIfOpen(id);
 }
 
-// -- Recovery -------------------------------------------------------------------
+// -- Recovery -----------------------------------------------------------------
 
 async function forkOpenProject(): Promise<string> {
   claimRequest();

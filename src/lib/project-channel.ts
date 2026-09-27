@@ -13,7 +13,7 @@ interface ProjectsDeletedMessage {
 const PROJECT_CHANNEL_NAME = "ttml-composer-projects";
 const TAB_ID = nanoid();
 
-// -- Module state ---------------------------------------------------------------
+// -- Module state -------------------------------------------------------------
 
 let senderChannel: BroadcastChannel | null = null;
 
