@@ -1,7 +1,7 @@
 import { useSettingsStore } from "@/stores/settings";
 import { LAUNCH_SCREEN_OPTIONS, LIBRARY_SORT_OPTIONS, LIBRARY_VIEW_OPTIONS } from "@/ui/projects/library-options";
 import { SegmentedControl } from "@/ui/segmented-control";
-import { SelectSetting } from "@/ui/settings/setting-controls";
+import { SelectSetting, SettingRow } from "@/ui/settings/setting-controls";
 
 // -- Component ----------------------------------------------------------------
 
@@ -11,20 +11,17 @@ const ProjectsSection: React.FC = () => {
 
   return (
     <div className="divide-y divide-composer-border">
-      <div className="flex items-center justify-between gap-6 py-3">
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="text-sm font-medium text-composer-text">Library view</span>
-          <span className="text-xs text-composer-text-muted">
-            How the Projects page shows your songs. The toggle on that page changes this too.
-          </span>
-        </div>
+      <SettingRow
+        label="Library view"
+        description="How the Projects page shows your songs. The toggle on that page changes this too."
+      >
         <SegmentedControl
           aria-label="Library view"
           value={libraryView}
           options={LIBRARY_VIEW_OPTIONS}
           onChange={(view) => set("libraryView", view)}
         />
-      </div>
+      </SettingRow>
       <SelectSetting
         label="Default sort"
         description="The order projects appear in when you open Projects."

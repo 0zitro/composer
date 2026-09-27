@@ -5,6 +5,20 @@ import { cn } from "@/utils/cn";
 
 // -- Setting Controls ---------------------------------------------------------
 
+const SettingRow: React.FC<{ label: string; description: string; children: React.ReactNode }> = ({
+  label,
+  description,
+  children,
+}) => (
+  <div className="flex items-center justify-between gap-6 py-3">
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-sm font-medium text-composer-text">{label}</span>
+      <span className="text-xs text-composer-text-muted">{description}</span>
+    </div>
+    {children}
+  </div>
+);
+
 const SliderSetting: React.FC<{
   label: string;
   description: string;
@@ -67,11 +81,7 @@ const ToggleSetting: React.FC<{
   const set = useSettingsStore((s) => s.set);
 
   return (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium text-composer-text">{label}</span>
-        <span className="text-xs text-composer-text-muted">{description}</span>
-      </div>
+    <SettingRow label={label} description={description}>
       <button
         type="button"
         role="switch"
@@ -90,7 +100,7 @@ const ToggleSetting: React.FC<{
           )}
         />
       </button>
-    </div>
+    </SettingRow>
   );
 };
 
@@ -104,21 +114,17 @@ const SelectSetting: React.FC<{
   const set = useSettingsStore((s) => s.set);
 
   return (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium text-composer-text">{label}</span>
-        <span className="text-xs text-composer-text-muted">{description}</span>
-      </div>
+    <SettingRow label={label} description={description}>
       <Select
         aria-label={label}
         value={value}
         onChange={(next) => set(settingKey, next as SettingsState[typeof settingKey])}
         options={options}
       />
-    </div>
+    </SettingRow>
   );
 };
 
 // -- Exports ------------------------------------------------------------------
 
-export { SliderSetting, ToggleSetting, SelectSetting };
+export { SettingRow, SliderSetting, ToggleSetting, SelectSetting };

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 import { useSettingsStore } from "@/stores/settings";
 import { render } from "@/test/render";
-import { SelectSetting, SliderSetting, ToggleSetting } from "@/ui/settings/setting-controls";
+import { SelectSetting, SettingRow, SliderSetting, ToggleSetting } from "@/ui/settings/setting-controls";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -130,5 +131,30 @@ describe("SelectSetting", () => {
     await screen.getByRole("button", { name: "Granularity" }).click();
     await screen.getByRole("option", { name: "Line" }).click();
     await expect.poll(() => useSettingsStore.getState().defaultGranularity).toBe("line");
+  });
+});
+
+describe("SettingRow", () => {
+  it("shows the label and description next to its control", async () => {
+    const screen = await render(
+      <SettingRow label="Library view" description="How the Projects page shows your songs.">
+        <button type="button">List</button>
+      </SettingRow>,
+    );
+    await expect.element(screen.getByText("Library view")).toBeInTheDocument();
+    await expect.element(screen.getByText("How the Projects page shows your songs.")).toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: "List" })).toBeInTheDocument();
+  });
+
+  describe("invariants", () => {
+    it("keeps the control reachable with the keyboard", async () => {
+      const screen = await render(
+        <SettingRow label="Library view" description="How the Projects page shows your songs.">
+          <button type="button">List</button>
+        </SettingRow>,
+      );
+      await userEvent.keyboard("{Tab}");
+      await expect.element(screen.getByRole("button", { name: "List" })).toHaveFocus();
+    });
   });
 });
