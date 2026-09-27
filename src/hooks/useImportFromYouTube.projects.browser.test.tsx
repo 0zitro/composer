@@ -2,15 +2,18 @@ import { useImportFromQuery } from "@/hooks/useImportFromQuery";
 import { useImportFromYouTube } from "@/hooks/useImportFromYouTube";
 import { usePersistence } from "@/hooks/usePersistence";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { PROJECT_INDEX_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { getLinkProjectSettled, getPersistenceSettled, getQueryImportSettled } from "@/lib/persistence-settled";
+import { indexEntryForProject } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { isProjectDeleted } from "@/lib/project-tombstones";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
 import { createAudioFile } from "@/test/audio-fixtures";
+import { allowConsole } from "@/test/console-guard";
+import { seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { render } from "@/test/render";
-import { seedStoredProject, songTitled } from "@/test/projects";
 import { Toaster } from "sonner";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -41,6 +44,12 @@ async function seedOpenAlpha(lyrics = true): Promise<void> {
       audioSource: { kind: "file", name: "alpha.wav" },
     },
   });
+}
+
+async function seedOrphanedVideoIndexEntry(id: string, videoId: string): Promise<void> {
+  const project = storedProject({ audioSource: { kind: "youtube", videoId } });
+  const entry = indexEntryForProject(id, project, { storedAudioBytes: 0 });
+  await setInStore(PROJECT_INDEX_STORE_NAME, id, entry);
 }
 
 async function bootWithLink(search: string) {
@@ -157,6 +166,17 @@ describe("useImportFromYouTube · projects", () => {
       const { outcome } = await bootWithLink("");
       expect(outcome).toBe("none");
       expect(openProjectIdSnapshot()).toBe("a");
+    });
+
+    it("a broken index entry settles as failed and leaves the open project alone", async () => {
+      allowConsole(/could not open the project for the link/);
+      await seedOpenAlpha();
+      await seedOrphanedVideoIndexEntry("c", LINKED_VIDEO_ID);
+      const { outcome } = await bootWithLink(`?title=Other%20Title&videoId=${LINKED_VIDEO_ID}`);
+      expect(outcome).toBe("failed");
+      expect(openProjectIdSnapshot()).toBe("a");
+      expect(useConfirmStore.getState().isOpen).toBe(false);
+      expect(useProjectStore.getState().metadata.title).toBe("Alpha");
     });
   });
 });

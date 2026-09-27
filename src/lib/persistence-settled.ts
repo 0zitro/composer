@@ -24,7 +24,7 @@ let hashImportSettled: Promise<void> = new Promise<void>((resolve) => {
   _markHashImportSettled = resolve;
 });
 
-type LinkProjectOutcome = "none" | "current" | "reopened" | "created";
+type LinkProjectOutcome = "none" | "current" | "reopened" | "created" | "failed";
 
 let _markLinkProjectSettled: (outcome: LinkProjectOutcome) => void = () => {};
 let linkProjectSettled: Promise<LinkProjectOutcome> = new Promise<LinkProjectOutcome>((resolve) => {

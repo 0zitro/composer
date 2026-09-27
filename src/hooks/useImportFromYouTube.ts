@@ -81,7 +81,7 @@ function useImportFromYouTube(): void {
       })
       .catch((error: unknown) => {
         console.error(`${LOG_PREFIX} could not open the project for the link`, error);
-        markLinkProjectSettled("none");
+        markLinkProjectSettled("failed");
         toast.error("Couldn't open the project for that link");
       });
 

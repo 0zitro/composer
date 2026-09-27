@@ -92,7 +92,7 @@ function useImportFromQuery(): void {
     void (async () => {
       await getPersistenceSettled();
       const link = waitsForLink ? await getLinkProjectSettled() : "none";
-      if (cancelled || link === "reopened") return;
+      if (cancelled || link === "reopened" || link === "failed") return;
 
       if (link !== "created") {
         // A saved project that fails to read has nothing to overwrite.
