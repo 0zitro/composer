@@ -1,4 +1,5 @@
 import { useProjectIndex } from "@/hooks/useProjectIndex";
+import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { removeProjectData } from "@/lib/project-repository";
 import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
@@ -41,5 +42,17 @@ describe("useProjectIndex", () => {
     await expect.element(screen.getByText("Alpha")).toBeInTheDocument();
     await removeProjectData("a");
     await expect.element(screen.getByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("leaves out projects that are pending deletion and brings them back on undo", async () => {
+    await seedStoredProject("a", { project: songTitled("Alpha") });
+    await seedStoredProject("b", { project: songTitled("Bravo") });
+    const screen = await render(<IndexProbe />);
+    await expect.element(screen.getByText("Alpha")).toBeInTheDocument();
+    const deletion = schedulePendingDeletion(["a"]);
+    await expect.element(screen.getByText("Alpha")).not.toBeInTheDocument();
+    await expect.element(screen.getByText("Bravo")).toBeInTheDocument();
+    deletion.undo();
+    await expect.element(screen.getByText("Alpha")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import { forgetOpenProjectId } from "@/lib/open-project-session";
+import { __resetPendingDeletionsForTests } from "@/lib/pending-deletions";
 import { __resetPersistenceSettledForTests } from "@/lib/persistence-settled";
 import { resetSaveStatus } from "@/lib/save-status";
 import { addGlobalAllowedConsolePattern, registerConsoleGuard } from "@/test/console-guard";
@@ -15,6 +16,7 @@ beforeEach(async () => {
   await cleanup();
   await Promise.all(COMPOSER_DBS.map(deleteDatabase));
   forgetOpenProjectId();
+  __resetPendingDeletionsForTests();
   await resetAllStores();
   __resetPersistenceSettledForTests();
   resetSaveStatus();

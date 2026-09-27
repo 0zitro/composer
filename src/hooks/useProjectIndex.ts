@@ -1,9 +1,10 @@
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
+import { useHiddenProjectIds } from "@/hooks/useHiddenProjectIds";
 import { subscribeProjectsDeleted } from "@/lib/project-channel";
 import { subscribeProjectIndexChanges } from "@/lib/project-index-changes";
 import { listProjectIndex } from "@/lib/project-repository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 // -- Types --------------------------------------------------------------------
 
@@ -29,6 +30,11 @@ function useProjectIndex(): ProjectIndexState {
     staleTime: 0,
     gcTime: 0,
   });
+  const hidden = useHiddenProjectIds();
+  const entries = useMemo(
+    () => (data && hidden.size > 0 ? data.filter((entry) => !hidden.has(entry.id)) : data),
+    [data, hidden],
+  );
 
   useEffect(() => {
     if (error) console.error(LOG_PREFIX, "could not load the project index", error);
@@ -46,7 +52,7 @@ function useProjectIndex(): ProjectIndexState {
     };
   }, [queryClient]);
 
-  return { entries: data, stored: data, error, fetchedAt: dataUpdatedAt };
+  return { entries, stored: data, error, fetchedAt: dataUpdatedAt };
 }
 
 // -- Exports ------------------------------------------------------------------

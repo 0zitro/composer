@@ -2,13 +2,17 @@ import { quotedTitle } from "@/domain/project/display-title";
 import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import { deleteProject, openProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import type { PendingDeletion } from "@/lib/pending-deletions";
 import { useProjectStore } from "@/stores/project";
+import { IconTrash } from "@tabler/icons-react";
+import { createElement } from "react";
 import { toast } from "sonner";
 
 // -- Constants ----------------------------------------------------------------
 
 const LOG_PREFIX = "[ProjectToast]";
 const NEW_PROJECT_TOAST_DURATION_MS = 10_000;
+const DELETE_UNDO_DURATION_MS = 8_000;
 
 // -- Switching back -------------------------------------------------------------
 
@@ -65,6 +69,29 @@ function showLinkedProjectToast(title: string, previousTitle: string, previousId
   );
 }
 
+// -- Deleting -----------------------------------------------------------------
+
+function deletedMessage(titles: readonly string[]): string {
+  return titles.length === 1 ? `Deleted ${quotedTitle(titles[0] ?? "")}` : `Deleted ${titles.length} projects`;
+}
+
+function showDeletedProjectsToast(titles: readonly string[], deletion: PendingDeletion): void {
+  const commit = () => {
+    deletion.commit().catch((error: unknown) => {
+      console.error(LOG_PREFIX, "could not finish deleting", error);
+      toast.error(titles.length === 1 ? "Couldn't delete that project" : "Couldn't delete some projects");
+    });
+  };
+  toast(deletedMessage(titles), {
+    icon: createElement(IconTrash, { "aria-hidden": true, className: "size-[18px] text-composer-text-muted" }),
+    duration: DELETE_UNDO_DURATION_MS,
+    closeButton: true,
+    action: { label: "Undo", onClick: () => deletion.undo() },
+    onAutoClose: commit,
+    onDismiss: commit,
+  });
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { showNewProjectToast, showLinkedProjectToast };
+export { showNewProjectToast, showLinkedProjectToast, showDeletedProjectsToast };
