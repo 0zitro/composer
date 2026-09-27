@@ -1,5 +1,6 @@
 import { forgetOpenProjectId } from "@/lib/open-project-session";
 import { __resetPersistenceSettledForTests } from "@/lib/persistence-settled";
+import { resetSaveStatus } from "@/lib/save-status";
 import { addGlobalAllowedConsolePattern, registerConsoleGuard } from "@/test/console-guard";
 import { deleteDatabase } from "@/test/idb";
 import { resetAllStores } from "@/test/stores";
@@ -16,6 +17,7 @@ beforeEach(async () => {
   forgetOpenProjectId();
   await resetAllStores();
   __resetPersistenceSettledForTests();
+  resetSaveStatus();
   toast.dismiss();
 });
 

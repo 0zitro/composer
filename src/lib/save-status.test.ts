@@ -1,4 +1,4 @@
-import { getSaveStatus, setSavePending, subscribeSaveStatus, trackSave } from "@/lib/save-status";
+import { getSaveStatus, resetSaveStatus, setSavePending, subscribeSaveStatus, trackSave } from "@/lib/save-status";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -16,9 +16,8 @@ function deferred(): { promise: Promise<void>; resolve: () => void; reject: (err
 // -- Tests --------------------------------------------------------------------
 
 describe("save-status", () => {
-  beforeEach(async () => {
-    setSavePending(false);
-    await trackSave(Promise.resolve());
+  beforeEach(() => {
+    resetSaveStatus();
   });
 
   it("is saved when nothing is pending", () => {
@@ -34,7 +33,7 @@ describe("save-status", () => {
 
   it("is saving while a write is in flight", async () => {
     const write = deferred();
-    const tracked = trackSave(write.promise);
+    const tracked = trackSave("project", write.promise);
     expect(getSaveStatus()).toBe("saving");
     write.resolve();
     await tracked;
@@ -42,9 +41,9 @@ describe("save-status", () => {
   });
 
   it("is failed after a failed write, and saved after the next good one", async () => {
-    await expect(trackSave(Promise.reject(new Error("quota")))).rejects.toThrow("quota");
+    await expect(trackSave("project", Promise.reject(new Error("quota")))).rejects.toThrow("quota");
     expect(getSaveStatus()).toBe("failed");
-    await trackSave(Promise.resolve());
+    await trackSave("project", Promise.resolve());
     expect(getSaveStatus()).toBe("saved");
   });
 
@@ -52,8 +51,8 @@ describe("save-status", () => {
     it("stays saving until the last of two overlapping writes settles", async () => {
       const first = deferred();
       const second = deferred();
-      const a = trackSave(first.promise);
-      const b = trackSave(second.promise);
+      const a = trackSave("project", first.promise);
+      const b = trackSave("audio", second.promise);
       first.resolve();
       await a;
       expect(getSaveStatus()).toBe("saving");
@@ -82,6 +81,20 @@ describe("save-status", () => {
       setSavePending(true);
       setSavePending(false);
       expect(calls).toBe(0);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: a failed audio write is not hidden by a later successful project write", async () => {
+      await expect(trackSave("audio", Promise.reject(new Error("quota")))).rejects.toThrow("quota");
+      await trackSave("project", Promise.resolve());
+      expect(getSaveStatus()).toBe("failed");
+    });
+
+    it("regression: a successful audio write clears only its own failure", async () => {
+      await expect(trackSave("audio", Promise.reject(new Error("quota")))).rejects.toThrow("quota");
+      await trackSave("audio", Promise.resolve());
+      expect(getSaveStatus()).toBe("saved");
     });
   });
 });

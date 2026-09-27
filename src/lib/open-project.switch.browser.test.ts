@@ -4,6 +4,7 @@ import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectIndexEntry, setProjectLastTab } from "@/lib/project-repository";
 import { buildSaveArgs } from "@/lib/project-snapshot";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
+import { getSaveStatus } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
@@ -176,6 +177,15 @@ describe("openProject", () => {
       expect(keptId).not.toBe("b");
       expect((await loadProjectRecord(keptId))?.metadata.title).toBe("Kept edit");
       expect((await loadProjectRecord("b"))?.metadata.title).toBe("Bravo");
+    });
+
+    it("moves the save status while it writes the kept copy", async () => {
+      await seedTwoProjects();
+      useProjectStore.getState().setMetadata({ title: "Kept edit" });
+      const forking = forkOpenProject();
+      expect(getSaveStatus()).toBe("saving");
+      await forking;
+      expect(getSaveStatus()).toBe("saved");
     });
   });
 });

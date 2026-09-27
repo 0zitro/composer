@@ -24,6 +24,7 @@ import {
 } from "@/lib/project-restore";
 import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
 import { isProjectDeleted } from "@/lib/project-tombstones";
+import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 
 // -- Constants ----------------------------------------------------------------
@@ -133,9 +134,9 @@ async function forkOpenProject(): Promise<string> {
   const id = createProjectId();
   adoptOpenProjectId(id);
   const args = buildSaveArgs();
-  if (args) await saveProjectRecord(id, buildSavedProject(...args));
+  if (args) await trackSave("project", saveProjectRecord(id, buildSavedProject(...args)));
   const file = playableFile(useAudioStore.getState().source);
-  if (file) await saveProjectAudio(id, file);
+  if (file) await trackSave("audio", saveProjectAudio(id, file));
   await setOpenProjectId(id);
   return id;
 }

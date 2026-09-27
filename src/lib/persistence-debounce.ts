@@ -30,11 +30,15 @@ function clearSaveTimer(): void {
 function writePendingSave(failureMessage: string): Promise<void> {
   const pending = pendingSave;
   pendingSave = null;
-  setSavePending(false);
-  if (!pending) return Promise.resolve();
-  return trackSave(saveProjectTo(pending.target, ...pending.args)).catch((err: unknown) =>
+  if (!pending) {
+    setSavePending(false);
+    return Promise.resolve();
+  }
+  const written = trackSave("project", saveProjectTo(pending.target, ...pending.args)).catch((err: unknown) =>
     console.error(LOG_PREFIX, failureMessage, err),
   );
+  setSavePending(false);
+  return written;
 }
 
 // -- Public API ---------------------------------------------------------------

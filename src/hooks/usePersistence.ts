@@ -30,7 +30,9 @@ function commitProjectSaveNow(): void {
   const args = buildSaveArgs();
   if (!args) return;
   cancelPendingSave();
-  trackSave(saveCurrentProject(...args)).catch((err) => console.error(LOG_PREFIX, "Immediate save failed:", err));
+  trackSave("stem", saveCurrentProject(...args)).catch((err) =>
+    console.error(LOG_PREFIX, "Immediate save failed:", err),
+  );
 }
 
 function rememberLastTab(tab: ProjectTab): void {
@@ -89,11 +91,13 @@ function usePersistence(): void {
       const nextFile = playableFile(state.source);
       const prevFile = playableFile(previous);
       if (nextFile && nextFile !== prevFile) {
-        trackSave(saveAudioFile(nextFile)).catch((err) => console.error(`${LOG_PREFIX} audio save failed:`, err));
+        trackSave("audio", saveAudioFile(nextFile)).catch((err) =>
+          console.error(`${LOG_PREFIX} audio save failed:`, err),
+        );
         return;
       }
       if (!nextFile && prevFile) {
-        clearAudioFile().catch((err) => console.error(`${LOG_PREFIX} audio clear failed:`, err));
+        trackSave("audio", clearAudioFile()).catch((err) => console.error(`${LOG_PREFIX} audio clear failed:`, err));
       }
     });
   }, []);
