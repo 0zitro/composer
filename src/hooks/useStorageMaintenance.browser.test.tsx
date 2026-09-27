@@ -50,6 +50,10 @@ describe("useStorageMaintenance", () => {
         screen.getByText("Freed 2.0 KB by removing vocal stems and YouTube audio you haven't opened in a while."),
       )
       .toBeInTheDocument();
+    await sleep(200);
+    await expect
+      .element(screen.getByText("Remove audio you don't need so Composer can keep saving."))
+      .not.toBeInTheDocument();
   });
 
   it("opens Save & Storage from the toast", async () => {
