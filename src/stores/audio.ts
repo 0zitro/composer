@@ -16,13 +16,14 @@ interface AudioState {
   isLoading: boolean;
   audioElement: HTMLAudioElement | null;
   youtubeLoadError: string | null;
+  youtubeFallbackSource: AudioSource;
 }
 
 interface AudioActions {
   setSource: (source: AudioSource) => void;
   setYouTubeSource: (videoId: string, file?: File) => void;
   setYouTubeFile: (file: File) => void;
-  failYouTubeLoad: (previousSource: AudioSource, error: string) => void;
+  failYouTubeLoad: (error: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
@@ -51,10 +52,18 @@ function createInitialState(): AudioState {
     isLoading: false,
     audioElement: null,
     youtubeLoadError: null,
+    youtubeFallbackSource: null,
   };
 }
 
 const INITIAL_STATE: AudioState = createInitialState();
+
+// -- Helpers ------------------------------------------------------------------
+
+function fallbackBeforeYouTubeLoad(state: AudioState): AudioSource {
+  const { source } = state;
+  return source?.type === "youtube" && !source.file ? state.youtubeFallbackSource : source;
+}
 
 // -- Store --------------------------------------------------------------------
 
@@ -68,30 +77,34 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       duration: 0,
       isPlaying: false,
       youtubeLoadError: null,
+      youtubeFallbackSource: null,
     }),
   setYouTubeSource: (videoId, file) =>
-    set({
+    set((s) => ({
       source: { type: "youtube", videoId, file },
       currentTime: 0,
       duration: 0,
       isPlaying: false,
       youtubeLoadError: null,
-    }),
+      youtubeFallbackSource: file ? null : fallbackBeforeYouTubeLoad(s),
+    })),
   setYouTubeFile: (file) =>
     set((s) => {
       if (!s.source || s.source.type !== "youtube") return {};
       return {
         source: { ...s.source, file },
+        youtubeFallbackSource: null,
       };
     }),
-  failYouTubeLoad: (previousSource, error) =>
-    set({
-      source: previousSource,
+  failYouTubeLoad: (error) =>
+    set((s) => ({
+      source: s.youtubeFallbackSource,
       currentTime: 0,
       duration: 0,
       isPlaying: false,
       youtubeLoadError: error,
-    }),
+      youtubeFallbackSource: null,
+    })),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),

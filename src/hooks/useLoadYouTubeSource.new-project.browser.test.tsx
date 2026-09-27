@@ -5,7 +5,7 @@ import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-s
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { isProjectDeleted } from "@/lib/project-tombstones";
-import { type AudioSource, useAudioStore } from "@/stores/audio";
+import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { createAudioFile } from "@/test/audio-fixtures";
@@ -51,8 +51,8 @@ function videoFile(videoId: string): File {
   return new File([new Uint8Array([1, 2, 3])], `${videoId}.opus`, { type: "audio/ogg" });
 }
 
-function failLoad(previousSource: AudioSource): void {
-  useAudioStore.getState().failYouTubeLoad(previousSource, LOAD_ERROR_MESSAGE);
+function failLoad(): void {
+  useAudioStore.getState().failYouTubeLoad(LOAD_ERROR_MESSAGE);
 }
 
 // -- Tests --------------------------------------------------------------------
@@ -75,11 +75,10 @@ describe("useLoadYouTubeSource · projects", () => {
 
   it("a failed load returns to the previous project and removes the empty new one", async () => {
     await openAlpha(true);
-    const previousSource = useAudioStore.getState().source;
     const load = await loader();
     const loading = load(VIDEO_ID);
     const id = openProjectIdSnapshot() ?? "";
-    failLoad(previousSource);
+    failLoad();
     await expect(loading).rejects.toThrow(LOAD_ERROR_MESSAGE);
     expect(openProjectIdSnapshot()).toBe("a");
     expect(useProjectStore.getState().metadata.title).toBe("Alpha");
@@ -89,12 +88,11 @@ describe("useLoadYouTubeSource · projects", () => {
   it("still removes the abandoned project when switching back to the previous one fails", async () => {
     allowConsole(/\[YouTubeSource\]/);
     await openAlpha(true);
-    const previousSource = useAudioStore.getState().source;
     const load = await loader();
     const loading = load(VIDEO_ID);
     const id = openProjectIdSnapshot() ?? "";
     await deleteProject("a");
-    failLoad(previousSource);
+    failLoad();
     await expect(loading).rejects.toThrow(LOAD_ERROR_MESSAGE);
     expect(await isProjectDeleted(id)).toBe(true);
   });
@@ -133,12 +131,11 @@ describe("useLoadYouTubeSource · projects", () => {
 
     it("a failed load keeps the new project once lyrics were typed into it", async () => {
       await openAlpha(true);
-      const previousSource = useAudioStore.getState().source;
       const load = await loader();
       const loading = load(VIDEO_ID);
       const id = openProjectIdSnapshot();
       useProjectStore.getState().setLines([{ id: "n1", text: "New words", agentId: "v1" }]);
-      failLoad(previousSource);
+      failLoad();
       await expect(loading).rejects.toThrow();
       expect(openProjectIdSnapshot()).toBe(id);
       expect(await isProjectDeleted(id ?? "")).toBe(false);

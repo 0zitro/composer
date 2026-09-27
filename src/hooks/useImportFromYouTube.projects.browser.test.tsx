@@ -121,7 +121,7 @@ describe("useImportFromYouTube · projects", () => {
     const newId = openProjectIdSnapshot();
     expect(newId).not.toBe("a");
 
-    useAudioStore.getState().failYouTubeLoad(null, "Could not load that video. Try again.");
+    useAudioStore.getState().failYouTubeLoad("Could not load that video. Try again.");
 
     await expect.poll(openProjectIdSnapshot).toBe("a");
     expect(useProjectStore.getState().metadata.title).toBe("Alpha");

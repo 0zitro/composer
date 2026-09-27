@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { flushPendingSave } from "@/lib/persistence-debounce";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { useEnsureAuth } from "@/hooks/useEnsureAuth";
-import { type AudioSource, useAudioStore } from "@/stores/audio";
+import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import {
   DEFAULT_COBALT_INSTANCE_ID,
@@ -22,6 +22,7 @@ import {
   getAudioFromBridge,
 } from "@/utils/composer-bridge-api";
 import { normalizeIsrc } from "@/utils/isrc";
+import { isYouTubeSourceFor } from "@/utils/youtube-source";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -142,13 +143,6 @@ function useResolveYouTubeTunnel(): void {
   ensureRef.current = ensureAuth;
 
   const source = useAudioStore((s) => s.source);
-  const previousSourceRef = useRef<AudioSource>(null);
-  useEffect(() => {
-    return () => {
-      previousSourceRef.current = source;
-    };
-  }, [source]);
-
   const bridgeEnabled = useSettingsStore((s) => s.experiments.youtubeBridge);
   const bridgeUrl = useSettingsStore((s) => s.composerBridgeUrl);
   const videoId = source?.type === "youtube" && !source.file ? source.videoId : null;
@@ -231,9 +225,8 @@ function useResolveYouTubeTunnel(): void {
     if (instanceId !== BRIDGE_INSTANCE_ID && !wasDefault && instanceId !== DEFAULT_COBALT_INSTANCE_ID) {
       useSettingsStore.getState().recordCobaltInstanceResult(instanceId, "error", message);
     }
-    const current = useAudioStore.getState().source;
-    if (current?.type === "youtube" && current.videoId === videoId) {
-      useAudioStore.getState().failYouTubeLoad(previousSourceRef.current, message);
+    if (isYouTubeSourceFor(useAudioStore.getState().source, videoId)) {
+      useAudioStore.getState().failYouTubeLoad(message);
     } else {
       useAudioStore.getState().setYouTubeLoadError(message);
     }
