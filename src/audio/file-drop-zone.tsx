@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react";
+import { cn } from "@/utils/cn";
+import { useCallback, useId, useRef, useState } from "react";
 
 // -- Types --------------------------------------------------------------------
 
@@ -6,6 +7,7 @@ interface FileDropZoneProps {
   accept: string;
   onFileDrop: (file: File) => void;
   children?: React.ReactNode;
+  className?: string;
 }
 
 // -- Constants ----------------------------------------------------------------
@@ -25,9 +27,9 @@ const ACCEPTED_AUDIO_TYPES = [
 
 // -- Component ----------------------------------------------------------------
 
-const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, children }) => {
+const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, children, className }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const inputId = "file-drop-input";
+  const inputId = useId();
   const dragCountRef = useRef(0);
 
   const handleFile = useCallback(
@@ -94,11 +96,12 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, childre
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`size-full flex cursor-pointer flex-col items-center justify-center p-8 transition-colors ${
-        isDragging
-          ? "border-composer-accent bg-composer-accent/10"
-          : "border-composer-border hover:border-composer-border-hover"
-      }`}
+      className={cn(
+        "size-full flex cursor-pointer flex-col items-center justify-center p-8 transition-colors",
+        "border-composer-border hover:border-composer-border-hover",
+        className,
+        isDragging && "border-composer-accent bg-composer-accent/10",
+      )}
     >
       <input
         id={inputId}

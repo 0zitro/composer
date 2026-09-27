@@ -80,3 +80,33 @@ describe("FileDropZone", () => {
     expect(input.getAttribute("aria-label")).toBe("Upload audio file");
   });
 });
+
+describe("FileDropZone ids", () => {
+  it("gives every drop zone its own input so each label opens its own picker", async () => {
+    const screen = await render(
+      <>
+        <FileDropZone accept="audio/*" onFileDrop={() => {}}>
+          first
+        </FileDropZone>
+        <FileDropZone accept="audio/*" onFileDrop={() => {}}>
+          second
+        </FileDropZone>
+      </>,
+    );
+    const labels = [...screen.container.querySelectorAll("label")];
+    expect(labels).toHaveLength(2);
+    expect(labels[0]?.htmlFor).not.toBe(labels[1]?.htmlFor);
+    expect(labels[0]?.querySelector("input")?.id).toBe(labels[0]?.htmlFor);
+  });
+
+  it("merges a className over its defaults", async () => {
+    const screen = await render(
+      <FileDropZone accept="audio/*" onFileDrop={() => {}} className="p-3.5">
+        drop
+      </FileDropZone>,
+    );
+    const label = screen.container.querySelector("label");
+    expect(label?.classList.contains("p-3.5")).toBe(true);
+    expect(label?.classList.contains("p-8")).toBe(false);
+  });
+});

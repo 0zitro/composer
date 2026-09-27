@@ -2,7 +2,7 @@ import { cn } from "@/utils/cn";
 
 // -- Types --------------------------------------------------------------------
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "destructive";
 type ButtonSize = "sm" | "md" | "icon";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -21,6 +21,8 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
   primary: "bg-composer-accent-dark hover:bg-composer-accent text-composer-on-accent",
   secondary: "bg-composer-button hover:bg-composer-button-hover text-composer-text",
   ghost: "text-composer-text-muted hover:text-composer-text hover:bg-composer-button",
+  danger: "text-composer-negative hover:bg-composer-negative/14",
+  destructive: "bg-composer-error hover:bg-[#c46262] text-white",
 };
 
 const SIZE_STYLES: Record<ButtonSize, string> = {

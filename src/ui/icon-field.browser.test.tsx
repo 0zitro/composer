@@ -1,0 +1,61 @@
+import { render } from "@/test/render";
+import { IconField } from "@/ui/icon-field";
+import { IconSearch } from "@tabler/icons-react";
+import { useState } from "react";
+import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
+
+// -- Helpers ------------------------------------------------------------------
+
+const Harness: React.FC = () => {
+  const [value, setValue] = useState("");
+  return (
+    <IconField
+      icon={IconSearch}
+      aria-label="Search projects"
+      placeholder="Search"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      trailing={<span>slash</span>}
+    />
+  );
+};
+
+// -- Tests --------------------------------------------------------------------
+
+describe("IconField", () => {
+  it("is a labelled text input with its icon hidden from assistive technology", async () => {
+    const screen = await render(<Harness />);
+    const input = screen.getByRole("textbox", { name: "Search projects" });
+    await expect.element(input).toHaveAttribute("placeholder", "Search");
+    expect(screen.container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("takes typed text from the keyboard", async () => {
+    const screen = await render(<Harness />);
+    const input = screen.getByRole("textbox", { name: "Search projects" });
+    await input.click();
+    await userEvent.keyboard("m83");
+    await expect.element(input).toHaveValue("m83");
+  });
+
+  it("renders the trailing content after the input", async () => {
+    const screen = await render(<Harness />);
+    const trailing = screen.getByText("slash").element();
+    const input = screen.getByRole("textbox", { name: "Search projects" }).element();
+    expect(input.compareDocumentPosition(trailing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  describe("regressions", () => {
+    it("regression: keys typed into the field do not reach window shortcuts", async () => {
+      const seen: string[] = [];
+      const onKey = (event: KeyboardEvent) => seen.push(event.key);
+      window.addEventListener("keydown", onKey);
+      const screen = await render(<Harness />);
+      await screen.getByRole("textbox", { name: "Search projects" }).click();
+      await userEvent.keyboard("/");
+      window.removeEventListener("keydown", onKey);
+      expect(seen).toEqual([]);
+    });
+  });
+});

@@ -24,4 +24,19 @@ describe("ProjectArt", () => {
       expect(screen.container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     });
   });
+
+  it("renders each library size with the image or the music placeholder", async () => {
+    for (const size of ["row", "dialog", "hero", "card"] as const) {
+      const screen = await render(<ProjectArt src={PIXEL} size={size} />);
+      expect(screen.container.querySelector("img")?.getAttribute("loading")).toBe("lazy");
+      await screen.unmount();
+    }
+    const placeholder = await render(<ProjectArt size="card" />);
+    expect(placeholder.container.querySelector("svg")).not.toBeNull();
+  });
+
+  it("merges a className", async () => {
+    const screen = await render(<ProjectArt size="card" className="ring-selected" />);
+    expect(screen.container.firstElementChild?.classList.contains("ring-selected")).toBe(true);
+  });
 });

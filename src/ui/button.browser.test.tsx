@@ -70,3 +70,16 @@ describe("Button", () => {
     await expect.element(screen.getByRole("button", { name: "C" })).toBeInTheDocument();
   });
 });
+
+describe("Button danger variants", () => {
+  it("renders the ghost danger and the solid destructive variants as buttons", async () => {
+    const screen = await render(
+      <>
+        <Button variant="danger">Delete</Button>
+        <Button variant="destructive">Replace project</Button>
+      </>,
+    );
+    await expect.element(screen.getByRole("button", { name: "Delete" })).toHaveClass("text-composer-negative");
+    await expect.element(screen.getByRole("button", { name: "Replace project" })).toHaveClass("bg-composer-error");
+  });
+});
