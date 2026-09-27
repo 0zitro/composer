@@ -7,6 +7,12 @@ const WEEK_MS = 7 * DAY_MS;
 
 // -- Formatting ---------------------------------------------------------------
 
+function formatShortDate(timestamp: number, now: number): string {
+  const date = new Date(timestamp);
+  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
+}
+
 function formatRelativeTime(timestamp: number, now: number): string {
   const elapsed = Math.max(0, now - timestamp);
   if (elapsed < MINUTE_MS) return "Just now";
@@ -14,11 +20,14 @@ function formatRelativeTime(timestamp: number, now: number): string {
   if (elapsed < DAY_MS) return `${Math.floor(elapsed / HOUR_MS)} h ago`;
   if (elapsed < 2 * DAY_MS) return "Yesterday";
   if (elapsed < WEEK_MS) return `${Math.floor(elapsed / DAY_MS)} days ago`;
-  const date = new Date(timestamp);
-  const sameYear = date.getFullYear() === new Date(now).getFullYear();
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
+  return formatShortDate(timestamp, now);
+}
+
+function formatRelativeTimeInline(timestamp: number, now: number): string {
+  const label = formatRelativeTime(timestamp, now);
+  return now - timestamp < WEEK_MS ? label.toLowerCase() : label;
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { formatRelativeTime };
+export { formatRelativeTime, formatRelativeTimeInline, formatShortDate };

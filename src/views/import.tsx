@@ -5,7 +5,8 @@ import { useLoadAudioFile } from "@/hooks/useLoadAudioFile";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
-import { fileNameWithoutExtension } from "@/utils/file-name";
+import { fileExtensionLabel, fileNameWithoutExtension } from "@/utils/file-name";
+import { formatFileSize } from "@/utils/format-file-size";
 import { IconBrandYoutube, IconClock, IconFile, IconLoader2, IconMusic } from "@tabler/icons-react";
 
 // -- Helpers ------------------------------------------------------------------
@@ -15,16 +16,6 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileExtension(filename: string): string {
-  return filename.split(".").pop()?.toUpperCase() || "AUDIO";
 }
 
 // -- Constants ----------------------------------------------------------------
@@ -112,7 +103,7 @@ const ImportPanel: React.FC = () => {
 
   if (source && source.type === "file") {
     const file = source.file;
-    const extension = getFileExtension(file.name);
+    const extension = fileExtensionLabel(file.name, "AUDIO");
     const fileName = fileNameWithoutExtension(file.name);
 
     return (

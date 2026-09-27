@@ -1,4 +1,4 @@
-import { formatRelativeTime } from "@/utils/format-relative-time";
+import { formatRelativeTime, formatRelativeTimeInline, formatShortDate } from "@/utils/format-relative-time";
 import { describe, expect, it } from "vitest";
 
 // -- Constants ----------------------------------------------------------------
@@ -39,6 +39,38 @@ describe("formatRelativeTime", () => {
       expect(formatRelativeTime(NOW - HOUR, NOW)).toBe("1 h ago");
       expect(formatRelativeTime(NOW - DAY, NOW)).toBe("Yesterday");
       expect(formatRelativeTime(NOW - 2 * DAY, NOW)).toBe("2 days ago");
+    });
+  });
+});
+
+describe("formatShortDate", () => {
+  it("shows the month and day in the same year and adds the year otherwise", () => {
+    expect(formatShortDate(new Date(2026, 8, 20, 9, 0, 0).getTime(), NOW)).toBe("Sep 20");
+    expect(formatShortDate(new Date(2025, 8, 20, 9, 0, 0).getTime(), NOW)).toBe("Sep 20, 2025");
+  });
+
+  describe("edge cases", () => {
+    it("shows today as a date too", () => {
+      expect(formatShortDate(NOW - MINUTE, NOW)).toBe("Sep 27");
+    });
+  });
+});
+
+describe("formatRelativeTimeInline", () => {
+  it("lowercases the words inside a week so they read inside a sentence", () => {
+    expect(formatRelativeTimeInline(NOW - 20_000, NOW)).toBe("just now");
+    expect(formatRelativeTimeInline(NOW - 12 * MINUTE, NOW)).toBe("12 min ago");
+    expect(formatRelativeTimeInline(NOW - 30 * HOUR, NOW)).toBe("yesterday");
+    expect(formatRelativeTimeInline(NOW - 3 * DAY, NOW)).toBe("3 days ago");
+  });
+
+  it("keeps the capital on a date after a week", () => {
+    expect(formatRelativeTimeInline(new Date(2026, 8, 1, 9, 0, 0).getTime(), NOW)).toBe("Sep 1");
+  });
+
+  describe("edge cases", () => {
+    it("treats a time in the future as just now", () => {
+      expect(formatRelativeTimeInline(NOW + HOUR, NOW)).toBe("just now");
     });
   });
 });
