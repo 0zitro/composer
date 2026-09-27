@@ -1,5 +1,7 @@
 import { type ProjectIndexEntry, buildIndexEntry } from "@/domain/project/index-entry";
+import { estimateRecordBytes } from "@/domain/project/record-bytes";
 import type { ProjectTab } from "@/domain/project/tab";
+import { protectStorageForFirstProject } from "@/lib/browser-storage";
 import {
   APP_STATE_STORE_NAME,
   PROJECT_AUDIO_STORE_NAME,
@@ -50,6 +52,7 @@ function indexEntryForProject(id: string, project: SavedProject, carried: IndexC
     lines: project.lines,
     audioSource: project.audioSource,
     updatedAt: project.savedAt,
+    recordBytes: estimateRecordBytes(project),
     ...carried,
   });
 }
@@ -72,7 +75,13 @@ function clearOpenProjectId(): Promise<void> {
 
 // -- Records ------------------------------------------------------------------
 
-function writeIndexEntry(tx: IDBTransaction, id: string, project: SavedProject, lastTab?: ProjectTab): void {
+function writeIndexEntry(
+  tx: IDBTransaction,
+  id: string,
+  project: SavedProject,
+  lastTab?: ProjectTab,
+  onFirstEntry?: () => void,
+): void {
   const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
   const previous = index.get(id);
   previous.onsuccess = () => {
@@ -82,36 +91,50 @@ function writeIndexEntry(tx: IDBTransaction, id: string, project: SavedProject, 
       index.put(indexEntryForProject(id, project, { ...carried, lastTab: lastTab ?? carried.lastTab }), id);
       return;
     }
-    const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
-    audio.onsuccess = () => {
-      const saved = audio.result as SavedAudioFile | undefined;
-      const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt, lastTab };
-      index.put(indexEntryForProject(id, project, carried), id);
+    const count = index.count();
+    count.onsuccess = () => {
+      const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
+      audio.onsuccess = () => {
+        const saved = audio.result as SavedAudioFile | undefined;
+        const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt, lastTab };
+        index.put(indexEntryForProject(id, project, carried), id);
+        if (count.result === 0) onFirstEntry?.();
+      };
     };
   };
 }
 
 function saveProjectRecord(id: string, project: SavedProject, lastTab?: ProjectTab): Promise<void> {
+  let createdFirstEntry = false;
   return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
     whenProjectWritable(tx, abort, id, () => {
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-      writeIndexEntry(tx, id, project, lastTab);
+      writeIndexEntry(tx, id, project, lastTab, () => {
+        createdFirstEntry = true;
+      });
     });
-  }).then(notifyProjectIndexChanged);
+  }).then(() => {
+    notifyProjectIndexChanged();
+    if (createdFirstEntry) protectStorageForFirstProject();
+  });
 }
 
 async function saveProjectRecordWithAudio(id: string, project: SavedProject, audio: File | undefined): Promise<void> {
   const saved: SavedAudioFile | undefined = audio
     ? { name: audio.name, type: audio.type, data: await audio.arrayBuffer() }
     : undefined;
+  let createdFirstEntry = false;
   await runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
     whenProjectWritable(tx, abort, id, () => {
       if (saved) tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-      writeIndexEntry(tx, id, project);
+      writeIndexEntry(tx, id, project, undefined, () => {
+        createdFirstEntry = true;
+      });
     });
   });
   notifyProjectIndexChanged();
+  if (createdFirstEntry) protectStorageForFirstProject();
 }
 
 function updateProjectRecord(id: string, update: ProjectUpdate): Promise<void> {

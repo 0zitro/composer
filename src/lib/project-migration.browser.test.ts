@@ -10,7 +10,11 @@ import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { allowConsole } from "@/test/console-guard";
 import { seedAudioFile, seedProject } from "@/test/idb";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function withExpectedWindowError<T>(run: () => Promise<T>): Promise<T> {
   const onWindowError = (event: ErrorEvent) => event.preventDefault();
@@ -120,6 +124,28 @@ describe("migrateLegacyProject", () => {
       const [a, b] = await Promise.all([migrateLegacyProject(), migrateLegacyProject()]);
       expect(a).toBe(b);
       expect(await listProjectIndex()).toHaveLength(1);
+    });
+  });
+
+  describe("storage protection", () => {
+    it("asks the browser to protect storage after moving the legacy project", async () => {
+      const persist = vi.spyOn(navigator.storage, "persist");
+      await seedProject({
+        version: 3,
+        savedAt: 1,
+        metadata: { title: "Legacy" },
+        agents: [],
+        lines: [],
+        granularity: "word",
+      });
+      await migrateLegacyProject();
+      await expect.poll(() => persist.mock.calls.length).toBe(1);
+    });
+
+    it("does not ask when there is nothing to move", async () => {
+      const persist = vi.spyOn(navigator.storage, "persist");
+      await migrateLegacyProject();
+      expect(persist).not.toHaveBeenCalled();
     });
   });
 });
