@@ -39,11 +39,21 @@ async function saveProjectAudio(id: string, file: File): Promise<void> {
   notifyStorageSignal("media-stored");
 }
 
-function deleteProjectAudio(id: string): Promise<void> {
-  return runTransaction(AUDIO_STORES, "readwrite", (tx) => {
-    tx.objectStore(PROJECT_AUDIO_STORE_NAME).delete(id);
-    patchIndexEntry(tx, id, { storedAudioBytes: 0 });
-  }).then(notifyProjectIndexChanged);
+async function deleteProjectAudio(id: string): Promise<void> {
+  let removed = false;
+  await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
+    const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME);
+    const request = audio.get(id);
+    request.onsuccess = () => {
+      if (request.result === undefined) return;
+      removed = true;
+      audio.delete(id);
+      patchIndexEntry(tx, id, { storedAudioBytes: 0 });
+    };
+  });
+  if (!removed) return;
+  notifyProjectIndexChanged();
+  notifyStorageSignal("media-removed");
 }
 
 // -- Reads --------------------------------------------------------------------
@@ -74,7 +84,7 @@ async function unindexedAudioBytes(): Promise<number> {
   return total;
 }
 
-// -- Cache removal --------------------------------------------------------------
+// -- Cache removal ------------------------------------------------------------
 
 async function removeCachedYouTubeAudio(id: string): Promise<number> {
   let freed = 0;
@@ -89,7 +99,10 @@ async function removeCachedYouTubeAudio(id: string): Promise<number> {
       freed = entry.storedAudioBytes;
     };
   });
-  if (freed > 0) notifyProjectIndexChanged();
+  if (freed > 0) {
+    notifyProjectIndexChanged();
+    notifyStorageSignal("media-removed");
+  }
   return freed;
 }
 
@@ -112,7 +125,10 @@ async function clearCachedYouTubeAudio(keepId: string | undefined): Promise<Audi
       cursor.continue();
     };
   });
-  if (removal.projects > 0) notifyProjectIndexChanged();
+  if (removal.projects > 0) {
+    notifyProjectIndexChanged();
+    notifyStorageSignal("media-removed");
+  }
   return removal;
 }
 

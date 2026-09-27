@@ -31,7 +31,7 @@ function subscribeStorageSignals(listener: StorageSignalListener): () => void {
   };
 }
 
-// -- Quota errors ---------------------------------------------------------------
+// -- Quota errors -------------------------------------------------------------
 
 function isQuotaExceededError(error: unknown): boolean {
   return error instanceof DOMException && error.name === QUOTA_EXCEEDED;
