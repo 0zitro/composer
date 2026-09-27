@@ -4,9 +4,16 @@ import {
   forgetOpenProjectId,
   openProjectIdSnapshot,
 } from "@/lib/open-project-session";
-import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
+import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave, flushPendingSave } from "@/lib/persistence-debounce";
-import { createProjectId, markProjectOpened, removeProjectData, setOpenProjectId } from "@/lib/project-repository";
+import {
+  createProjectId,
+  markProjectOpened,
+  removeProjectData,
+  saveProjectAudio,
+  saveProjectRecord,
+  setOpenProjectId,
+} from "@/lib/project-repository";
 import {
   EMPTY_RESTORE,
   applyProjectToStores,
@@ -125,11 +132,11 @@ async function forkOpenProject(): Promise<string> {
   cancelPendingSave();
   const id = createProjectId();
   adoptOpenProjectId(id);
-  await setOpenProjectId(id);
   const args = buildSaveArgs();
-  if (args) await saveCurrentProject(...args);
+  if (args) await saveProjectRecord(id, buildSavedProject(...args));
   const file = playableFile(useAudioStore.getState().source);
-  if (file) await saveAudioFile(file);
+  if (file) await saveProjectAudio(id, file);
+  await setOpenProjectId(id);
   return id;
 }
 

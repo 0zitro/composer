@@ -1,4 +1,4 @@
-import { openProject, restoreOpenProject } from "@/lib/open-project";
+import { forkOpenProject, openProject, restoreOpenProject } from "@/lib/open-project";
 import { findOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectIndexEntry, setProjectLastTab } from "@/lib/project-repository";
@@ -163,6 +163,19 @@ describe("openProject", () => {
       await switchingToB;
       expect(openProjectIdSnapshot()).toBe("b");
       expect(openTitle()).toBe("Bravo");
+    });
+  });
+
+  describe("forkOpenProject", () => {
+    it("saves to the id it created even if another switch happens while it is still saving", async () => {
+      await seedTwoProjects();
+      useProjectStore.getState().setMetadata({ title: "Kept edit" });
+      const forking = forkOpenProject();
+      await openProject("b");
+      const keptId = await forking;
+      expect(keptId).not.toBe("b");
+      expect((await loadProjectRecord(keptId))?.metadata.title).toBe("Kept edit");
+      expect((await loadProjectRecord("b"))?.metadata.title).toBe("Bravo");
     });
   });
 });
