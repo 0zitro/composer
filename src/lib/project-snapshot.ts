@@ -1,8 +1,10 @@
 import type { SavedAudioSource } from "@/domain/project/audio-source";
+import { keepsYouTubeAudio } from "@/domain/storage/audio-retention";
 import type { ProjectSaveArgs } from "@/lib/persistence";
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSeparationStore } from "@/stores/separation";
+import { useSettingsStore } from "@/stores/settings";
 
 // -- Audio --------------------------------------------------------------------
 
@@ -18,6 +20,12 @@ function playableFile(source: AudioSource): File | null {
   if (source.type === "file") return source.file;
   if (source.type === "youtube") return source.file ?? null;
   return null;
+}
+
+function storedAudioFile(source: AudioSource): File | null {
+  if (source?.type !== "youtube") return playableFile(source);
+  const settings = useSettingsStore.getState();
+  return keepsYouTubeAudio(settings.keepYouTubeAudio, settings.experiments.youtubeBridge) ? playableFile(source) : null;
 }
 
 // -- Save arguments -----------------------------------------------------------
@@ -51,4 +59,4 @@ function buildSaveArgs(): ProjectSaveArgs | null {
 
 // -- Exports ------------------------------------------------------------------
 
-export { playableFile, buildSaveArgs, currentSaveArgs };
+export { storedAudioFile, buildSaveArgs, currentSaveArgs };

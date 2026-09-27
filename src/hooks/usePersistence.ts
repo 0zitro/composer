@@ -6,7 +6,7 @@ import { cancelPendingSave, debouncedSave, flushPendingSaveQuietly } from "@/lib
 import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { setProjectLastTab } from "@/lib/project-repository";
 import { isRestoringProject } from "@/lib/project-restore";
-import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
+import { buildSaveArgs, storedAudioFile } from "@/lib/project-snapshot";
 import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
@@ -88,8 +88,8 @@ function usePersistence(): void {
       prevSource = state.source;
       if (isRestoringProject()) return;
 
-      const nextFile = playableFile(state.source);
-      const prevFile = playableFile(previous);
+      const nextFile = storedAudioFile(state.source);
+      const prevFile = storedAudioFile(previous);
       if (nextFile && nextFile !== prevFile) {
         trackSave("audio", saveAudioFile(nextFile)).catch((err) =>
           console.error(`${LOG_PREFIX} audio save failed:`, err),

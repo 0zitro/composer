@@ -23,7 +23,7 @@ import {
   loadProjectForRestore,
   type RestorePayload,
 } from "@/lib/project-restore";
-import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
+import { buildSaveArgs, storedAudioFile } from "@/lib/project-snapshot";
 import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
@@ -176,7 +176,7 @@ async function forkOpenProject(): Promise<string> {
   const args = buildSaveArgs();
   if (args)
     await trackSave("project", saveProjectRecord(id, buildSavedProject(...args), useProjectStore.getState().activeTab));
-  const file = playableFile(useAudioStore.getState().source);
+  const file = storedAudioFile(useAudioStore.getState().source);
   if (file) await trackSave("audio", saveProjectAudio(id, file));
   await setOpenProjectId(id);
   return id;
