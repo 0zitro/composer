@@ -115,7 +115,7 @@ describe("loadProjectForRestore · LAME priming", () => {
   });
 });
 
-describe("usePersistence priming-stripped flag survives the post-load debounced save", () => {
+describe("usePersistence priming-stripped flag survives the boot restore", () => {
   const initialAutoSaveDelay = useSettingsStore.getState().autoSaveDelay;
 
   beforeEach(async () => {
@@ -135,7 +135,7 @@ describe("usePersistence priming-stripped flag survives the post-load debounced 
     throw new Error("project store never hydrated");
   }
 
-  it("regression: post-migration debounced save does not overwrite primingStripped with false", async () => {
+  it("regression: the restore write-back does not overwrite primingStripped with false", async () => {
     const mp3 = createMp3File();
     expect(parseLamePriming(await mp3.arrayBuffer()).samples).toBeGreaterThan(0);
     await saveAudioFile(mp3);
@@ -162,7 +162,7 @@ describe("usePersistence priming-stripped flag survives the post-load debounced 
     expect(reloaded?.primingStripped).toBe(true);
   });
 
-  it("flag stays true after debounced save even when audio has zero priming", async () => {
+  it("flag stays true after the boot restore even when audio has zero priming", async () => {
     const noPrimingMp3 = new File([new Uint8Array([0, 1, 2, 3])], "not-mp3.bin", { type: "audio/mpeg" });
     await saveAudioFile(noPrimingMp3);
     await saveCurrentProject(

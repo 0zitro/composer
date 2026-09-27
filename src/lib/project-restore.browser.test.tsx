@@ -101,10 +101,11 @@ describe("project-restore", () => {
       expect(useProjectStore.getState().agents.length).toBeGreaterThan(0);
     });
 
-    it("upgrades an old record and writes it back once", async () => {
+    it("upgrades an old record without moving its edit time", async () => {
       await seedStoredProject("p1", { project: { version: 1, lines: [createLine({ text: "hello" })] } });
       await loadProjectForRestore("p1");
       expect((await loadProjectRecord("p1"))?.version).toBe(SAVED_PROJECT_VERSION);
+      expect((await loadProjectRecord("p1"))?.savedAt).toBe(1_758_900_000_000);
     });
   });
 
