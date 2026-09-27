@@ -153,6 +153,10 @@ function buildBridgeAudioFile(buffer: ArrayBuffer, mimeType: string, videoId: st
   return new File([buffer], `${videoId}.${extensionForBridgeMime(mimeType)}`, { type: mimeType });
 }
 
+function isBridgeUnreachable(error: unknown): boolean {
+  return error instanceof BridgeError && error.code === "unreachable";
+}
+
 function formatBridgeErrorForToast(err: unknown): string {
   if (err instanceof BridgeError) {
     switch (err.code) {
@@ -177,6 +181,7 @@ export {
   getAudioFromBridge,
   getThumbFromBridge,
   formatBridgeErrorForToast,
+  isBridgeUnreachable,
   composeAbortSignals,
   normalizeBaseUrl,
   decodeHeader,

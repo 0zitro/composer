@@ -20,6 +20,7 @@ import {
   buildBridgeAudioFile,
   formatBridgeErrorForToast,
   getAudioFromBridge,
+  isBridgeUnreachable,
 } from "@/utils/composer-bridge-api";
 import { normalizeIsrc } from "@/utils/isrc";
 import { isYouTubeSourceFor } from "@/utils/youtube-source";
@@ -226,7 +227,9 @@ function useResolveYouTubeTunnel(): void {
       useSettingsStore.getState().recordCobaltInstanceResult(instanceId, "error", message);
     }
     if (isYouTubeSourceFor(useAudioStore.getState().source, videoId)) {
-      useAudioStore.getState().failYouTubeLoad(message);
+      useAudioStore
+        .getState()
+        .failYouTubeLoad(message, isBridgeUnreachable(cause) ? "bridge-unreachable" : "fetch-failed");
     } else {
       useAudioStore.getState().setYouTubeLoadError(message);
     }

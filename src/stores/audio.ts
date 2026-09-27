@@ -1,9 +1,11 @@
+import type { SavedAudioSource } from "@/domain/project/audio-source";
 import { useSettingsStore } from "@/stores/settings";
 import { create } from "zustand";
 
 // -- Types --------------------------------------------------------------------
 
 type AudioSource = { type: "file"; file: File } | { type: "youtube"; videoId: string; file?: File } | null;
+type YouTubeLoadFailure = "bridge-unreachable" | "fetch-failed";
 
 interface AudioState {
   source: AudioSource;
@@ -16,14 +18,17 @@ interface AudioState {
   isLoading: boolean;
   audioElement: HTMLAudioElement | null;
   youtubeLoadError: string | null;
+  youtubeLoadFailure: YouTubeLoadFailure | null;
   youtubeFallbackSource: AudioSource;
+  expectedAudio: SavedAudioSource | null;
 }
 
 interface AudioActions {
   setSource: (source: AudioSource) => void;
   setYouTubeSource: (videoId: string, file?: File) => void;
   setYouTubeFile: (file: File) => void;
-  failYouTubeLoad: (error: string) => void;
+  expectProjectAudio: (saved: SavedAudioSource) => void;
+  failYouTubeLoad: (error: string, failure?: YouTubeLoadFailure) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
@@ -52,7 +57,9 @@ function createInitialState(): AudioState {
     isLoading: false,
     audioElement: null,
     youtubeLoadError: null,
+    youtubeLoadFailure: null,
     youtubeFallbackSource: null,
+    expectedAudio: null,
   };
 }
 
@@ -77,7 +84,9 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       duration: 0,
       isPlaying: false,
       youtubeLoadError: null,
+      youtubeLoadFailure: null,
       youtubeFallbackSource: null,
+      expectedAudio: null,
     }),
   setYouTubeSource: (videoId, file) =>
     set((s) => ({
@@ -86,7 +95,9 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       duration: 0,
       isPlaying: false,
       youtubeLoadError: null,
+      youtubeLoadFailure: null,
       youtubeFallbackSource: file ? null : fallbackBeforeYouTubeLoad(s),
+      expectedAudio: null,
     })),
   setYouTubeFile: (file) =>
     set((s) => {
@@ -94,15 +105,29 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
       return {
         source: { ...s.source, file },
         youtubeFallbackSource: null,
+        youtubeLoadFailure: null,
+        expectedAudio: null,
       };
     }),
-  failYouTubeLoad: (error) =>
+  expectProjectAudio: (saved) =>
+    set({
+      source: saved.kind === "youtube" ? { type: "youtube", videoId: saved.videoId } : null,
+      currentTime: 0,
+      duration: 0,
+      isPlaying: false,
+      youtubeLoadError: null,
+      youtubeLoadFailure: null,
+      youtubeFallbackSource: null,
+      expectedAudio: saved,
+    }),
+  failYouTubeLoad: (error, failure = "fetch-failed") =>
     set((s) => ({
       source: s.youtubeFallbackSource,
       currentTime: 0,
       duration: 0,
       isPlaying: false,
       youtubeLoadError: error,
+      youtubeLoadFailure: failure,
       youtubeFallbackSource: null,
     })),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
@@ -130,4 +155,4 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
 }));
 
 export { useAudioStore };
-export type { AudioSource };
+export type { AudioSource, YouTubeLoadFailure };

@@ -192,3 +192,66 @@ describe("useAudioStore - setPlaybackRate", () => {
     expect(useSettingsStore.getState().defaultPlaybackRate).toBe(1);
   });
 });
+
+describe("useAudioStore - expected audio", () => {
+  it("expects a missing local file without a source", () => {
+    useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+    const state = useAudioStore.getState();
+    expect(state.source).toBeNull();
+    expect(state.expectedAudio).toEqual({ kind: "file", name: "city.wav" });
+  });
+
+  it("expects YouTube audio by starting its fetch", () => {
+    useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+    const state = useAudioStore.getState();
+    expect(state.source).toEqual({ type: "youtube", videoId: "dQw4w9WgXcQ" });
+    expect(state.expectedAudio).toEqual({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+    expect(state.youtubeFallbackSource).toBeNull();
+  });
+
+  it("keeps the expected audio and records why when the fetch fails", () => {
+    useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+    useAudioStore.getState().failYouTubeLoad("Composer Bridge is not running.", "bridge-unreachable");
+    const state = useAudioStore.getState();
+    expect(state.source).toBeNull();
+    expect(state.expectedAudio).toEqual({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+    expect(state.youtubeLoadError).toBe("Composer Bridge is not running.");
+    expect(state.youtubeLoadFailure).toBe("bridge-unreachable");
+  });
+
+  it("clears the expected audio once the audio arrives", () => {
+    useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+    useAudioStore.getState().setYouTubeFile(new File([new Uint8Array([1])], "song.opus"));
+    expect(useAudioStore.getState().expectedAudio).toBeNull();
+  });
+
+  it("clears the expected audio when another source replaces it", () => {
+    useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+    useAudioStore.getState().setSource({ type: "file", file: new File([new Uint8Array([1])], "other.wav") });
+    expect(useAudioStore.getState().expectedAudio).toBeNull();
+    useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+    expect(useAudioStore.getState().expectedAudio).toBeNull();
+  });
+
+  describe("edge cases", () => {
+    it("a failure without a reason reads as a fetch failure", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+      useAudioStore.getState().failYouTubeLoad("Nope");
+      expect(useAudioStore.getState().youtubeLoadFailure).toBe("fetch-failed");
+    });
+
+    it("expecting audio again clears the last failure", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+      useAudioStore.getState().failYouTubeLoad("Nope", "bridge-unreachable");
+      useAudioStore.getState().expectProjectAudio({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+      expect(useAudioStore.getState()).toMatchObject({ youtubeLoadError: null, youtubeLoadFailure: null });
+    });
+
+    it("reset forgets the expected audio", () => {
+      useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+      useAudioStore.getState().reset();
+      expect(useAudioStore.getState().expectedAudio).toBeNull();
+    });
+  });
+});

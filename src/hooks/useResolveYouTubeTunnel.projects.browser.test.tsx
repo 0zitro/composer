@@ -11,6 +11,7 @@ import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { allowConsole } from "@/test/console-guard";
+import { installFakeBridge } from "@/test/fake-bridge";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
@@ -53,7 +54,7 @@ async function openAlphaWithTunnel(): Promise<void> {
 describe("useResolveYouTubeTunnel · projects", () => {
   beforeEach(() => {
     useSettingsStore.setState({ experiments: { youtubeBridge: true }, composerBridgeUrl: DEFAULT_BRIDGE_URL });
-    vi.stubGlobal("fetch", async () => new Response(null, { status: 502 }));
+    installFakeBridge();
   });
 
   afterEach(() => {

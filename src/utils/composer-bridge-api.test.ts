@@ -7,6 +7,7 @@ import {
   extensionForBridgeMime,
   formatBridgeErrorForToast,
   getAudioFromBridge,
+  isBridgeUnreachable,
   normalizeBaseUrl,
 } from "@/utils/composer-bridge-api";
 
@@ -328,6 +329,18 @@ describe("formatBridgeErrorForToast", () => {
     expect(formatBridgeErrorForToast(new Error("boom"))).toMatch(/unknown reason/);
     expect(formatBridgeErrorForToast("string error")).toMatch(/unknown reason/);
     expect(formatBridgeErrorForToast(null)).toMatch(/unknown reason/);
+  });
+});
+
+// -- isBridgeUnreachable -------------------------------------------------------
+
+describe("isBridgeUnreachable", () => {
+  it("is true only for a bridge that could not be reached", () => {
+    expect(isBridgeUnreachable(new BridgeError("unreachable", "down"))).toBe(true);
+    expect(isBridgeUnreachable(new BridgeError("timeout", "slow"))).toBe(false);
+    expect(isBridgeUnreachable(new BridgeError("http", "502", 502))).toBe(false);
+    expect(isBridgeUnreachable(new Error("unreachable"))).toBe(false);
+    expect(isBridgeUnreachable(undefined)).toBe(false);
   });
 });
 

@@ -40,6 +40,7 @@ function hadStoredAudio(source: AudioSource): boolean {
 
 function currentSaveArgs(): ProjectSaveArgs {
   const projectState = useProjectStore.getState();
+  const audioState = useAudioStore.getState();
   return [
     projectState.metadata,
     projectState.agents,
@@ -47,7 +48,7 @@ function currentSaveArgs(): ProjectSaveArgs {
     projectState.groups,
     projectState.granularity,
     projectState.syllableSplitDefaults,
-    toSavedAudioSource(useAudioStore.getState().source),
+    toSavedAudioSource(audioState.source) ?? audioState.expectedAudio ?? undefined,
     projectState.dismissedSuggestions,
     projectState.dismissedExplicitSuggestions,
     useSeparationStore.getState().currentStem,
@@ -59,9 +60,10 @@ function currentSaveArgs(): ProjectSaveArgs {
 
 function buildSaveArgs(): ProjectSaveArgs | null {
   const projectState = useProjectStore.getState();
+  const audioState = useAudioStore.getState();
   // An audio-only session still saves: the stem and the audio source kind must survive a reload.
   const hasContent = projectState.lines.length > 0 || projectState.metadata.title;
-  if (!hasContent && useAudioStore.getState().source === null) return null;
+  if (!hasContent && audioState.source === null && audioState.expectedAudio === null) return null;
   return currentSaveArgs();
 }
 

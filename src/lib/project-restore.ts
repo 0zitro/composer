@@ -80,8 +80,9 @@ function applySavedProject(project: SavedProject, audio: File | undefined): void
   if (project.currentStem) useSeparationStore.getState().restoreCurrentStem(project.currentStem);
 
   const savedSource = project.audioSource;
-  if (savedSource?.kind === "youtube") useAudioStore.getState().setYouTubeSource(savedSource.videoId, audio);
+  if (savedSource?.kind === "youtube" && audio) useAudioStore.getState().setYouTubeSource(savedSource.videoId, audio);
   else if (audio) useAudioStore.getState().setSource({ type: "file", file: audio });
+  else if (savedSource) useAudioStore.getState().expectProjectAudio(savedSource);
 
   const state = useProjectStore.getState();
   state.setMetadata(normalizeLoadedMetadata(project.metadata));
