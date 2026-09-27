@@ -6,7 +6,7 @@ import { getSaveStatus } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { allowConsole } from "@/test/console-guard";
-import { deleteDatabase } from "@/test/idb";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { render } from "@/test/render";
 
 // -- Helpers ------------------------------------------------------------------
@@ -15,18 +15,6 @@ const PersistenceHost: React.FC = () => {
   usePersistence();
   return null;
 };
-
-function openAndCloseAtVersion(name: string, version: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onupgradeneeded = () => {};
-    request.onsuccess = () => {
-      request.result.close();
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
 
 // -- Tests --------------------------------------------------------------------
 

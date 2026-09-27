@@ -12,20 +12,8 @@ import { DB_NAME } from "@/lib/persistence-idb";
 import { listProjectIndex } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
-import { deleteDatabase, seedAudioFile, seedProject } from "@/test/idb";
+import { deleteDatabase, openAndCloseAtVersion, seedAudioFile, seedProject } from "@/test/idb";
 import { describe, expect, it } from "vitest";
-
-function openAndCloseAtVersion(name: string, version: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onupgradeneeded = () => {};
-    request.onsuccess = () => {
-      request.result.close();
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
 
 function save(title: string): Promise<void> {
   return saveCurrentProject(

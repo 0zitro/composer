@@ -28,6 +28,18 @@ function deleteDatabase(name: string): Promise<void> {
   });
 }
 
+function openAndCloseAtVersion(name: string, version: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onupgradeneeded = () => {};
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // -- Exports -------------------------------------------------------------------
 
-export { seedProject, seedAudioFile, deleteDatabase };
+export { seedProject, seedAudioFile, deleteDatabase, openAndCloseAtVersion };

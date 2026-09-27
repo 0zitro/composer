@@ -8,23 +8,9 @@ import { clearRecoveryStorage } from "@/lib/recovery";
 import { getSaveStatus, subscribeSaveStatus } from "@/lib/save-status";
 import { useSettingsStore } from "@/stores/settings";
 import { allowConsole } from "@/test/console-guard";
-import { deleteDatabase } from "@/test/idb";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { saveArgsTitled } from "@/test/projects";
 import { beforeEach, describe, expect, it } from "vitest";
-
-// -- Helpers ------------------------------------------------------------------
-
-function openAndCloseAtVersion(name: string, version: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onupgradeneeded = () => {};
-    request.onsuccess = () => {
-      request.result.close();
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
 
 // -- Tests --------------------------------------------------------------------
 

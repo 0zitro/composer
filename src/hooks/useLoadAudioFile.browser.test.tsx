@@ -10,7 +10,7 @@ import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { createLine } from "@/test/factories";
-import { deleteDatabase } from "@/test/idb";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { Toaster } from "sonner";
@@ -30,18 +30,6 @@ const PersistenceHost: React.FC = () => {
   usePersistence();
   return <Toaster />;
 };
-
-function openAndCloseAtVersion(name: string, version: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onupgradeneeded = () => {};
-    request.onsuccess = () => {
-      request.result.close();
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
 
 async function openAlpha(options: { lyrics: boolean; audio: boolean }): Promise<OpenedAlpha> {
   const audio = options.audio ? createAudioFile("alpha.wav") : undefined;

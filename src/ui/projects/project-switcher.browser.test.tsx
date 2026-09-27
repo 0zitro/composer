@@ -6,7 +6,7 @@ import { removeProjectData } from "@/lib/project-repository";
 import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
-import { deleteDatabase } from "@/test/idb";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { ProjectSwitcher } from "@/ui/projects/project-switcher";
@@ -33,18 +33,6 @@ async function renderSwitcher(onClose: () => void = () => undefined) {
   const screen = await render(<ProjectSwitcher onClose={onClose} />);
   await expect.element(screen.getByRole("option").first()).toBeInTheDocument();
   return screen;
-}
-
-function openAndCloseAtVersion(name: string, version: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onupgradeneeded = () => {};
-    request.onsuccess = () => {
-      request.result.close();
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
-  });
 }
 
 // -- Tests --------------------------------------------------------------------
