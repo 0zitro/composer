@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { useAudioStore } from "@/stores/audio";
 import { Button } from "@/ui/button";
-import { extractVideoId } from "@/utils/youtube-url";
+import { INVALID_YOUTUBE_LINK_MESSAGE, extractVideoId } from "@/utils/youtube-url";
 
 // -- Component ----------------------------------------------------------------
 
@@ -25,7 +25,7 @@ const YouTubeUrlInput: React.FC<YouTubeUrlInputProps> = ({
   const handleSubmit = useCallback(async () => {
     const videoId = extractVideoId(value);
     if (!videoId) {
-      setError("That doesn't look like a valid YouTube URL or ID");
+      setError(INVALID_YOUTUBE_LINK_MESSAGE);
       return;
     }
     setError(null);
