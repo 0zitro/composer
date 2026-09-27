@@ -92,15 +92,41 @@ describe("Modal", () => {
 
   it("renders an icon-only close button next to the title that fires onClose", async () => {
     let closeCalls = 0;
-    await render(
+    const screen = await render(
       <Modal isOpen onClose={() => closeCalls++} title="Tour">
         <div>Body</div>
       </Modal>,
     );
+    await expect.element(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     const titleBar = document.querySelector("#modal-title")?.parentElement;
     const closeButton = titleBar?.querySelector("button");
     expect(closeButton).not.toBeNull();
     closeButton?.click();
     expect(closeCalls).toBeGreaterThan(0);
+  });
+
+  // -- Role and description ----------------------------------------------------
+
+  it("defaults to the dialog role and takes no describedby when unset", async () => {
+    const screen = await render(
+      <Modal isOpen onClose={() => {}} title="Settings">
+        <div>Body</div>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Settings" });
+    await expect.element(dialog).toBeInTheDocument();
+    expect(dialog.element().hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("supports an alertdialog role with aria-describedby, additive to other callers", async () => {
+    const screen = await render(
+      <Modal isOpen onClose={() => {}} title="Danger" role="alertdialog" describedById="modal-danger-body">
+        <div>Body copy</div>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("alertdialog", { name: "Danger" });
+    await expect.element(dialog).toBeInTheDocument();
+    expect(dialog.element().getAttribute("aria-describedby")).toBe("modal-danger-body");
+    expect(document.getElementById("modal-danger-body")?.textContent).toBe("Body copy");
   });
 });

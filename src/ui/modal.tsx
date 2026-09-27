@@ -15,6 +15,8 @@ interface ModalProps {
   className?: string;
   bodyClassName?: string;
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  role?: "dialog" | "alertdialog";
+  describedById?: string;
 }
 
 // -- Component ----------------------------------------------------------------
@@ -27,6 +29,8 @@ const Modal: React.FC<ModalProps> = ({
   className,
   bodyClassName,
   initialFocusRef,
+  role = "dialog",
+  describedById,
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const { refs, context } = useFloating({ open: isOpen, onOpenChange: (open) => !open && onClose() });
@@ -71,7 +75,9 @@ const Modal: React.FC<ModalProps> = ({
           <dialog
             ref={refs.setFloating as unknown as React.Ref<HTMLDialogElement>}
             open
+            role={role}
             aria-labelledby={title ? "modal-title" : undefined}
+            aria-describedby={describedById}
             tabIndex={-1}
             className={cn(
               "relative w-full max-w-md mx-4 border shadow-2xl text-composer-text rounded-xl bg-composer-bg-dark border-composer-border focus:outline-none overflow-clip",
@@ -83,12 +89,14 @@ const Modal: React.FC<ModalProps> = ({
                 <h2 id="modal-title" className="text-lg font-medium">
                   {title}
                 </h2>
-                <Button size="icon" variant="ghost" onClick={onClose}>
+                <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close">
                   <IconX className="size-5" />
                 </Button>
               </div>
             )}
-            <div className={cn(title ? "p-5" : "p-5 pt-4", bodyClassName)}>{children}</div>
+            <div id={describedById} className={cn(title ? "p-5" : "p-5 pt-4", bodyClassName)}>
+              {children}
+            </div>
           </dialog>
         </div>
       </FloatingFocusManager>

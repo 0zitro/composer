@@ -1,4 +1,5 @@
 import type { ImportConflict } from "@/lib/project-import";
+import { toast } from "sonner";
 import { create } from "zustand";
 
 // -- Types --------------------------------------------------------------------
@@ -27,6 +28,7 @@ const useImportConflictStore = create<ImportConflictState>((set, get) => ({
   ask: (conflict) => {
     if (get().conflict) {
       console.warn(LOG_PREFIX, "a conflict prompt is already open; cancelling the second import");
+      toast.warning("Finish the current import first");
       return Promise.resolve("cancel");
     }
     return new Promise<ImportConflictChoice>((resolve) => {

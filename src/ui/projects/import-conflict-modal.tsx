@@ -5,6 +5,11 @@ import { Button } from "@/ui/button";
 import { Modal } from "@/ui/modal";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { formatRelativeTimeInline, formatShortDate } from "@/utils/format-relative-time";
+import { useRef } from "react";
+
+// -- Constants ----------------------------------------------------------------
+
+const DESCRIBED_BY_ID = "import-conflict-body";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -18,13 +23,22 @@ const ImportConflictModalHost: React.FC = () => {
   const conflict = useImportConflictStore((state) => state.conflict);
   const askedAt = useImportConflictStore((state) => state.askedAt);
   const answer = useImportConflictStore((state) => state.answer);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   if (!conflict) return null;
 
   const { existing, file } = conflict;
   const summary = projectFileSummary(file);
 
   return (
-    <Modal isOpen onClose={() => answer("cancel")} title="Project already in your library" className="max-w-md">
+    <Modal
+      isOpen
+      onClose={() => answer("cancel")}
+      title="Project already in your library"
+      className="max-w-md"
+      role="alertdialog"
+      describedById={DESCRIBED_BY_ID}
+      initialFocusRef={cancelRef}
+    >
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <ProjectArt src={existing.thumbnailDataUrl} size="dialog" />
@@ -46,7 +60,7 @@ const ImportConflictModalHost: React.FC = () => {
           </dd>
         </dl>
         <div className="flex justify-end gap-2 pt-1 select-none">
-          <Button variant="ghost" onClick={() => answer("cancel")}>
+          <Button ref={cancelRef} variant="ghost" onClick={() => answer("cancel")}>
             Cancel
           </Button>
           <Button variant="secondary" onClick={() => answer("keep-both")}>

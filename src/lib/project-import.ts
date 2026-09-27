@@ -3,9 +3,10 @@ import { byMostRecentlyEdited } from "@/domain/project/library-order";
 import { openProject, reloadOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { hiddenProjectIdsSnapshot } from "@/lib/pending-deletions";
-import { cancelPendingSave } from "@/lib/persistence-debounce";
+import { flushPendingSave } from "@/lib/persistence-debounce";
 import { type ProjectFile, readProjectFile, savedProjectFromFile } from "@/lib/project-file";
 import { createProjectId, listProjectIndex, saveProjectRecord, updateProjectRecord } from "@/lib/project-repository";
+import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
 import { toast } from "sonner";
 
@@ -62,7 +63,7 @@ async function importProjectAsNew(file: ProjectFile): Promise<string> {
 
 async function replaceProjectFromFile(id: string, file: ProjectFile): Promise<void> {
   const replacesOpenProject = id === openProjectIdSnapshot();
-  if (replacesOpenProject) cancelPendingSave();
+  if (replacesOpenProject) await flushPendingSave();
   await updateProjectRecord(id, (existing) => ({
     ...savedProjectFromFile(file, Date.now()),
     audioSource: existing.audioSource ?? file.audioSource,
@@ -95,8 +96,14 @@ async function importProjectFile(file: File): Promise<string | null> {
     if (choice === "cancel") return null;
     let id: string;
     if (choice === "replace" && conflict) {
-      id = conflict.existing.id;
-      await replaceProjectFromFile(id, projectFile);
+      try {
+        id = conflict.existing.id;
+        await replaceProjectFromFile(id, projectFile);
+      } catch (error) {
+        if (!(error instanceof ProjectDeletedError)) throw error;
+        console.warn(LOG_PREFIX, "the project to replace no longer exists; importing as a new project instead", error);
+        id = await importProjectAsNew(projectFile);
+      }
     } else {
       id = await importProjectAsNew(projectFile);
     }

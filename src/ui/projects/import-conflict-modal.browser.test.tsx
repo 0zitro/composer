@@ -83,7 +83,7 @@ describe("import conflict dialog", () => {
     expect(useProjectStore.getState().lines[0]?.text).toBe("File line");
   });
 
-  it("matches a different project id by the same YouTube video", async () => {
+  it("matches a different project id by the same YouTube video, and cancelling writes nothing", async () => {
     await seedStoredProject("v", {
       project: { ...songTitled("Video"), audioSource: { kind: "youtube", videoId: "dX3k_QDnzHE" } },
     });
@@ -91,6 +91,21 @@ describe("import conflict dialog", () => {
     const project = storedProject({ ...songTitled("Video"), audioSource: { kind: "youtube", videoId: "dX3k_QDnzHE" } });
     const pending = importProjectFile(new File([JSON.stringify(projectFileFrom("other", project))], "v.json"));
     await expect.element(screen.getByRole("heading", { name: "Project already in your library" })).toBeInTheDocument();
+    await screen.getByRole("button", { name: "Cancel" }).click();
+    expect(await pending).toBeNull();
+    expect(await listProjectIndex()).toHaveLength(1);
+  });
+
+  it("shows the alertdialog role wired to the summary text, focused on Cancel", async () => {
+    await seedAlpha();
+    const screen = await render(<ImportConflictModalHost />);
+    const pending = importProjectFile(fileFrom("a", "Alpha", "File line"));
+    const dialog = screen.getByRole("alertdialog", { name: "Project already in your library" });
+    await expect.element(dialog).toBeInTheDocument();
+    const describedById = dialog.element().getAttribute("aria-describedby");
+    expect(describedById).not.toBeNull();
+    expect(document.getElementById(describedById as string)?.textContent).toContain("In the file");
+    await expect.poll(() => document.activeElement?.textContent).toBe("Cancel");
     await screen.getByRole("button", { name: "Cancel" }).click();
     await pending;
   });
