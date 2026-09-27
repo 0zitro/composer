@@ -47,11 +47,31 @@ describe("createStorageMaintenance", () => {
     expect(await listStemJobs()).toEqual([]);
   });
 
-  it("two checks at once never remove the same stems twice", async () => {
+  it("serializes concurrent checks so no two runs ever overlap", async () => {
     await putStem("h1", "vocals", "fp32", new Blob([new Uint8Array(8)]));
-    const { controller } = maintenance(0);
-    const [first, second] = await Promise.all([controller.checkNow("scheduled"), controller.checkNow("scheduled")]);
-    expect(first.removedStemJobs + second.removedStemJobs).toBe(1);
+    const events: string[] = [];
+    const results: CleanupResult[] = [];
+    let running = false;
+    let overlapped = false;
+    const controller = createStorageMaintenance({
+      readContext: () => {
+        if (running) overlapped = true;
+        running = true;
+        events.push("start");
+        return { smartCleanup: true, limitBytes: 0, openStemJobKey: null };
+      },
+      onCleaned: (result) => {
+        running = false;
+        events.push("end");
+        results.push(result);
+      },
+      delayMs: 20,
+    });
+    disposers.push(controller.dispose);
+    await Promise.all([controller.checkNow("scheduled"), controller.checkNow("scheduled")]);
+    expect(overlapped).toBe(false);
+    expect(events).toEqual(["start", "end", "start", "end"]);
+    expect(results.reduce((sum, result) => sum + result.removedStemJobs, 0)).toBe(1);
   });
 
   it("still reports the result if the cleanup itself throws on a quota error", async () => {
