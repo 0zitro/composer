@@ -1,0 +1,162 @@
+import { PROJECT_CHANNEL_NAME } from "@/lib/project-channel";
+import { restoreOpenProject } from "@/lib/open-project";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { removeProjectData } from "@/lib/project-repository";
+import { useProjectStore } from "@/stores/project";
+import { createLine } from "@/test/factories";
+import { render } from "@/test/render";
+import { seedStoredProject, songTitled } from "@/test/projects";
+import { ProjectSwitcher } from "@/ui/projects/project-switcher";
+import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
+
+// -- Helpers ------------------------------------------------------------------
+
+async function seedLibrary(): Promise<void> {
+  await seedStoredProject("a", { open: true, project: { ...songTitled("Alpha"), savedAt: 40 } });
+  await seedStoredProject("b", {
+    project: {
+      metadata: { title: "Bravo", artists: ["The Band"], album: "First", duration: 0 },
+      savedAt: 20,
+      lines: [createLine({ text: "one", begin: 1, end: 2 }), createLine({ text: "two", begin: 3, end: 4 })],
+    },
+  });
+  await seedStoredProject("c", { project: { ...songTitled("Charlie"), savedAt: 30, lines: [] } });
+  await restoreOpenProject();
+}
+
+async function renderSwitcher(onClose: () => void = () => undefined) {
+  const screen = await render(<ProjectSwitcher onClose={onClose} />);
+  await expect.element(screen.getByRole("option").first()).toBeInTheDocument();
+  return screen;
+}
+
+// -- Tests --------------------------------------------------------------------
+
+describe("ProjectSwitcher", () => {
+  it("lists the other projects, newest first, and leaves out the open one", async () => {
+    await seedLibrary();
+    const screen = await renderSwitcher();
+    const names = screen
+      .getByRole("option")
+      .elements()
+      .map((option) => option.textContent ?? "");
+    expect(names).toHaveLength(2);
+    expect(names[0]).toContain("Charlie");
+    expect(names[1]).toContain("Bravo");
+    expect(screen.container.textContent).not.toContain("Alpha");
+  });
+
+  it("shows each project's progress", async () => {
+    await seedLibrary();
+    const screen = await renderSwitcher();
+    await expect.element(screen.getByRole("img", { name: "Synced" })).toBeInTheDocument();
+    await expect.element(screen.getByText("No lyrics")).toBeInTheDocument();
+  });
+
+  it("filters as you type and says when nothing matches", async () => {
+    await seedLibrary();
+    const screen = await renderSwitcher();
+    const search = screen.getByRole("combobox", { name: "Search projects" });
+    await search.fill("band");
+    await expect.poll(() => screen.getByRole("option").elements().length).toBe(1);
+    await search.fill("zzz");
+    await expect.element(screen.getByText("No projects match “zzz”")).toBeInTheDocument();
+  });
+
+  it("opens a project on click and closes", async () => {
+    await seedLibrary();
+    let closes = 0;
+    const screen = await renderSwitcher(() => closes++);
+    await screen.getByRole("option", { name: /Bravo/ }).click();
+    expect(closes).toBe(1);
+    await expect.poll(openProjectIdSnapshot).toBe("b");
+    expect(useProjectStore.getState().metadata.title).toBe("Bravo");
+  });
+
+  it("starts a new project from the footer", async () => {
+    await seedLibrary();
+    let closes = 0;
+    const screen = await renderSwitcher(() => closes++);
+    await screen.getByRole("button", { name: /New project/ }).click();
+    expect(closes).toBe(1);
+    expect(openProjectIdSnapshot()).not.toBe("a");
+    expect(useProjectStore.getState().metadata.title).toBe("");
+  });
+
+  describe("keyboard", () => {
+    it("ArrowDown and ArrowUp move the active option, and Enter opens it", async () => {
+      await seedLibrary();
+      const screen = await renderSwitcher();
+      const search = screen.getByRole("combobox", { name: "Search projects" });
+      await search.click();
+      const options = screen.getByRole("option");
+      await expect.element(options.nth(0)).toHaveAttribute("aria-selected", "true");
+      await userEvent.keyboard("{ArrowDown}");
+      await expect.element(options.nth(1)).toHaveAttribute("aria-selected", "true");
+      await expect
+        .element(search)
+        .toHaveAttribute("aria-activedescendant", options.nth(1).element().getAttribute("id") ?? "");
+      await userEvent.keyboard("{ArrowDown}");
+      await expect.element(options.nth(1)).toHaveAttribute("aria-selected", "true");
+      await userEvent.keyboard("{ArrowUp}");
+      await expect.element(options.nth(0)).toHaveAttribute("aria-selected", "true");
+      await userEvent.keyboard("{ArrowDown}{Enter}");
+      await expect.poll(openProjectIdSnapshot).toBe("b");
+    });
+
+    it("typing resets the active option to the first match", async () => {
+      await seedLibrary();
+      const screen = await renderSwitcher();
+      const search = screen.getByRole("combobox", { name: "Search projects" });
+      await search.click();
+      await userEvent.keyboard("{ArrowDown}");
+      await search.fill("a");
+      await expect.element(screen.getByRole("option").nth(0)).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("keys typed in the search do not reach window shortcuts", async () => {
+      await seedLibrary();
+      const screen = await renderSwitcher();
+      let windowKeys = 0;
+      const count = () => windowKeys++;
+      window.addEventListener("keydown", count);
+      await screen.getByRole("combobox", { name: "Search projects" }).click();
+      await userEvent.keyboard("x");
+      window.removeEventListener("keydown", count);
+      expect(windowKeys).toBe(0);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("says there are no other projects when only the open one exists", async () => {
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      const screen = await render(<ProjectSwitcher onClose={() => undefined} />);
+      await expect.element(screen.getByText("No other projects yet")).toBeInTheDocument();
+    });
+
+    it("Enter with no match does nothing", async () => {
+      await seedLibrary();
+      const screen = await renderSwitcher();
+      const search = screen.getByRole("combobox", { name: "Search projects" });
+      await search.fill("zzz");
+      await userEvent.keyboard("{Enter}");
+      expect(openProjectIdSnapshot()).toBe("a");
+    });
+  });
+
+  describe("live updates", () => {
+    it("drops a project deleted in another tab", async () => {
+      await seedLibrary();
+      const screen = await renderSwitcher();
+      await expect.poll(() => screen.getByRole("option").elements().length).toBe(2);
+      await removeProjectData("c");
+      const otherTab = new BroadcastChannel(PROJECT_CHANNEL_NAME);
+      otherTab.postMessage({ type: "projects-deleted", ids: ["c"], sender: "another-tab" });
+      otherTab.close();
+      await expect.poll(() => screen.getByRole("option").elements().length).toBe(1);
+      expect(screen.container.textContent).not.toContain("Charlie");
+    });
+  });
+});

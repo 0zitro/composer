@@ -1,0 +1,27 @@
+import { render } from "@/test/render";
+import { ProjectArt } from "@/ui/projects/project-art";
+import { describe, expect, it } from "vitest";
+
+const PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+
+describe("ProjectArt", () => {
+  it("shows the cover image when there is one", async () => {
+    const screen = await render(<ProjectArt src={PIXEL} size="md" />);
+    const image = screen.container.querySelector("img");
+    expect(image?.getAttribute("src")).toBe(PIXEL);
+    expect(image?.getAttribute("alt")).toBe("");
+  });
+
+  it("shows a music placeholder without a cover", async () => {
+    const screen = await render(<ProjectArt size="sm" />);
+    expect(screen.container.querySelector("img")).toBeNull();
+    expect(screen.container.querySelector("svg")).not.toBeNull();
+  });
+
+  describe("invariants", () => {
+    it("hides the placeholder icon from assistive technology", async () => {
+      const screen = await render(<ProjectArt size="md" />);
+      expect(screen.container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    });
+  });
+});
