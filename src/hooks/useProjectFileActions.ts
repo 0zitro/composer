@@ -2,6 +2,7 @@ import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
 import { createProject, deleteProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { exportProjectToFile, importProjectFromFile } from "@/lib/persistence";
+import { cancelPendingSave } from "@/lib/persistence-debounce";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
@@ -94,8 +95,12 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
     });
     if (!ok) return;
     const id = openProjectIdSnapshot();
-    if (id) await deleteProject(id);
-    else createProject();
+    if (id) {
+      await deleteProject(id);
+    } else {
+      cancelPendingSave();
+      createProject();
+    }
   }, [confirm]);
 
   return { handleExportProject, handleImportProject, handleClearProject };

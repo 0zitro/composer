@@ -1,10 +1,13 @@
 import { useProjectFileActions } from "@/hooks/useProjectFileActions";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { debouncedSave } from "@/lib/persistence-debounce";
+import { listProjectIndex } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
-import { seedStoredProject } from "@/test/projects";
+import { saveArgsTitled, seedStoredProject } from "@/test/projects";
+import { sleep } from "@/test/async";
 import { describe, expect, it } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
@@ -26,5 +29,16 @@ describe("useProjectFileActions · clear", () => {
     const { result } = await renderHook(() => useProjectFileActions({ current: null }));
     await result.current.handleClearProject();
     expect(useProjectStore.getState().metadata.title).toBe("");
+  });
+
+  describe("regressions", () => {
+    it("regression: clearing before anything was saved discards a pending save instead of persisting it", async () => {
+      useSettingsStore.setState({ confirmClearProject: false, autoSaveDelay: 60_000 });
+      debouncedSave(...saveArgsTitled("Unsaved"));
+      const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+      await result.current.handleClearProject();
+      await sleep(150);
+      expect(await listProjectIndex()).toEqual([]);
+    });
   });
 });
