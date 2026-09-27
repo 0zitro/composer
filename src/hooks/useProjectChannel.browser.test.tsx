@@ -1,6 +1,6 @@
 import { useProjectChannel } from "@/hooks/useProjectChannel";
 import { createProject, openProject, restoreOpenProject } from "@/lib/open-project";
-import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { forgetOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { PROJECT_CHANNEL_NAME, subscribeProjectsDeleted } from "@/lib/project-channel";
 import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
@@ -149,6 +149,16 @@ describe("useProjectChannel", () => {
       await expect.element(screen.getByText("This project was deleted in another tab")).toBeInTheDocument();
       await openProject("b");
       await expect.element(screen.getByText("This project was deleted in another tab")).not.toBeInTheDocument();
+    });
+
+    it("regression: an unmounted hook no longer dismisses its notice when the open project changes", async () => {
+      await openAlpha();
+      const screen = await render(<ChannelHost />);
+      deleteInOtherTab(["a"]);
+      await expect.element(screen.getByText(DELETED_NOTICE)).toBeInTheDocument();
+      await screen.unmount();
+      forgetOpenProjectId();
+      expect(deletedNotices()).toBe(1);
     });
 
     it("regression: switching away from the deleted project makes Keep as new project a no-op", async () => {

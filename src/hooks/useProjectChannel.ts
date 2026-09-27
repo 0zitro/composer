@@ -9,10 +9,6 @@ import { toast } from "sonner";
 
 const LOG_PREFIX = "[ProjectChannel]";
 
-// -- Module state -------------------------------------------------------------
-
-const dismissWatchers = new Set<string>();
-
 // -- Helpers ------------------------------------------------------------------
 
 function deletedProjectToastId(deletedId: string): string {
@@ -29,18 +25,18 @@ function keepAsNewProject(deletedId: string): void {
     });
 }
 
-function dismissOnceProjectChanges(deletedId: string): void {
+function dismissOnceProjectChanges(deletedId: string, dismissWatchers: Map<string, () => void>): void {
   if (dismissWatchers.has(deletedId)) return;
-  dismissWatchers.add(deletedId);
   const unsubscribe = subscribeOpenProjectId(() => {
     if (openProjectIdSnapshot() === deletedId) return;
     toast.dismiss(deletedProjectToastId(deletedId));
     dismissWatchers.delete(deletedId);
     unsubscribe();
   });
+  dismissWatchers.set(deletedId, unsubscribe);
 }
 
-function warnOpenProjectDeleted(deletedId: string): void {
+function warnOpenProjectDeleted(deletedId: string, dismissWatchers: Map<string, () => void>): void {
   cancelPendingSave();
   toast.warning("This project was deleted in another tab", {
     id: deletedProjectToastId(deletedId),
@@ -48,20 +44,24 @@ function warnOpenProjectDeleted(deletedId: string): void {
     duration: Number.POSITIVE_INFINITY,
     action: { label: "Keep as new project", onClick: () => keepAsNewProject(deletedId) },
   });
-  dismissOnceProjectChanges(deletedId);
+  dismissOnceProjectChanges(deletedId, dismissWatchers);
 }
 
 // -- Hook ---------------------------------------------------------------------
 
 function useProjectChannel(): void {
-  useEffect(
-    () =>
-      subscribeProjectsDeleted((ids) => {
-        const openId = openProjectIdSnapshot();
-        if (openId && ids.includes(openId)) warnOpenProjectDeleted(openId);
-      }),
-    [],
-  );
+  useEffect(() => {
+    const dismissWatchers = new Map<string, () => void>();
+    const unsubscribeChannel = subscribeProjectsDeleted((ids) => {
+      const openId = openProjectIdSnapshot();
+      if (openId && ids.includes(openId)) warnOpenProjectDeleted(openId, dismissWatchers);
+    });
+    return () => {
+      unsubscribeChannel();
+      for (const unsubscribe of dismissWatchers.values()) unsubscribe();
+      dismissWatchers.clear();
+    };
+  }, []);
 }
 
 // -- Exports ------------------------------------------------------------------
