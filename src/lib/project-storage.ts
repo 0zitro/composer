@@ -8,6 +8,7 @@ import {
   runTransaction,
 } from "@/lib/persistence-idb";
 import { announceProjectsDeleted } from "@/lib/project-channel";
+import { notifyProjectIndexChanged } from "@/lib/project-index-changes";
 import { isProjectDeleted, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 
@@ -60,6 +61,7 @@ async function clearAllProjects(): Promise<void> {
     }
   }
   announceProjectsDeleted(clearedIds);
+  notifyProjectIndexChanged();
 }
 
 // -- Lifecycle hooks ----------------------------------------------------------

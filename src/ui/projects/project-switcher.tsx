@@ -2,9 +2,8 @@ import { displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { recentProjects } from "@/domain/project/recent-projects";
 import { useOpenProjectId } from "@/hooks/useOpenProjectId";
+import { useProjectIndex } from "@/hooks/useProjectIndex";
 import { createProject, openProject } from "@/lib/open-project";
-import { subscribeProjectsDeleted } from "@/lib/project-channel";
-import { listProjectIndex } from "@/lib/project-repository";
 import { getEffectiveKeysArray } from "@/stores/shortcut-bindings";
 import { Button } from "@/ui/button";
 import { InlineKeyBadge } from "@/ui/inline-key-badge";
@@ -14,8 +13,7 @@ import { Scroll } from "@/ui/scroll";
 import { cn } from "@/utils/cn";
 import { formatRelativeTime } from "@/utils/format-relative-time";
 import { IconPlus, IconSearch } from "@tabler/icons-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
@@ -37,7 +35,6 @@ interface SwitcherRowProps {
 
 const LOG_PREFIX = "[ProjectSwitcher]";
 const SWITCHER_LIMIT = 6;
-const PROJECT_INDEX_QUERY_KEY = ["project-index"] as const;
 
 // -- Sub-components -----------------------------------------------------------
 
@@ -84,25 +81,10 @@ const SwitcherRow: React.FC<SwitcherRowProps> = ({ project, optionId, isActive, 
 const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
   const listId = useId();
   const openId = useOpenProjectId();
-  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [now] = useState(Date.now);
-  const { data: entries, error } = useQuery({
-    queryKey: PROJECT_INDEX_QUERY_KEY,
-    queryFn: listProjectIndex,
-    staleTime: 0,
-    gcTime: 0,
-  });
-
-  useEffect(() => {
-    if (error) console.error(LOG_PREFIX, "could not load the project index", error);
-  }, [error]);
-
-  useEffect(
-    () => subscribeProjectsDeleted(() => queryClient.invalidateQueries({ queryKey: PROJECT_INDEX_QUERY_KEY })),
-    [queryClient],
-  );
+  const { entries, error } = useProjectIndex();
 
   const projects = useMemo(
     () => recentProjects(entries ?? [], { excludeId: openId, query, limit: SWITCHER_LIMIT }),

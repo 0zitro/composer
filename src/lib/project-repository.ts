@@ -11,6 +11,7 @@ import {
   runTransaction,
 } from "@/lib/persistence-idb";
 import { announceProjectsDeleted } from "@/lib/project-channel";
+import { notifyProjectIndexChanged } from "@/lib/project-index-changes";
 import { OPEN_PROJECT_KEY, PROJECT_DATA_STORES } from "@/lib/project-storage";
 import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
@@ -25,6 +26,16 @@ interface IndexCarriedFields {
 }
 
 type IndexPatch = Partial<IndexCarriedFields>;
+type ProjectUpdate = (project: SavedProject) => SavedProject;
+
+// -- Constants ----------------------------------------------------------------
+
+const RECORD_WRITE_STORES = [
+  PROJECT_RECORD_STORE_NAME,
+  PROJECT_INDEX_STORE_NAME,
+  PROJECT_AUDIO_STORE_NAME,
+  APP_STATE_STORE_NAME,
+];
 
 // -- Identity -----------------------------------------------------------------
 
@@ -61,28 +72,56 @@ function clearOpenProjectId(): Promise<void> {
 
 // -- Records ------------------------------------------------------------------
 
+function writeIndexEntry(tx: IDBTransaction, id: string, project: SavedProject): void {
+  const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
+  const previous = index.get(id);
+  previous.onsuccess = () => {
+    const entry = previous.result as ProjectIndexEntry | undefined;
+    if (entry) {
+      index.put(indexEntryForProject(id, project, carriedIndexFields(entry)), id);
+      return;
+    }
+    const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
+    audio.onsuccess = () => {
+      const saved = audio.result as SavedAudioFile | undefined;
+      const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt };
+      index.put(indexEntryForProject(id, project, carried), id);
+    };
+  };
+}
+
 function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
-  const stores = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME, APP_STATE_STORE_NAME];
-  return runTransaction(stores, "readwrite", (tx, abort) => {
+  return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
     whenProjectWritable(tx, abort, id, () => {
-      const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-      const previous = index.get(id);
-      previous.onsuccess = () => {
-        const entry = previous.result as ProjectIndexEntry | undefined;
-        if (entry) {
-          index.put(indexEntryForProject(id, project, carriedIndexFields(entry)), id);
+      writeIndexEntry(tx, id, project);
+    });
+  }).then(notifyProjectIndexChanged);
+}
+
+function updateProjectRecord(id: string, update: ProjectUpdate): Promise<void> {
+  return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
+    whenProjectWritable(tx, abort, id, () => {
+      const records = tx.objectStore(PROJECT_RECORD_STORE_NAME);
+      const current = records.get(id);
+      current.onsuccess = () => {
+        const project = current.result as SavedProject | undefined;
+        if (!project) {
+          abort(new Error(`Project ${id} is not stored in this browser`));
           return;
         }
-        const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
-        audio.onsuccess = () => {
-          const saved = audio.result as SavedAudioFile | undefined;
-          const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt };
-          index.put(indexEntryForProject(id, project, carried), id);
-        };
+        let next: SavedProject;
+        try {
+          next = update(project);
+        } catch (error) {
+          abort(error);
+          return;
+        }
+        records.put(next, id);
+        writeIndexEntry(tx, id, next);
       };
     });
-  });
+  }).then(notifyProjectIndexChanged);
 }
 
 // -- Index --------------------------------------------------------------------
@@ -110,7 +149,9 @@ function patchIndexEntry(tx: IDBTransaction, id: string, patch: IndexPatch): voi
 }
 
 function patchProjectIndex(id: string, patch: IndexPatch): Promise<void> {
-  return runTransaction([PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => patchIndexEntry(tx, id, patch));
+  return runTransaction([PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => patchIndexEntry(tx, id, patch)).then(
+    notifyProjectIndexChanged,
+  );
 }
 
 function markProjectOpened(id: string, openedAt: number): Promise<void> {
@@ -133,6 +174,7 @@ async function saveProjectAudio(id: string, file: File): Promise<void> {
       patchIndexEntry(tx, id, { storedAudioBytes: data.byteLength });
     });
   });
+  notifyProjectIndexChanged();
 }
 
 async function loadProjectAudio(id: string): Promise<File | undefined> {
@@ -145,7 +187,7 @@ function deleteProjectAudio(id: string): Promise<void> {
   return runTransaction([PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => {
     tx.objectStore(PROJECT_AUDIO_STORE_NAME).delete(id);
     patchIndexEntry(tx, id, { storedAudioBytes: 0 });
-  });
+  }).then(notifyProjectIndexChanged);
 }
 
 // -- Removal ------------------------------------------------------------------
@@ -159,7 +201,10 @@ function removeProjectData(id: string): Promise<void> {
     pointer.onsuccess = () => {
       if (pointer.result === id) appState.delete(OPEN_PROJECT_KEY);
     };
-  }).then(() => announceProjectsDeleted([id]));
+  }).then(() => {
+    announceProjectsDeleted([id]);
+    notifyProjectIndexChanged();
+  });
 }
 
 // -- Exports ------------------------------------------------------------------
@@ -170,6 +215,7 @@ export {
   setOpenProjectId,
   clearOpenProjectId,
   saveProjectRecord,
+  updateProjectRecord,
   listProjectIndex,
   loadProjectIndexEntry,
   findProjectByVideoId,
@@ -180,3 +226,4 @@ export {
   deleteProjectAudio,
   removeProjectData,
 };
+export type { ProjectUpdate };
