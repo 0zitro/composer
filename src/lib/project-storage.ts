@@ -7,6 +7,7 @@ import {
   getFromStore,
   runTransaction,
 } from "@/lib/persistence-idb";
+import { announceProjectsDeleted } from "@/lib/project-channel";
 import { isProjectDeleted, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 
@@ -37,6 +38,7 @@ function loadProjectRecord(id: string): Promise<SavedProject | undefined> {
 
 async function clearAllProjects(): Promise<void> {
   const stores = [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES, APP_STATE_STORE_NAME];
+  let clearedIds: string[] = [];
   await runTransaction(stores, "readwrite", (tx) => {
     const keyRequests = PROJECT_DATA_STORES.map((name) => tx.objectStore(name).getAllKeys());
     const appState = tx.objectStore(APP_STATE_STORE_NAME);
@@ -47,6 +49,7 @@ async function clearAllProjects(): Promise<void> {
       for (const id of ids) writeTombstone(tx, id);
       for (const name of [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES]) tx.objectStore(name).clear();
       appState.delete(OPEN_PROJECT_KEY);
+      clearedIds = [...ids];
     };
   });
   for (const listener of projectsClearedListeners) {
@@ -56,6 +59,7 @@ async function clearAllProjects(): Promise<void> {
       console.error(LOG_PREFIX, "onProjectsCleared listener failed", error);
     }
   }
+  announceProjectsDeleted(clearedIds);
 }
 
 // -- Lifecycle hooks ----------------------------------------------------------

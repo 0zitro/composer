@@ -4,6 +4,7 @@ import {
   forgetOpenProjectId,
   openProjectIdSnapshot,
 } from "@/lib/open-project-session";
+import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { cancelPendingSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { createProjectId, markProjectOpened, removeProjectData, setOpenProjectId } from "@/lib/project-repository";
 import {
@@ -14,7 +15,9 @@ import {
   loadProjectForRestore,
   type RestorePayload,
 } from "@/lib/project-restore";
+import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
 import { isProjectDeleted } from "@/lib/project-tombstones";
+import { useAudioStore } from "@/stores/audio";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -114,6 +117,22 @@ async function deleteProject(id: string): Promise<void> {
   closeIfOpen(id);
 }
 
+// -- Recovery -------------------------------------------------------------------
+
+async function forkOpenProject(): Promise<string> {
+  claimRequest();
+  markOpenProjectChanged();
+  cancelPendingSave();
+  const id = createProjectId();
+  adoptOpenProjectId(id);
+  await setOpenProjectId(id);
+  const args = buildSaveArgs();
+  if (args) await saveCurrentProject(...args);
+  const file = playableFile(useAudioStore.getState().source);
+  if (file) await saveAudioFile(file);
+  return id;
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { restoreOpenProject, openProject, createProject, deleteProject };
+export { restoreOpenProject, openProject, createProject, deleteProject, forkOpenProject };

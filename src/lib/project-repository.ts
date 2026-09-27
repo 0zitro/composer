@@ -10,6 +10,7 @@ import {
   getFromStore,
   runTransaction,
 } from "@/lib/persistence-idb";
+import { announceProjectsDeleted } from "@/lib/project-channel";
 import { OPEN_PROJECT_KEY, PROJECT_DATA_STORES } from "@/lib/project-storage";
 import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
@@ -158,7 +159,7 @@ function removeProjectData(id: string): Promise<void> {
     pointer.onsuccess = () => {
       if (pointer.result === id) appState.delete(OPEN_PROJECT_KEY);
     };
-  });
+  }).then(() => announceProjectsDeleted([id]));
 }
 
 // -- Exports ------------------------------------------------------------------

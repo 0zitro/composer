@@ -8,6 +8,7 @@ import { useImportFromQuery } from "@/hooks/useImportFromQuery";
 import { useImportFromYouTube } from "@/hooks/useImportFromYouTube";
 import { usePanicRecovery } from "@/hooks/usePanicRecovery";
 import { usePersistence } from "@/hooks/usePersistence";
+import { useProjectChannel } from "@/hooks/useProjectChannel";
 import { useResolveYouTubeTunnel } from "@/hooks/useResolveYouTubeTunnel";
 import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
@@ -76,6 +77,7 @@ const AppContent: React.FC = () => {
   useEffect(() => wireFrameLoop(), []);
 
   usePersistence();
+  useProjectChannel();
   useImportFromHash();
   useResolveYouTubeTunnel();
   useImportFromQuery();
