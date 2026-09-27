@@ -22,12 +22,8 @@ function playableFile(source: AudioSource): File | null {
 
 // -- Save arguments -----------------------------------------------------------
 
-function buildSaveArgs(): ProjectSaveArgs | null {
+function currentSaveArgs(): ProjectSaveArgs {
   const projectState = useProjectStore.getState();
-  const liveAudioSource = useAudioStore.getState().source;
-  // An audio-only session still saves: the stem and the audio source kind must survive a reload.
-  const hasContent = projectState.lines.length > 0 || projectState.metadata.title;
-  if (!hasContent && liveAudioSource === null) return null;
   return [
     projectState.metadata,
     projectState.agents,
@@ -35,7 +31,7 @@ function buildSaveArgs(): ProjectSaveArgs | null {
     projectState.groups,
     projectState.granularity,
     projectState.syllableSplitDefaults,
-    toSavedAudioSource(liveAudioSource),
+    toSavedAudioSource(useAudioStore.getState().source),
     projectState.dismissedSuggestions,
     projectState.dismissedExplicitSuggestions,
     useSeparationStore.getState().currentStem,
@@ -45,6 +41,14 @@ function buildSaveArgs(): ProjectSaveArgs | null {
   ];
 }
 
+function buildSaveArgs(): ProjectSaveArgs | null {
+  const projectState = useProjectStore.getState();
+  // An audio-only session still saves: the stem and the audio source kind must survive a reload.
+  const hasContent = projectState.lines.length > 0 || projectState.metadata.title;
+  if (!hasContent && useAudioStore.getState().source === null) return null;
+  return currentSaveArgs();
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { playableFile, buildSaveArgs };
+export { playableFile, buildSaveArgs, currentSaveArgs };

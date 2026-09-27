@@ -1,9 +1,10 @@
 import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
 import { createProject, deleteProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
-import { exportProjectToFile, importProjectFromFile } from "@/lib/persistence";
+import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave } from "@/lib/persistence-debounce";
-import { useAudioStore } from "@/stores/audio";
+import { downloadProjectFile, projectFileFrom, readProjectFile } from "@/lib/project-file";
+import { currentSaveArgs } from "@/lib/project-snapshot";
 import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
@@ -17,11 +18,6 @@ const LOG_PREFIX = "[ProjectFileActions]";
 // -- Hook ---------------------------------------------------------------------
 
 function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | null>) {
-  const metadata = useProjectStore((s) => s.metadata);
-  const agents = useProjectStore((s) => s.agents);
-  const lines = useProjectStore((s) => s.lines);
-  const groups = useProjectStore((s) => s.groups);
-  const granularity = useProjectStore((s) => s.granularity);
   const setMetadata = useProjectStore((s) => s.setMetadata);
   const setLines = useProjectStore((s) => s.setLines);
   const setGranularity = useProjectStore((s) => s.setGranularity);
@@ -30,23 +26,8 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
   const confirm = useConfirm();
 
   const handleExportProject = useCallback(() => {
-    const audioSource = useAudioStore.getState().source;
-    const audioFileName = audioSource?.type === "file" ? audioSource.file.name : undefined;
-    const { dismissedSuggestions, dismissedExplicitSuggestions, syllableSplitDefaults, customSnapPoints } =
-      useProjectStore.getState();
-    exportProjectToFile(
-      metadata,
-      agents,
-      lines,
-      groups,
-      granularity,
-      syllableSplitDefaults,
-      dismissedSuggestions,
-      dismissedExplicitSuggestions,
-      customSnapPoints,
-      audioFileName,
-    );
-  }, [metadata, agents, lines, groups, granularity]);
+    downloadProjectFile(projectFileFrom(openProjectIdSnapshot(), buildSavedProject(...currentSaveArgs())));
+  }, []);
 
   const handleImportProject = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +49,7 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
         }
       }
 
-      const project = await importProjectFromFile(file);
+      const project = await readProjectFile(file);
       const store = useProjectStore.getState();
       store.startProjectSession();
       setMetadata(normalizeLoadedMetadata(project.metadata));

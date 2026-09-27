@@ -7,9 +7,9 @@ import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import { ensureOpenProjectId, findOpenProjectId } from "@/lib/open-project-session";
 import { deleteProjectAudio, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
-import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
+import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";
+import type { SyllableSplitDefaults } from "@/stores/project/types";
 
 // -- Records ------------------------------------------------------------------
 
@@ -72,71 +72,7 @@ async function clearAudioFile(): Promise<void> {
   if (id) await deleteProjectAudio(id);
 }
 
-// -- Project Files ------------------------------------------------------------
-
-function exportProjectToFile(
-  metadata: ProjectMetadata,
-  agents: Agent[],
-  lines: LyricLine[],
-  groups: LinkGroup[],
-  granularity: GranularityMode,
-  syllableSplitDefaults: SyllableSplitDefaults,
-  dismissedSuggestions: string[],
-  dismissedExplicitSuggestions: string[],
-  customSnapPoints: SnapPoint[],
-  audioFileName?: string,
-): void {
-  const project: SavedProject = {
-    version: SAVED_PROJECT_VERSION,
-    savedAt: Date.now(),
-    metadata,
-    agents,
-    lines,
-    groups,
-    granularity,
-    syllableSplitDefaults,
-    audioFileName,
-    dismissedSuggestions,
-    dismissedExplicitSuggestions,
-    customSnapPoints,
-  };
-
-  const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${metadata.title || "project"}-${new Date().toISOString().slice(0, 10)}.ttml-project.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-async function importProjectFromFile(file: File): Promise<SavedProject> {
-  const text = await file.text();
-  const project = JSON.parse(text) as SavedProject;
-
-  if (project.version !== 1 && project.version !== 2 && project.version !== 3) {
-    throw new Error(`Unsupported project version: ${project.version}`);
-  }
-
-  if (!project.syllableSplitDefaults) {
-    project.syllableSplitDefaults = DEFAULT_SYLLABLE_SPLIT_DEFAULTS;
-  }
-  upgradeSavedProject(project);
-
-  return project;
-}
-
 // -- Exports ------------------------------------------------------------------
 
-export {
-  buildSavedProject,
-  saveProjectTo,
-  saveCurrentProject,
-  exportProjectToFile,
-  importProjectFromFile,
-  saveAudioFile,
-  clearAudioFile,
-};
+export { buildSavedProject, saveProjectTo, saveCurrentProject, saveAudioFile, clearAudioFile };
 export type { ProjectSaveArgs };
