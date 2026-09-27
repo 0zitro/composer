@@ -87,6 +87,12 @@ describe("project-storage", () => {
   });
 
   describe("edge cases", () => {
+    it("getOpenProjectId ignores a pointer left on a removed project", async () => {
+      await removeProjectData("p1");
+      await setInStore(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY, "p1");
+      expect(await getOpenProjectId()).toBeUndefined();
+    });
+
     it("loadProjectRecord returns undefined for a missing id", async () => {
       expect(await loadProjectRecord("missing")).toBeUndefined();
     });

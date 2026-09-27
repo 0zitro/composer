@@ -1,5 +1,5 @@
 import { openProject, restoreOpenProject } from "@/lib/open-project";
-import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { findOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectIndexEntry, setProjectLastTab } from "@/lib/project-repository";
 import { buildSaveArgs } from "@/lib/project-snapshot";
@@ -139,6 +139,15 @@ describe("openProject", () => {
   });
 
   describe("supersession", () => {
+    it("regression: opening the project a boot restore is loading keeps the restored content", async () => {
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      const boot = restoreOpenProject();
+      await findOpenProjectId();
+      await openProject("a");
+      await boot;
+      expect(openTitle()).toBe("Alpha");
+    });
+
     it("a superseded open of a missing id resolves quietly instead of rejecting", async () => {
       await seedTwoProjects();
       const superseded = openProject("missing");

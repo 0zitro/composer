@@ -1,4 +1,5 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
+import { APP_STATE_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
 import {
   clearOpenProjectId,
   createProjectId,
@@ -14,7 +15,7 @@ import {
   setOpenProjectId,
   setProjectLastTab,
 } from "@/lib/project-repository";
-import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
+import { OPEN_PROJECT_KEY, getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 import { createLine } from "@/test/factories";
@@ -198,6 +199,14 @@ describe("project-repository", () => {
       await setOpenProjectId("p1");
       await removeProjectData("p2");
       expect(await getOpenProjectId()).toBe("p1");
+    });
+
+    it("never points the open project pointer at a removed project", async () => {
+      await saveProjectRecord("p1", project());
+      await setOpenProjectId("p1");
+      await removeProjectData("p2");
+      await setOpenProjectId("p2");
+      expect(await getFromStore(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY)).toBe("p1");
     });
   });
 

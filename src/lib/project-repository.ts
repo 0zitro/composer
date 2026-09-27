@@ -9,7 +9,6 @@ import {
   getAllFromStore,
   getFromStore,
   runTransaction,
-  setInStore,
 } from "@/lib/persistence-idb";
 import { OPEN_PROJECT_KEY, PROJECT_DATA_STORES } from "@/lib/project-storage";
 import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
@@ -50,7 +49,9 @@ function carriedIndexFields(entry: ProjectIndexEntry): IndexCarriedFields {
 // -- Open project pointer -----------------------------------------------------
 
 function setOpenProjectId(id: string): Promise<void> {
-  return setInStore(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY, id);
+  return runTransaction([APP_STATE_STORE_NAME], "readwrite", (tx) => {
+    whenProjectWritable(tx, id, () => tx.objectStore(APP_STATE_STORE_NAME).put(id, OPEN_PROJECT_KEY));
+  });
 }
 
 function clearOpenProjectId(): Promise<void> {

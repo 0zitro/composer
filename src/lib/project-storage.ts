@@ -7,7 +7,7 @@ import {
   getFromStore,
   runTransaction,
 } from "@/lib/persistence-idb";
-import { writeTombstone } from "@/lib/project-tombstones";
+import { isProjectDeleted, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 
 // -- Constants ----------------------------------------------------------------
@@ -24,8 +24,9 @@ const projectsClearedListeners = new Set<() => void>();
 
 // -- Reads --------------------------------------------------------------------
 
-function getOpenProjectId(): Promise<string | undefined> {
-  return getFromStore<string>(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY);
+async function getOpenProjectId(): Promise<string | undefined> {
+  const id = await getFromStore<string>(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY);
+  return id !== undefined && !(await isProjectDeleted(id)) ? id : undefined;
 }
 
 function loadProjectRecord(id: string): Promise<SavedProject | undefined> {

@@ -24,6 +24,7 @@ const LOG_PREFIX = "[OpenProject]";
 
 let latestRequest = 0;
 let appliedRequest = 0;
+let openProjectChanges = 0;
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -37,14 +38,18 @@ function claimRequest(): number {
   return latestRequest;
 }
 
+function markOpenProjectChanged(): void {
+  openProjectChanges++;
+}
+
 // -- Boot ---------------------------------------------------------------------
 
 async function restoreOpenProject(): Promise<void> {
-  const baseline = appliedRequest;
+  const baseline = openProjectChanges;
   const id = await findOpenProjectId();
   if (!id) return;
   const payload = await loadProjectForRestore(id);
-  if (appliedRequest !== baseline || !hasRestorableContent(payload)) return;
+  if (openProjectChanges !== baseline || !hasRestorableContent(payload)) return;
   applyProjectToStores(payload);
   markProjectOpened(id, Date.now()).catch(logFailure("could not record when the project was opened"));
 }
@@ -56,11 +61,11 @@ async function isOpenable(id: string, payload: RestorePayload): Promise<boolean>
 }
 
 async function openProject(id: string): Promise<void> {
-  void flushPendingSave();
   if (id === openProjectIdSnapshot()) {
     claimRequest();
     return;
   }
+  void flushPendingSave();
   const request = ++latestRequest;
   const payload = await loadProjectForRestore(id);
   const openable = await isOpenable(id, payload);
@@ -70,6 +75,8 @@ async function openProject(id: string): Promise<void> {
     throw new Error(`Project ${id} is not stored in this browser`);
   }
   appliedRequest = request;
+  if (id === openProjectIdSnapshot()) return;
+  markOpenProjectChanged();
   void flushPendingSave();
   adoptOpenProjectId(id);
   applyProjectToStores(payload);
@@ -81,6 +88,7 @@ async function openProject(id: string): Promise<void> {
 
 function createProject(): string {
   claimRequest();
+  markOpenProjectChanged();
   void flushPendingSave();
   const id = createProjectId();
   adoptOpenProjectId(id);
@@ -94,6 +102,7 @@ function createProject(): string {
 function closeIfOpen(id: string): void {
   if (id !== openProjectIdSnapshot()) return;
   claimRequest();
+  markOpenProjectChanged();
   cancelPendingSave();
   forgetOpenProjectId();
   applyProjectToStores(EMPTY_RESTORE);
