@@ -3,6 +3,7 @@ import { __resetPersistenceSettledForTests } from "@/lib/persistence-settled";
 import { addGlobalAllowedConsolePattern, registerConsoleGuard } from "@/test/console-guard";
 import { deleteDatabase } from "@/test/idb";
 import { resetAllStores } from "@/test/stores";
+import { toast } from "sonner";
 import { beforeEach } from "vitest";
 import { cleanup } from "vitest-browser-react/pure";
 
@@ -15,6 +16,7 @@ beforeEach(async () => {
   forgetOpenProjectId();
   await resetAllStores();
   __resetPersistenceSettledForTests();
+  toast.dismiss();
 });
 
 addGlobalAllowedConsolePattern(/Reduced Motion enabled/);
