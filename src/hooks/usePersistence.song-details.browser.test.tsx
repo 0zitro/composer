@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { usePersistence } from "@/hooks/usePersistence";
-import { clearCurrentProject, loadCurrentProject } from "@/lib/persistence";
+import { loadCurrentProject } from "@/lib/persistence";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
@@ -32,13 +32,11 @@ function savedProject(extra: Record<string, unknown> = {}) {
 describe("usePersistence · unexported imported song details", () => {
   const initialAutoSaveDelay = useSettingsStore.getState().autoSaveDelay;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     useSettingsStore.setState({ autoSaveDelay: 30 });
-    await clearCurrentProject();
   });
-  afterEach(async () => {
+  afterEach(() => {
     useSettingsStore.setState({ autoSaveDelay: initialAutoSaveDelay });
-    await clearCurrentProject();
   });
 
   it("restores an unexported import across a reload", async () => {

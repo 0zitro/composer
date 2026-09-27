@@ -3,7 +3,7 @@ import { renderHook } from "vitest-browser-react";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { usePersistence } from "@/hooks/usePersistence";
 import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
-import { clearCurrentProject, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
+import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import type { SavedProject } from "@/lib/saved-project";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { useProjectStore } from "@/stores/project";
@@ -42,13 +42,11 @@ const LoadHarness: React.FC = () => {
 describe("usePersistence · customSnapPoints hydration", () => {
   const initialAutoSaveDelay = useSettingsStore.getState().autoSaveDelay;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     useSettingsStore.setState({ autoSaveDelay: 30 });
-    await clearCurrentProject();
   });
-  afterEach(async () => {
+  afterEach(() => {
     useSettingsStore.setState({ autoSaveDelay: initialAutoSaveDelay });
-    await clearCurrentProject();
   });
 
   it("regression: usePersistence hydrates saved customSnapPoints into the project store", async () => {

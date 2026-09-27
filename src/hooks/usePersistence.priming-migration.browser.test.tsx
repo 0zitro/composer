@@ -4,7 +4,7 @@ import { parseLamePriming } from "@/audio/lame-priming";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { WordTiming } from "@/domain/word/timing";
 import { usePersistence } from "@/hooks/usePersistence";
-import { clearCurrentProject, loadCurrentProject, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
+import { loadCurrentProject, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { loadProjectForRestore } from "@/lib/project-restore";
 import { getOpenProjectId } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
@@ -49,13 +49,6 @@ async function loadOpenProjectForRestore(): Promise<SavedProject | undefined> {
 // -- Tests --------------------------------------------------------------------
 
 describe("loadProjectForRestore · LAME priming", () => {
-  beforeEach(async () => {
-    await clearCurrentProject();
-  });
-  afterEach(async () => {
-    await clearCurrentProject();
-  });
-
   it("shifts saved line/word timings when project lacks primingStripped and audio has LAME priming", async () => {
     const mp3 = createMp3File();
     const { samples, sampleRate } = parseLamePriming(await mp3.arrayBuffer());
@@ -118,13 +111,11 @@ describe("loadProjectForRestore · LAME priming", () => {
 describe("usePersistence priming-stripped flag survives the boot restore", () => {
   const initialAutoSaveDelay = useSettingsStore.getState().autoSaveDelay;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     useSettingsStore.setState({ autoSaveDelay: 30 });
-    await clearCurrentProject();
   });
-  afterEach(async () => {
+  afterEach(() => {
     useSettingsStore.setState({ autoSaveDelay: initialAutoSaveDelay });
-    await clearCurrentProject();
   });
 
   async function waitForProjectHydration(): Promise<void> {

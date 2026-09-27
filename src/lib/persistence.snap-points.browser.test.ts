@@ -1,14 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { SnapPoint } from "@/domain/snap-point/model";
-import { clearCurrentProject, loadCurrentProject, saveCurrentProject } from "@/lib/persistence";
+import { loadCurrentProject, saveCurrentProject } from "@/lib/persistence";
 import type { SavedProject } from "@/lib/saved-project";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { snapPoints } from "@/test/factories";
-
-// The shared browser setup (src/test/setup-browser.ts) deletes the entire
-// `ttml-composer` database before every test. We also clear the current
-// project record explicitly to mirror the existing IDB test style.
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -32,13 +28,6 @@ function saveWithSnapPoints(customSnapPoints: SnapPoint[]): Promise<void> {
 // -- Tests --------------------------------------------------------------------
 
 describe("persistence · customSnapPoints", () => {
-  beforeEach(async () => {
-    await clearCurrentProject();
-  });
-  afterEach(async () => {
-    await clearCurrentProject();
-  });
-
   it("saveCurrentProject persists customSnapPoints and loadCurrentProject reads them back", async () => {
     await saveWithSnapPoints(snapPoints([5, 12]));
     const loaded = await loadCurrentProject();

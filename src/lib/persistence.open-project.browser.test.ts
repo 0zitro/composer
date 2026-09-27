@@ -3,7 +3,6 @@ import { reconcileLine } from "@/domain/line/model";
 import { forgetOpenProjectId } from "@/lib/open-project-session";
 import {
   clearAudioFile,
-  clearCurrentProject,
   loadAudioFile,
   loadCurrentProject,
   saveAudioFile,
@@ -60,18 +59,6 @@ describe("persistence · open project", () => {
     await saveAudioFile(new File([new Uint8Array(32)], "a.mp3", { type: "audio/mpeg" }));
     expect((await loadAudioFile())?.size).toBe(32);
     expect((await listProjectIndex())[0].storedAudioBytes).toBe(32);
-  });
-
-  it("clearCurrentProject removes the project, and the next save starts a new one", async () => {
-    await save("One");
-    const first = await getOpenProjectId();
-    await clearCurrentProject();
-    expect(await loadCurrentProject()).toBeUndefined();
-    expect(await loadAudioFile()).toBeUndefined();
-    await save("Fresh");
-    const second = await getOpenProjectId();
-    expect(second).not.toBe(first);
-    expect(await listProjectIndex()).toHaveLength(1);
   });
 
   describe("edge cases", () => {

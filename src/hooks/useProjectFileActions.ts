@@ -1,6 +1,7 @@
 import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
-import { clearCurrentProject, exportProjectToFile, importProjectFromFile } from "@/lib/persistence";
-import { cancelPendingSave } from "@/lib/persistence-debounce";
+import { createProject, deleteProject } from "@/lib/open-project";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { exportProjectToFile, importProjectFromFile } from "@/lib/persistence";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
@@ -19,7 +20,6 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
   const setLines = useProjectStore((s) => s.setLines);
   const setGranularity = useProjectStore((s) => s.setGranularity);
   const setAgents = useProjectStore((s) => s.setAgents);
-  const reset = useProjectStore((s) => s.reset);
   const markClean = useProjectStore((s) => s.markClean);
   const confirm = useConfirm();
 
@@ -93,10 +93,10 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
       settingsKey: "confirmClearProject",
     });
     if (!ok) return;
-    cancelPendingSave();
-    reset();
-    await clearCurrentProject();
-  }, [reset, confirm]);
+    const id = openProjectIdSnapshot();
+    if (id) await deleteProject(id);
+    else createProject();
+  }, [confirm]);
 
   return { handleExportProject, handleImportProject, handleClearProject };
 }

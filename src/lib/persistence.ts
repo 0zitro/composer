@@ -5,15 +5,8 @@ import type { LyricLine } from "@/domain/line/model";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
-import { ensureOpenProjectId, findOpenProjectId, forgetOpenProjectId } from "@/lib/open-project-session";
-import {
-  clearOpenProjectId,
-  deleteProjectAudio,
-  loadProjectAudio,
-  removeProjectData,
-  saveProjectAudio,
-  saveProjectRecord,
-} from "@/lib/project-repository";
+import { ensureOpenProjectId, findOpenProjectId } from "@/lib/open-project-session";
+import { deleteProjectAudio, loadProjectAudio, saveProjectAudio, saveProjectRecord } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
@@ -75,13 +68,6 @@ async function loadCurrentProject(): Promise<SavedProject | undefined> {
   const project = await loadProjectRecord(id);
   if (project && upgradeSavedProject(project)) await saveProjectRecord(id, project);
   return project;
-}
-
-async function clearCurrentProject(): Promise<void> {
-  const id = await findOpenProjectId();
-  if (id) await removeProjectData(id);
-  await clearOpenProjectId();
-  forgetOpenProjectId();
 }
 
 // -- Audio File Persistence ---------------------------------------------------
@@ -163,7 +149,6 @@ export {
   saveProjectTo,
   saveCurrentProject,
   loadCurrentProject,
-  clearCurrentProject,
   exportProjectToFile,
   importProjectFromFile,
   saveAudioFile,
