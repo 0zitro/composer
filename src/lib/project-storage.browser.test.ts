@@ -1,3 +1,4 @@
+import { listStemJobs, putStem } from "@/audio/separation/stem-store";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import {
   APP_STATE_STORE_NAME,
@@ -56,6 +57,12 @@ describe("project-storage", () => {
     expect(await getFromStore(PROJECT_INDEX_STORE_NAME, "p1")).toBeUndefined();
     expect(await getOpenProjectId()).toBeUndefined();
     expect(await getFromStore(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY)).toBeUndefined();
+  });
+
+  it("clearing all projects also clears the vocal stems", async () => {
+    await putStem("h1", "vocals", "fp32", new Blob([new Uint8Array(4)]));
+    await clearAllProjects();
+    expect(await listStemJobs()).toEqual([]);
   });
 
   describe("tombstones", () => {

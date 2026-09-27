@@ -4,6 +4,7 @@ import {
   PROJECT_INDEX_STORE_NAME,
   PROJECT_RECORD_STORE_NAME,
   PROJECT_STORE_NAME,
+  STEM_STORE_NAME,
   getFromStore,
   runTransaction,
 } from "@/lib/persistence-idb";
@@ -38,7 +39,7 @@ function loadProjectRecord(id: string): Promise<SavedProject | undefined> {
 // -- Removal ------------------------------------------------------------------
 
 async function clearAllProjects(): Promise<void> {
-  const stores = [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES, APP_STATE_STORE_NAME];
+  const stores = [PROJECT_STORE_NAME, STEM_STORE_NAME, ...PROJECT_DATA_STORES, APP_STATE_STORE_NAME];
   let clearedIds: string[] = [];
   await runTransaction(stores, "readwrite", (tx) => {
     const keyRequests = PROJECT_DATA_STORES.map((name) => tx.objectStore(name).getAllKeys());
@@ -48,7 +49,7 @@ async function clearAllProjects(): Promise<void> {
       const ids = new Set(keyRequests.flatMap((request) => request.result.map(String)));
       if (typeof pointer.result === "string") ids.add(pointer.result);
       for (const id of ids) writeTombstone(tx, id);
-      for (const name of [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES]) tx.objectStore(name).clear();
+      for (const name of [PROJECT_STORE_NAME, STEM_STORE_NAME, ...PROJECT_DATA_STORES]) tx.objectStore(name).clear();
       appState.delete(OPEN_PROJECT_KEY);
       clearedIds = [...ids];
     };

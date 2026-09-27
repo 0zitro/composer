@@ -7,7 +7,7 @@ import {
 import { computeInstrumental } from "@/audio/separation/derived-stems";
 import { hasCachedModel } from "@/audio/separation/model-cache";
 import { getModelDescriptor, isModelHostingConfigured } from "@/audio/separation/model-registry";
-import { getStem, hasStems, putStem } from "@/audio/separation/stem-store";
+import { getStem, hasStems, putStem, stemJobKey } from "@/audio/separation/stem-store";
 import type { SeparationError, SeparationStatus, Stem } from "@/audio/separation/types";
 import { hasOnlyFiniteSamples } from "@/audio/separation/validate-channels";
 import { SeparationWorker } from "@/audio/separation/worker-host";
@@ -117,7 +117,7 @@ const useSeparationStore = create<SeparationState & SeparationActions>((set, get
     }
     const variant = useSettingsStore.getState().vocalModelVariant;
     const audioHash = await hashFile(file);
-    const jobKey = `${audioHash}|${variant}`;
+    const jobKey = stemJobKey(audioHash, variant);
 
     const has = await hasStems(audioHash, variant);
     if (!has) {
@@ -180,7 +180,7 @@ const useSeparationStore = create<SeparationState & SeparationActions>((set, get
     }
 
     const audioHash = await hashFile(file);
-    const jobKey = `${audioHash}|${variant}`;
+    const jobKey = stemJobKey(audioHash, variant);
     set({ jobKey });
 
     let result: Awaited<ReturnType<SeparationWorker["process"]>>;
