@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatKey } from "@/utils/format-key";
+import { formatKey, formatShortcut } from "@/utils/format-key";
 import { isMac } from "@/utils/platform";
 
 describe("formatKey", () => {
@@ -34,6 +34,20 @@ describe("formatKey", () => {
     it("is case-sensitive and does not coerce lowercase modifier names", () => {
       expect(formatKey("shift")).toBe("shift");
       expect(formatKey("enter")).toBe("enter");
+    });
+  });
+});
+
+describe("formatShortcut", () => {
+  it("joins the formatted keys the way the host platform writes shortcuts", () => {
+    expect(formatShortcut(["Mod", "O"])).toBe(isMac ? "⌘O" : "Ctrl+O");
+    expect(formatShortcut(["Mod", "Alt", "N"])).toBe(isMac ? "⌘⌥N" : "Ctrl+Alt+N");
+  });
+
+  describe("edge cases", () => {
+    it("formats a single key and an unbound shortcut", () => {
+      expect(formatShortcut(["F2"])).toBe("F2");
+      expect(formatShortcut([])).toBe("");
     });
   });
 });

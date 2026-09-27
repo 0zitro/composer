@@ -15,6 +15,10 @@ const POSITION_UTILITIES_CSS = ".relative{position:relative}.absolute{position:a
 // Overlays only cover their siblings, and so only swallow clicks, once they span their parent.
 const HIT_TESTING_UTILITIES_CSS = ".inset-0{inset:0}.pointer-events-none{pointer-events:none}";
 
+// A capped, truncating label only caps and truncates once these utilities exist.
+const TRUNCATION_UTILITIES_CSS =
+  ".inline-flex{display:inline-flex}.min-w-0{min-width:0}.max-w-\\[380px\\]{max-width:380px}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}";
+
 // -- Helpers -------------------------------------------------------------------
 
 function extractCssBlock(header: RegExp): string {
@@ -54,6 +58,7 @@ export {
   HIT_TESTING_UTILITIES_CSS,
   installStyleSheet,
   POSITION_UTILITIES_CSS,
+  TRUNCATION_UTILITIES_CSS,
   WAVEFORM_SWEEP_ANIMATION,
   WAVEFORM_SWEEP_CSS,
 };

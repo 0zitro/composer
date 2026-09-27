@@ -17,6 +17,10 @@ function formatKey(key: string): string {
   return key;
 }
 
+function formatShortcut(keys: readonly string[]): string {
+  return keys.map(formatKey).join(isMac ? "" : "+");
+}
+
 // -- Exports -------------------------------------------------------------------
 
-export { formatKey };
+export { formatKey, formatShortcut };

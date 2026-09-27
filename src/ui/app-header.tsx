@@ -14,7 +14,7 @@ interface AppHeaderProps {
 
 const AppHeader: React.FC<AppHeaderProps> = ({ onSettingsOpen, onHelpOpen, onTourStart }) => (
   <header className="flex items-center justify-between gap-4 p-4 border-b select-none border-composer-border">
-    <div className="flex items-center gap-1.5 min-w-0">
+    <div className="flex items-center gap-2 min-w-0">
       <h1 className="shrink-0">
         <img src="/logo.svg" alt="Composer Logo" className="block size-6" />
         <span className="sr-only">Composer</span>

@@ -1,14 +1,23 @@
+import { useProjectShortcuts } from "@/hooks/useProjectShortcuts";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { useProjectStore } from "@/stores/project";
+import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { useUIStore } from "@/stores/ui";
 import { render } from "@/test/render";
+import { TRUNCATION_UTILITIES_CSS, installStyleSheet } from "@/test/browser-css";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { ProjectBreadcrumb } from "@/ui/projects/project-breadcrumb";
+import { isMac } from "@/utils/platform";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
 // -- Helpers ------------------------------------------------------------------
+
+const ShortcutHost: React.FC = () => {
+  useProjectShortcuts();
+  return <ProjectBreadcrumb />;
+};
 
 async function seedTwo(): Promise<void> {
   await seedStoredProject("a", { open: true, project: { ...songTitled("Alpha"), savedAt: 10 } });
@@ -49,6 +58,34 @@ describe("ProjectBreadcrumb", () => {
     const screen = await render(<ProjectBreadcrumb />);
     useUIStore.getState().setProjectSwitcherOpen(true);
     await expect.element(screen.getByRole("dialog", { name: "Switch project" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("combobox", { name: "Search projects" })).toHaveFocus();
+  });
+
+  it("names the switch shortcut in the trigger tooltip and follows a remap", async () => {
+    await seedTwo();
+    const screen = await render(<ProjectBreadcrumb />);
+    const trigger = screen.getByRole("button", { name: /switch project/ });
+    await expect.element(trigger).toHaveAttribute("title", `Switch project (${isMac ? "⌘O" : "Ctrl+O"})`);
+    useShortcutBindingsStore.getState().setBinding("global.openProjectSwitcher", { key: "p", mod: true });
+    await expect.element(trigger).toHaveAttribute("title", `Switch project (${isMac ? "⌘P" : "Ctrl+P"})`);
+  });
+
+  it("the Projects crumb says it opens a dialog and whether it is open", async () => {
+    await seedTwo();
+    const screen = await render(<ProjectBreadcrumb />);
+    const crumb = screen.getByRole("button", { name: "Projects" });
+    await expect.element(crumb).toHaveAttribute("aria-haspopup", "dialog");
+    await expect.element(crumb).toHaveAttribute("aria-expanded", "false");
+    await crumb.click();
+    await expect.element(crumb).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps the save status outside the navigation landmark", async () => {
+    await seedTwo();
+    const screen = await render(<ProjectBreadcrumb />);
+    const nav = screen.getByRole("navigation", { name: "Project" }).element();
+    expect(nav.querySelector('[role="status"]')).toBeNull();
+    expect(screen.container.querySelector('[role="status"]')).not.toBeNull();
   });
 
   it("choosing a project switches to it and closes the switcher", async () => {
@@ -73,6 +110,31 @@ describe("ProjectBreadcrumb", () => {
       await expect.element(trigger).toHaveFocus();
     });
 
+    it("Mod+O opens the switcher with the search focused", async () => {
+      await seedTwo();
+      const screen = await render(<ShortcutHost />);
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "o", code: "KeyO", bubbles: true, metaKey: isMac, ctrlKey: !isMac }),
+      );
+      await expect.element(screen.getByRole("combobox", { name: "Search projects" })).toHaveFocus();
+    });
+
+    it("an outside click closes the switcher and returns focus to the trigger", async () => {
+      await seedTwo();
+      const screen = await render(
+        <>
+          <ProjectBreadcrumb />
+          <p style={{ position: "fixed", right: 0, bottom: 0 }}>Outside</p>
+        </>,
+      );
+      const trigger = screen.getByRole("button", { name: /switch project/ });
+      await trigger.click();
+      await expect.element(screen.getByRole("combobox", { name: "Search projects" })).toHaveFocus();
+      await screen.getByText("Outside").click();
+      await expect.poll(() => useUIStore.getState().projectSwitcherOpen).toBe(false);
+      await expect.element(trigger).toHaveFocus();
+    });
+
     it("Enter on the trigger opens the switcher", async () => {
       await seedTwo();
       const screen = await render(<ProjectBreadcrumb />);
@@ -89,6 +151,19 @@ describe("ProjectBreadcrumb", () => {
     it("names a project without a title Untitled", async () => {
       const screen = await render(<ProjectBreadcrumb />);
       await expect.element(screen.getByRole("button", { name: "Untitled, switch project" })).toBeInTheDocument();
+    });
+
+    it("caps a long title and truncates it", async () => {
+      await seedTwo();
+      useProjectStore.getState().setMetadata({ title: "A very long song title ".repeat(12) });
+      const utilities = installStyleSheet(TRUNCATION_UTILITIES_CSS);
+      const screen = await render(<ProjectBreadcrumb />);
+      const trigger = screen.getByRole("button", { name: /switch project/ }).element();
+      const titleText = trigger.querySelector(".truncate");
+      if (!(titleText instanceof HTMLElement)) throw new Error("expected the title text");
+      expect(trigger.getBoundingClientRect().width).toBeLessThanOrEqual(380);
+      expect(titleText.scrollWidth).toBeGreaterThan(titleText.clientWidth);
+      utilities.remove();
     });
 
     it("follows title edits in the open project", async () => {

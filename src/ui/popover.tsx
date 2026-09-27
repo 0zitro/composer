@@ -55,7 +55,8 @@ const Popover: React.FC<PopoverProps> = ({
   });
 
   const click = useClick(context);
-  const dismiss = useDismiss(context);
+  // Dismissing on click, after mousedown moved focus to the body, lets focus return to the trigger.
+  const dismiss = useDismiss(context, { outsidePressEvent: "click" });
   const role = useRole(context);
 
   const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss, role]);

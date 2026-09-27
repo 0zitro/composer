@@ -114,7 +114,7 @@ describe("Popover", () => {
       await expect.poll(() => requests).toEqual([false]);
     });
 
-    it("asks the owner to close on an outside pointerdown", async () => {
+    it("asks the owner to close on an outside click", async () => {
       const requests: boolean[] = [];
       await render(
         <Popover open onOpenChange={(next) => requests.push(next)} trigger={<button type="button">Open</button>}>
@@ -122,6 +122,7 @@ describe("Popover", () => {
         </Popover>,
       );
       document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await expect.poll(() => requests).toEqual([false]);
     });
 
