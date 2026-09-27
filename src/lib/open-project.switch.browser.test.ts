@@ -7,6 +7,7 @@ import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
+import { sleep } from "@/test/async";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -103,6 +104,16 @@ describe("openProject", () => {
       const first = openProject("b");
       await openProject("c");
       await first;
+      expect(openProjectIdSnapshot()).toBe("c");
+      expect(openTitle()).toBe("Charlie");
+    });
+
+    it("regression: a switch requested while another is loading wins", async () => {
+      await seedTwoProjects();
+      await seedStoredProject("c", { project: songTitled("Charlie") });
+      const first = openProject("b");
+      await sleep(0);
+      await Promise.all([first, openProject("c")]);
       expect(openProjectIdSnapshot()).toBe("c");
       expect(openTitle()).toBe("Charlie");
     });
