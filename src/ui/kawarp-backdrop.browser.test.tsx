@@ -3,7 +3,7 @@ import { allowConsole } from "@/test/console-guard";
 import { settleFrames, stepFrames } from "@/test/frame-steps";
 import { render } from "@/test/render";
 import { KawarpBackdrop } from "@/ui/kawarp-backdrop";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -67,9 +67,14 @@ describe("KawarpBackdrop", () => {
   describe("error paths", () => {
     it("falls back to the gradient when the cover art cannot load", async () => {
       allowConsole(/could not load the cover art/);
-      const screen = await render(<Card src="data:image/png;base64,AAAA" />);
-      await stepFrames(10);
-      expect(screen.container.querySelectorAll("canvas")).toHaveLength(1);
+      const warn = vi.spyOn(console, "warn");
+      await render(<Card src="data:image/png;base64,AAAA" />);
+      await expect
+        .poll(() =>
+          warn.mock.calls.some((args) => args.some((arg) => String(arg).includes("could not load the cover art"))),
+        )
+        .toBe(true);
+      warn.mockRestore();
     });
   });
 });

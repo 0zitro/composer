@@ -12,6 +12,11 @@ interface KawarpBackdropProps {
   className?: string;
 }
 
+interface CreatedKawarp {
+  kawarp: Kawarp;
+  gl: WebGLRenderingContext;
+}
+
 // -- Constants ----------------------------------------------------------------
 
 const LOG_PREFIX = "[KawarpBackdrop]";
@@ -49,10 +54,11 @@ function fitCanvas(canvas: HTMLCanvasElement): boolean {
   return true;
 }
 
-function createKawarp(canvas: HTMLCanvasElement): Kawarp | null {
+function createKawarp(canvas: HTMLCanvasElement): CreatedKawarp | null {
   try {
-    if (!canvas.getContext("webgl", OPAQUE_CONTEXT)) throw new Error("WebGL context unavailable");
-    return new Kawarp(canvas, KAWARP_OPTIONS);
+    const gl = canvas.getContext("webgl", OPAQUE_CONTEXT);
+    if (!gl) throw new Error("WebGL context unavailable");
+    return { kawarp: new Kawarp(canvas, KAWARP_OPTIONS), gl };
   } catch (error) {
     console.warn(LOG_PREFIX, "WebGL is not available, keeping the plain backdrop", error);
     return null;
@@ -61,6 +67,7 @@ function createKawarp(canvas: HTMLCanvasElement): Kawarp | null {
 
 async function paintSource(kawarp: Kawarp, src: string | undefined, isCurrent: () => boolean): Promise<void> {
   if (!src) {
+    if (!isCurrent()) return;
     kawarp.loadGradient(NEUTRAL_GRADIENT);
     return;
   }
@@ -79,9 +86,10 @@ const KawarpBackdrop: React.FC<KawarpBackdropProps> = ({ src, className }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const kawarpRef = useRef<Kawarp | null>(null);
   const srcRef = useRef(src);
-  const paintedSrcRef = useRef(src);
+  const paintedSrcRef = useRef<string | undefined>(undefined);
   const elapsedRef = useRef(0);
   const lastFrameRef = useRef<number | null>(null);
+  const animatingRef = useRef(false);
   const [painted, setPainted] = useState(false);
   const [onScreen, setOnScreen] = useState(false);
   const pageVisible = usePageVisible();
@@ -92,10 +100,17 @@ const KawarpBackdrop: React.FC<KawarpBackdropProps> = ({ src, className }) => {
     srcRef.current = src;
   });
 
+  useEffect(() => {
+    animatingRef.current = animating;
+  });
+
   const paint = useCallback((kawarp: Kawarp, source: string | undefined) => {
-    const isCurrent = () => kawarpRef.current === kawarp;
+    paintedSrcRef.current = source;
+    const isCurrent = () => kawarpRef.current === kawarp && paintedSrcRef.current === source;
     void paintSource(kawarp, source, isCurrent).then(() => {
-      if (isCurrent()) setPainted(true);
+      if (!isCurrent()) return;
+      setPainted(true);
+      if (!animatingRef.current) kawarp.renderFrame(elapsedRef.current);
     });
   }, []);
 
@@ -106,20 +121,43 @@ const KawarpBackdrop: React.FC<KawarpBackdropProps> = ({ src, className }) => {
     canvas.style.cssText = "display:block;width:100%;height:100%;";
     mount.appendChild(canvas);
     fitCanvas(canvas);
-    const kawarp = createKawarp(canvas);
-    if (!kawarp) {
+
+    let gl: WebGLRenderingContext | null = null;
+
+    function attach(): void {
+      const created = createKawarp(canvas);
+      if (!created) return;
+      gl = created.gl;
+      kawarpRef.current = created.kawarp;
+      paint(created.kawarp, srcRef.current);
+    }
+
+    attach();
+    if (!kawarpRef.current) {
       canvas.remove();
       return;
     }
-    kawarpRef.current = kawarp;
-    paintedSrcRef.current = srcRef.current;
-    paint(kawarp, srcRef.current);
+
+    function handleContextLost(event: Event): void {
+      event.preventDefault();
+      console.warn(LOG_PREFIX, "WebGL context lost, falling back to the plain backdrop");
+      kawarpRef.current = null;
+      setPainted(false);
+    }
+
+    function handleContextRestored(): void {
+      attach();
+    }
+
+    canvas.addEventListener("webglcontextlost", handleContextLost);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored);
 
     let resizeTimer: ReturnType<typeof setTimeout> | undefined;
     const resizeObserver = new ResizeObserver(() => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        if (!fitCanvas(canvas)) return;
+        const kawarp = kawarpRef.current;
+        if (!kawarp || !fitCanvas(canvas)) return;
         kawarp.resize();
         paint(kawarp, srcRef.current);
       }, RESIZE_DEBOUNCE_MS);
@@ -132,8 +170,11 @@ const KawarpBackdrop: React.FC<KawarpBackdropProps> = ({ src, className }) => {
       clearTimeout(resizeTimer);
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+      kawarpRef.current?.dispose();
       kawarpRef.current = null;
-      kawarp.dispose();
+      gl?.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
       setPainted(false);
       setOnScreen(false);
@@ -143,7 +184,6 @@ const KawarpBackdrop: React.FC<KawarpBackdropProps> = ({ src, className }) => {
   useEffect(() => {
     const kawarp = kawarpRef.current;
     if (!kawarp || paintedSrcRef.current === src) return;
-    paintedSrcRef.current = src;
     paint(kawarp, src);
   }, [src, paint]);
 

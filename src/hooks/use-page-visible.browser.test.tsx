@@ -1,4 +1,5 @@
 import { usePageVisible } from "@/hooks/use-page-visible";
+import { overrideVisibilityState } from "@/test/visibility";
 import { describe, expect, it } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
@@ -14,6 +15,20 @@ describe("usePageVisible", () => {
       const first = result.current;
       await rerender();
       expect(result.current).toBe(first);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: reacts to a real visibilitychange event", async () => {
+      const { result } = await renderHook(() => usePageVisible());
+      const initial = result.current;
+      const restore = overrideVisibilityState(initial ? "hidden" : "visible");
+      try {
+        document.dispatchEvent(new Event("visibilitychange"));
+        await expect.poll(() => result.current).toBe(!initial);
+      } finally {
+        restore();
+      }
     });
   });
 });
