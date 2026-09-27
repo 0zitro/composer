@@ -6,7 +6,23 @@ import {
 } from "@/lib/open-project-session";
 import { cancelPendingSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { createProjectId, markProjectOpened, removeProjectData, setOpenProjectId } from "@/lib/project-repository";
-import { EMPTY_RESTORE, applyProjectToStores, loadProjectForRestore } from "@/lib/project-restore";
+import {
+  EMPTY_RESTORE,
+  applyProjectToStores,
+  hasRestorableContent,
+  hasStoredProject,
+  loadProjectForRestore,
+} from "@/lib/project-restore";
+import { isProjectDeleted } from "@/lib/project-tombstones";
+
+// -- Types ----------------------------------------------------------------------
+
+interface PendingOpen {
+  id: string;
+  generation: number;
+  resolve: () => void;
+  reject: (error: Error) => void;
+}
 
 // -- Constants ----------------------------------------------------------------
 
@@ -15,11 +31,17 @@ const LOG_PREFIX = "[OpenProject]";
 // -- Module state -------------------------------------------------------------
 
 let switchGeneration = 0;
+let openQueue: PendingOpen[] = [];
+let openQueueRunning = false;
 
 // -- Helpers ------------------------------------------------------------------
 
 function logFailure(action: string): (error: unknown) => void {
   return (error) => console.error(LOG_PREFIX, action, error);
+}
+
+function resolveThrough(batch: PendingOpen[], upToIndex: number): void {
+  for (let i = upToIndex; i >= 0; i--) batch[i].resolve();
 }
 
 // -- Boot ---------------------------------------------------------------------
@@ -29,24 +51,61 @@ async function restoreOpenProject(): Promise<void> {
   const id = await findOpenProjectId();
   if (!id) return;
   const payload = await loadProjectForRestore(id);
-  if (generation !== switchGeneration || (!payload.project && !payload.audio)) return;
+  if (generation !== switchGeneration || !hasRestorableContent(payload)) return;
   applyProjectToStores(payload);
   markProjectOpened(id, Date.now()).catch(logFailure("could not record when the project was opened"));
 }
 
 // -- Switching ----------------------------------------------------------------
 
-async function openProject(id: string): Promise<void> {
-  if (id === openProjectIdSnapshot()) return;
-  const generation = ++switchGeneration;
+async function settleOpenBatch(batch: PendingOpen[]): Promise<void> {
   void flushPendingSave();
-  const payload = await loadProjectForRestore(id);
-  if (!payload.project) throw new Error(`Project ${id} is not stored in this browser`);
-  if (generation !== switchGeneration) return;
-  void flushPendingSave();
-  adoptOpenProjectId(id);
-  applyProjectToStores(payload);
-  await Promise.all([setOpenProjectId(id), markProjectOpened(id, Date.now())]);
+  for (let i = batch.length - 1; i >= 0; i--) {
+    const entry = batch[i];
+    if (entry.generation !== switchGeneration) return resolveThrough(batch, i);
+    if (entry.id === openProjectIdSnapshot()) {
+      switchGeneration++;
+      return resolveThrough(batch, i);
+    }
+    const payload = await loadProjectForRestore(entry.id);
+    if (entry.generation !== switchGeneration) return resolveThrough(batch, i);
+    const unusable = !hasStoredProject(payload) || (await isProjectDeleted(entry.id));
+    if (entry.generation !== switchGeneration) return resolveThrough(batch, i);
+    if (unusable) {
+      entry.reject(new Error(`Project ${entry.id} is not stored in this browser`));
+      continue;
+    }
+    switchGeneration++;
+    void flushPendingSave();
+    adoptOpenProjectId(entry.id);
+    applyProjectToStores(payload);
+    await Promise.all([
+      setOpenProjectId(entry.id).catch(logFailure("could not record the open project")),
+      markProjectOpened(entry.id, Date.now()).catch(logFailure("could not record when the project was opened")),
+    ]);
+    entry.resolve();
+    return resolveThrough(batch, i - 1);
+  }
+}
+
+async function runOpenQueue(): Promise<void> {
+  while (openQueue.length > 0) {
+    await Promise.resolve();
+    const batch = openQueue;
+    openQueue = [];
+    await settleOpenBatch(batch);
+  }
+  openQueueRunning = false;
+}
+
+function openProject(id: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    openQueue.push({ id, generation: switchGeneration, resolve, reject });
+    if (!openQueueRunning) {
+      openQueueRunning = true;
+      void runOpenQueue();
+    }
+  });
 }
 
 function createProject(): string {

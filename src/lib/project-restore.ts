@@ -45,6 +45,14 @@ async function loadProjectForRestore(id: string): Promise<RestorePayload> {
   return { project, audio, lastTab: isProjectTab(entry?.lastTab) ? entry.lastTab : undefined };
 }
 
+function hasStoredProject(payload: RestorePayload): boolean {
+  return payload.project !== undefined;
+}
+
+function hasRestorableContent(payload: RestorePayload): boolean {
+  return payload.project !== undefined || payload.audio !== undefined;
+}
+
 // -- Applying -----------------------------------------------------------------
 
 function resetProjectScopedStores(): void {
@@ -112,5 +120,12 @@ function isRestoringProject(): boolean {
 
 // -- Exports ------------------------------------------------------------------
 
-export { EMPTY_RESTORE, loadProjectForRestore, applyProjectToStores, isRestoringProject };
+export {
+  EMPTY_RESTORE,
+  loadProjectForRestore,
+  hasStoredProject,
+  hasRestorableContent,
+  applyProjectToStores,
+  isRestoringProject,
+};
 export type { RestorePayload };

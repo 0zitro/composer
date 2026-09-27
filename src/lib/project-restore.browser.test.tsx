@@ -3,7 +3,14 @@ import { restoreOpenProject } from "@/lib/open-project";
 import { PROJECT_INDEX_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectIndexEntry, setProjectLastTab } from "@/lib/project-repository";
-import { EMPTY_RESTORE, applyProjectToStores, isRestoringProject, loadProjectForRestore } from "@/lib/project-restore";
+import {
+  EMPTY_RESTORE,
+  applyProjectToStores,
+  hasRestorableContent,
+  hasStoredProject,
+  isRestoringProject,
+  loadProjectForRestore,
+} from "@/lib/project-restore";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
 import { useAudioStore } from "@/stores/audio";
@@ -15,6 +22,7 @@ import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
 import { render } from "@/test/render";
 import { seedStoredProject } from "@/test/projects";
+import { sleep } from "@/test/async";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { describe, expect, it } from "vitest";
 
@@ -24,10 +32,6 @@ const PersistenceHost: React.FC = () => {
   usePersistence();
   return null;
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 // -- Tests --------------------------------------------------------------------
 
@@ -106,6 +110,14 @@ describe("project-restore", () => {
       await loadProjectForRestore("p1");
       expect((await loadProjectRecord("p1"))?.version).toBe(SAVED_PROJECT_VERSION);
       expect((await loadProjectRecord("p1"))?.savedAt).toBe(1_758_900_000_000);
+    });
+
+    it("hasStoredProject requires a project record; hasRestorableContent accepts audio alone", () => {
+      expect(hasStoredProject(EMPTY_RESTORE)).toBe(false);
+      expect(hasRestorableContent(EMPTY_RESTORE)).toBe(false);
+      const audioOnly = { ...EMPTY_RESTORE, audio: createAudioFile("a.wav") };
+      expect(hasStoredProject(audioOnly)).toBe(false);
+      expect(hasRestorableContent(audioOnly)).toBe(true);
     });
   });
 

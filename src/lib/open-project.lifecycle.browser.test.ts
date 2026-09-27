@@ -120,5 +120,20 @@ describe("deleteProject", () => {
       await inFlight;
       expect(await loadProjectRecord("a")).toBeUndefined();
     });
+
+    it("regression: opening a project deleted mid-flight never adopts it", async () => {
+      await seedOpenProject();
+      await seedStoredProject("b", { project: songTitled("Bravo") });
+      const opening = openProject("b").catch(() => undefined);
+      await deleteProject("b");
+      await opening;
+      expect(openProjectIdSnapshot()).not.toBe("b");
+      useProjectStore.getState().setMetadata({ title: "Still writable" });
+      debouncedSave(...saveArgsTitled("Still writable"));
+      await flushPendingSave();
+      const currentId = openProjectIdSnapshot();
+      expect(currentId).toBeDefined();
+      expect((await loadProjectRecord(currentId as string))?.metadata.title).toBe("Still writable");
+    });
   });
 });

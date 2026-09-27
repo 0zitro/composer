@@ -115,5 +115,34 @@ describe("openProject", () => {
       expect(useProjectStore.getState().history).toEqual([]);
       expect(useProjectStore.getState().isDirty).toBe(false);
     });
+
+    it("A, B, A: the most recently requested target wins, even back to the project already open", async () => {
+      await seedTwoProjects();
+      useProjectStore.getState().setMetadata({ title: "Unsaved change" });
+      const switchingToB = openProject("b");
+      await openProject("a");
+      await switchingToB;
+      expect(openProjectIdSnapshot()).toBe("a");
+      expect(openTitle()).toBe("Unsaved change");
+    });
+  });
+
+  describe("supersession", () => {
+    it("a superseded open of a missing id resolves quietly instead of rejecting", async () => {
+      await seedTwoProjects();
+      const superseded = openProject("missing");
+      await openProject("b");
+      await expect(superseded).resolves.toBeUndefined();
+      expect(openProjectIdSnapshot()).toBe("b");
+    });
+
+    it("a failed open does not cancel an in-flight legitimate switch", async () => {
+      await seedTwoProjects();
+      const switchingToB = openProject("b");
+      await expect(openProject("missing")).rejects.toThrow();
+      await switchingToB;
+      expect(openProjectIdSnapshot()).toBe("b");
+      expect(openTitle()).toBe("Bravo");
+    });
   });
 });
