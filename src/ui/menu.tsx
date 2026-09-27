@@ -53,6 +53,10 @@ const MenuContext = createContext<MenuContextValue | null>(null);
 
 // -- Helpers ------------------------------------------------------------------
 
+function menuTriggerProps(isOpen: boolean) {
+  return { "aria-haspopup": "menu", "aria-expanded": isOpen } as const;
+}
+
 function pointReference(x: number, y: number, within: Element) {
   return {
     getBoundingClientRect: () => DOMRect.fromRect({ x, y, width: 0, height: 0 }),
@@ -147,5 +151,5 @@ const MenuSeparator: React.FC = () => <div role="separator" className="h-px my-1
 
 // -- Exports ------------------------------------------------------------------
 
-export { Menu, MenuItem, MenuSeparator };
+export { Menu, MenuItem, MenuSeparator, menuTriggerProps };
 export type { MenuAnchor, MenuItemProps };
