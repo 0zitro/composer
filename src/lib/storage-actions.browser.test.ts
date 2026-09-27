@@ -1,11 +1,18 @@
 import { listStemJobs, putStem, stemJobKey } from "@/audio/separation/stem-store";
+import { restoreOpenProject } from "@/lib/open-project";
 import { adoptOpenProjectId } from "@/lib/open-project-session";
+import { schedulePendingDeletion } from "@/lib/pending-deletions";
+import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectIndexEntry } from "@/lib/project-repository";
-import { clearVocalStems, clearYouTubeAudio, removeAudioFromProject } from "@/lib/storage-actions";
+import { currentSaveArgs } from "@/lib/project-snapshot";
+import { backUpAllProjects, clearVocalStems, clearYouTubeAudio, removeAudioFromProject } from "@/lib/storage-actions";
+import { useProjectStore } from "@/stores/project";
 import { useSeparationStore } from "@/stores/separation";
+import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile } from "@/test/audio-fixtures";
-import { seedStoredProject } from "@/test/projects";
+import { captureDownloads } from "@/test/downloads";
+import { seedStoredProject, songTitled } from "@/test/projects";
 import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -73,6 +80,47 @@ describe("clearVocalStems", () => {
     it("clears everything when no project is open", async () => {
       await putStem("other", "vocals", "fp32", new Blob([new Uint8Array(4)]));
       expect((await clearVocalStems()).jobs).toBe(1);
+    });
+  });
+});
+
+describe("backUpAllProjects", () => {
+  it("downloads one bundle with every project", async () => {
+    await seedStoredProject("a", { project: songTitled("Alpha") });
+    await seedStoredProject("b", { project: songTitled("Bravo") });
+    const downloads = captureDownloads();
+    const bundle = await backUpAllProjects();
+    await expect.poll(() => downloads.names().length).toBe(1);
+    downloads.stop();
+    expect(downloads.names()[0]).toMatch(/^composer-backup-\d{4}-\d{2}-\d{2}\.ttml-projects\.json$/);
+    expect(bundle?.projects.map((project) => project.metadata.title).toSorted()).toEqual(["Alpha", "Bravo"]);
+  });
+
+  it("includes the open project's edit that was still waiting to save", async () => {
+    useSettingsStore.setState({ autoSaveDelay: 60_000 });
+    await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+    await restoreOpenProject();
+    useProjectStore.getState().setMetadata({ title: "Alpha edited" });
+    debouncedSave(...currentSaveArgs());
+    const bundle = await backUpAllProjects();
+    expect(bundle?.projects.map((project) => project.metadata.title)).toEqual(["Alpha edited"]);
+  });
+
+  it("leaves out projects waiting to be deleted", async () => {
+    await seedStoredProject("a", { project: songTitled("Alpha") });
+    await seedStoredProject("b", { project: songTitled("Bravo") });
+    const deletion = schedulePendingDeletion(["b"]);
+    const bundle = await backUpAllProjects();
+    deletion.undo();
+    expect(bundle?.projects.map((project) => project.projectId)).toEqual(["a"]);
+  });
+
+  describe("edge cases", () => {
+    it("downloads nothing when there is nothing to back up", async () => {
+      const downloads = captureDownloads();
+      expect(await backUpAllProjects()).toBeNull();
+      downloads.stop();
+      expect(downloads.names()).toEqual([]);
     });
   });
 });

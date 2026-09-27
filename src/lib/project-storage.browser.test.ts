@@ -14,12 +14,14 @@ import {
   OPEN_PROJECT_KEY,
   clearAllProjects,
   getOpenProjectId,
+  listProjectRecords,
   loadProjectRecord,
   onProjectsCleared,
 } from "@/lib/project-storage";
 import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 import { allowConsole } from "@/test/console-guard";
+import { seedStoredProject, songTitled } from "@/test/projects";
 import { describe, expect, it } from "vitest";
 
 function project(): SavedProject {
@@ -106,6 +108,27 @@ describe("project-storage", () => {
 
     it("clearAllProjects on an empty database resolves without throwing", async () => {
       await expect(clearAllProjects()).resolves.toBeUndefined();
+    });
+  });
+
+  describe("listProjectRecords", () => {
+    it("reads every stored record with its id", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await seedStoredProject("b", { project: songTitled("Bravo") });
+      const records = await listProjectRecords();
+      expect(records.map((record) => [record.id, record.project.metadata.title]).toSorted()).toEqual([
+        ["a", "Alpha"],
+        ["b", "Bravo"],
+      ]);
+    });
+
+    describe("edge cases", () => {
+      it("is empty on a fresh device and skips deleted projects", async () => {
+        expect(await listProjectRecords()).toEqual([]);
+        await seedStoredProject("a");
+        await removeProjectData("a");
+        expect(await listProjectRecords()).toEqual([]);
+      });
     });
   });
 

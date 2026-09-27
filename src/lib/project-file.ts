@@ -22,8 +22,8 @@ function projectFileName(title: string, date: Date): string {
   return `${title || "project"}-${date.toISOString().slice(0, 10)}${PROJECT_FILE_SUFFIX}`;
 }
 
-function downloadProjectFile(file: ProjectFile, filename = projectFileName(file.metadata.title, new Date())): void {
-  const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
+function downloadJsonFile(value: unknown, filename: string): void {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -34,7 +34,11 @@ function downloadProjectFile(file: ProjectFile, filename = projectFileName(file.
   URL.revokeObjectURL(url);
 }
 
+function downloadProjectFile(file: ProjectFile, filename = projectFileName(file.metadata.title, new Date())): void {
+  downloadJsonFile(file, filename);
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { projectFileFrom, projectFileName, downloadProjectFile };
+export { projectFileFrom, projectFileName, downloadJsonFile, downloadProjectFile };
 export type { ProjectFile };

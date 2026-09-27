@@ -13,6 +13,13 @@ import { notifyProjectIndexChanged } from "@/lib/project-index-changes";
 import { isProjectDeleted, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 
+// -- Types --------------------------------------------------------------------
+
+interface StoredProjectRecord {
+  id: string;
+  project: SavedProject;
+}
+
 // -- Constants ----------------------------------------------------------------
 
 const LOG_PREFIX = "[ProjectStorage]";
@@ -34,6 +41,20 @@ async function getOpenProjectId(): Promise<string | undefined> {
 
 function loadProjectRecord(id: string): Promise<SavedProject | undefined> {
   return getFromStore<SavedProject>(PROJECT_RECORD_STORE_NAME, id);
+}
+
+async function listProjectRecords(): Promise<StoredProjectRecord[]> {
+  const records: StoredProjectRecord[] = [];
+  await runTransaction([PROJECT_RECORD_STORE_NAME], "readonly", (tx) => {
+    const request = tx.objectStore(PROJECT_RECORD_STORE_NAME).openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      records.push({ id: String(cursor.key), project: cursor.value as SavedProject });
+      cursor.continue();
+    };
+  });
+  return records;
 }
 
 // -- Removal ------------------------------------------------------------------
@@ -83,6 +104,8 @@ export {
   LEGACY_AUDIO_KEY,
   getOpenProjectId,
   loadProjectRecord,
+  listProjectRecords,
   clearAllProjects,
   onProjectsCleared,
 };
+export type { StoredProjectRecord };
