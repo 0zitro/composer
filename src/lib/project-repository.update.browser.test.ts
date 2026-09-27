@@ -90,5 +90,13 @@ describe("index change notices", () => {
       expect(changes.read()).toBe(0);
       changes.stop();
     });
+
+    it("regression: patching a project with no index entry does not notify", async () => {
+      const changes = countChanges();
+      await markProjectOpened("ghost", 1);
+      await setProjectLastTab("ghost", "sync");
+      expect(changes.read()).toBe(0);
+      changes.stop();
+    });
   });
 });

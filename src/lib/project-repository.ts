@@ -139,19 +139,27 @@ async function findProjectByVideoId(videoId: string): Promise<ProjectIndexEntry 
   return matches.toSorted((a, b) => b.updatedAt - a.updatedAt)[0];
 }
 
-function patchIndexEntry(tx: IDBTransaction, id: string, patch: IndexPatch): void {
+function patchIndexEntry(tx: IDBTransaction, id: string, patch: IndexPatch, onWritten?: () => void): void {
   const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
   const request = index.get(id);
   request.onsuccess = () => {
     const entry = request.result as ProjectIndexEntry | undefined;
-    if (entry) index.put({ ...entry, ...patch }, id);
+    if (entry) {
+      index.put({ ...entry, ...patch }, id);
+      onWritten?.();
+    }
   };
 }
 
 function patchProjectIndex(id: string, patch: IndexPatch): Promise<void> {
-  return runTransaction([PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => patchIndexEntry(tx, id, patch)).then(
-    notifyProjectIndexChanged,
-  );
+  let wrote = false;
+  return runTransaction([PROJECT_INDEX_STORE_NAME], "readwrite", (tx) =>
+    patchIndexEntry(tx, id, patch, () => {
+      wrote = true;
+    }),
+  ).then(() => {
+    if (wrote) notifyProjectIndexChanged();
+  });
 }
 
 function markProjectOpened(id: string, openedAt: number): Promise<void> {
