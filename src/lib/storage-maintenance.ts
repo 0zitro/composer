@@ -35,6 +35,7 @@ function createStorageMaintenance(options: StorageMaintenanceOptions): StorageMa
       return result;
     } catch (error) {
       console.error(LOG_PREFIX, "smart cleanup failed", error);
+      if (!disposed) options.onCleaned(NOTHING_CLEANED, trigger);
       return NOTHING_CLEANED;
     }
   };

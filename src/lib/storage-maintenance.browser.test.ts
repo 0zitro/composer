@@ -1,7 +1,8 @@
 import { listStemJobs, putStem } from "@/audio/separation/stem-store";
-import type { CleanupResult } from "@/lib/storage-cleanup";
+import { NOTHING_CLEANED, type CleanupResult } from "@/lib/storage-cleanup";
 import { type MaintenanceTrigger, createStorageMaintenance } from "@/lib/storage-maintenance";
 import { sleep } from "@/test/async";
+import { allowConsole } from "@/test/console-guard";
 import { afterEach, describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -51,6 +52,22 @@ describe("createStorageMaintenance", () => {
     const { controller } = maintenance(0);
     const [first, second] = await Promise.all([controller.checkNow("scheduled"), controller.checkNow("scheduled")]);
     expect(first.removedStemJobs + second.removedStemJobs).toBe(1);
+  });
+
+  it("still reports the result if the cleanup itself throws on a quota error", async () => {
+    allowConsole(/smart cleanup failed/);
+    const runs: { result: CleanupResult; trigger: MaintenanceTrigger }[] = [];
+    const controller = createStorageMaintenance({
+      readContext: () => {
+        throw new Error("boom");
+      },
+      onCleaned: (result, trigger) => runs.push({ result, trigger }),
+      delayMs: 20,
+    });
+    disposers.push(controller.dispose);
+    const result = await controller.checkNow("storage-full");
+    expect(result).toEqual(NOTHING_CLEANED);
+    expect(runs).toEqual([{ result: NOTHING_CLEANED, trigger: "storage-full" }]);
   });
 
   describe("edge cases", () => {
