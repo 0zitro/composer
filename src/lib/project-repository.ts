@@ -11,14 +11,10 @@ import {
   runTransaction,
   setInStore,
 } from "@/lib/persistence-idb";
-import { OPEN_PROJECT_KEY } from "@/lib/project-storage";
+import { OPEN_PROJECT_KEY, PROJECT_DATA_STORES } from "@/lib/project-storage";
 import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
 import { nanoid } from "nanoid";
-
-// -- Constants ----------------------------------------------------------------
-
-const PROJECT_DATA_STORES = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME];
 
 // -- Types --------------------------------------------------------------------
 

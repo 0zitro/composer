@@ -49,6 +49,7 @@ function clearAllProjects(): Promise<void> {
 
 export {
   OPEN_PROJECT_KEY,
+  PROJECT_DATA_STORES,
   LEGACY_PROJECT_KEY,
   LEGACY_AUDIO_KEY,
   getOpenProjectId,
