@@ -1,10 +1,14 @@
 import { useProjectChannel } from "@/hooks/useProjectChannel";
 import { createProject, openProject, restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { debouncedSave } from "@/lib/persistence-debounce";
 import { PROJECT_CHANNEL_NAME } from "@/lib/project-channel";
 import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
+import { buildSaveArgs } from "@/lib/project-snapshot";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useProjectStore } from "@/stores/project";
+import { useSettingsStore } from "@/stores/settings";
+import { sleep } from "@/test/async";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { nanoid } from "nanoid";
@@ -70,6 +74,20 @@ describe("useProjectChannel", () => {
     expect(useProjectStore.getState().metadata.title).toBe("Alpha (edited)");
   });
 
+  it("cancels a pending save when the open project is deleted in another tab", async () => {
+    await openAlpha();
+    useSettingsStore.setState({ autoSaveDelay: 20 });
+    const screen = await render(<ChannelHost />);
+    useProjectStore.getState().setMetadata({ title: "Unsaved edit" });
+    const args = buildSaveArgs();
+    if (!args) throw new Error("expected something to save");
+    debouncedSave(...args);
+    deleteInOtherTab(["a"]);
+    await expect.element(screen.getByText("This project was deleted in another tab")).toBeInTheDocument();
+    await sleep(50);
+    expect((await loadProjectRecord("a"))?.metadata.title).toBe("Alpha");
+  });
+
   describe("edge cases", () => {
     it("stays quiet when another project is deleted", async () => {
       await openAlpha();
@@ -95,7 +113,7 @@ describe("useProjectChannel", () => {
       deleteInOtherTab([id]);
       deleteInOtherTab([id]);
       await expect.element(screen.getByText("This project was deleted in another tab")).toBeInTheDocument();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await sleep(50);
       const noticesForThisProject = Array.from(screen.container.querySelectorAll("[data-sonner-toast]")).filter(
         (node) => node.textContent?.includes("This project was deleted in another tab"),
       );
@@ -122,7 +140,7 @@ describe("useProjectChannel", () => {
       createProject();
       useProjectStore.getState().setMetadata({ title: "Should not be saved" });
       findButtonByText(screen.container, "Keep as new project").click();
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await sleep(100);
       expect(await listProjectIndex()).toHaveLength(1);
     });
   });
