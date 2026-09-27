@@ -1,6 +1,6 @@
 import type { LibraryFilter } from "@/domain/project/library-view";
 import type { LibrarySort } from "@/domain/project/library-order";
-import type { LibraryView } from "@/stores/settings";
+import type { LibraryView } from "@/domain/project/library-preferences";
 import { render } from "@/test/render";
 import { LibraryToolbar } from "@/views/library/library-toolbar";
 import { useState } from "react";

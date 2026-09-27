@@ -1,6 +1,6 @@
 import { LIBRARY_SORTS, type LibrarySort } from "@/domain/project/library-order";
 import type { LibraryFilter } from "@/domain/project/library-view";
-import type { LaunchScreen, LibraryView } from "@/stores/settings";
+import type { LaunchScreen, LibraryView } from "@/domain/project/library-preferences";
 import type { SegmentedOption } from "@/ui/segmented-control";
 import { IconLayoutGrid, IconList } from "@tabler/icons-react";
 

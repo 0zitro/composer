@@ -83,7 +83,8 @@ const Menu: React.FC<MenuProps> = ({ anchor, onClose, "aria-label": ariaLabel, c
   }, [anchor, refs]);
   const dismiss = useDismiss(context, {
     ancestorScroll: anchor.kind === "point",
-    outsidePress: (event) => !(anchor.kind === "element" && anchor.element.contains(event.target as Node)),
+    outsidePress: ({ target }) =>
+      !(anchor.kind === "element" && target instanceof Node && anchor.element.contains(target)),
   });
   const role = useRole(context, { role: "menu" });
   const navigation = useListNavigation(context, { listRef, activeIndex, onNavigate: setActiveIndex, loop: true });

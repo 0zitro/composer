@@ -1,20 +1,16 @@
 import indexCss from "@/index.css?raw";
 
-// The browser project has no Tailwind plugin, so a rule a test needs to observe has to be lifted
-// out of the real src/index.css and installed by hand.
+// The browser project has no Tailwind, so a rule a test observes is lifted from src/index.css and installed by hand.
 
 // -- Constants -----------------------------------------------------------------
 
 const WAVEFORM_SWEEP_ANIMATION = "waveform-loading-sweep";
 const WAVEFORM_DOTS_UTILITY = "waveform-loading-dots";
 
-// Without these the timeline's layers all stack in flow, which pushes the rows past
-// react-virtuoso's viewport and leaves it with nothing to render.
+// Without these the timeline layers stack in flow and push the rows past react-virtuoso's viewport.
 const POSITION_UTILITIES_CSS = ".relative{position:relative}.absolute{position:absolute}.sticky{position:sticky;top:0}";
 
-// Overlays only cover their siblings, and so only swallow clicks, once they span their parent.
-// z-index only matters once the stacking order it competes with is real, and pointer-events-auto
-// is what lets a descendant opt back in when an ancestor turns hit-testing off.
+// Overlays only swallow clicks once they span their parent and their stacking order is real.
 const HIT_TESTING_UTILITIES_CSS =
   ".inset-0{inset:0}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.z-1{z-index:1}.z-2{z-index:2}";
 

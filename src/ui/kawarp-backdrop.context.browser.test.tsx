@@ -1,4 +1,5 @@
 import { allowConsole } from "@/test/console-guard";
+import { stepFrames } from "@/test/frame-steps";
 import { render } from "@/test/render";
 import { KawarpBackdrop } from "@/ui/kawarp-backdrop";
 import { describe, expect, it } from "vitest";
@@ -46,9 +47,13 @@ describe("KawarpBackdrop WebGL context lifecycle", () => {
       const loseContext = gl.getExtension("WEBGL_lose_context");
       expect(loseContext).not.toBeNull();
 
+      const lost = new Promise<void>((resolve) =>
+        canvas.addEventListener("webglcontextlost", () => resolve(), { once: true }),
+      );
       loseContext?.loseContext();
-      await expect.poll(() => gl.isContextLost()).toBe(true);
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await lost;
+      expect(gl.isContextLost()).toBe(true);
+      await stepFrames(1);
 
       loseContext?.restoreContext();
       await expect.poll(() => gl.isContextLost(), { timeout: 5000 }).toBe(false);

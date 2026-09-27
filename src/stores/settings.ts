@@ -1,4 +1,6 @@
 import type { LibrarySort } from "@/domain/project/library-order";
+import type { LaunchScreen, LibraryView } from "@/domain/project/library-preferences";
+import { SETTINGS_PERSIST_VERSION, migrateSettings } from "@/stores/settings-migration";
 import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
 import { DEFAULT_MIN_WORD_DURATION } from "@/utils/word-spaces";
 import { create } from "zustand";
@@ -10,8 +12,6 @@ type GranularityDefault = "word" | "line";
 type LinkedDivergenceAction = "ask" | "apply" | "detach";
 type PreviewRenderer = "braccato" | "am-lyrics";
 type VocalModelVariant = "fp16" | "fp32";
-type LibraryView = "list" | "grid";
-type LaunchScreen = "projects" | "last-project";
 
 interface ExperimentFlags {
   youtubeBridge: boolean;
@@ -173,28 +173,6 @@ const BUILTIN_COBALT_INSTANCE: CobaltInstance = {
   url: "https://cobalt.boidu.dev",
 };
 
-const SETTINGS_PERSIST_VERSION = 7;
-
-function migrateSettings(persistedState: unknown, version: number): unknown {
-  if (!persistedState || typeof persistedState !== "object") return persistedState;
-  const { confirmReplaceProjectFromHash: _retired, ...state } = persistedState as Partial<SettingsState> & {
-    confirmReplaceProjectFromHash?: boolean;
-  };
-  const next: Partial<SettingsState> = { ...state };
-  if (version < 2 || next.vocalModelVariant === "fp16") {
-    next.vocalModelVariant = "fp32";
-  }
-  if (next.defaultRollingEdit === undefined) next.defaultRollingEdit = false;
-  if (next.defaultPreviewSidebar === undefined) next.defaultPreviewSidebar = false;
-  if (next.vocalOnsetSnap === undefined) next.vocalOnsetSnap = true;
-  if (next.snapPlayheadToPoints === undefined) next.snapPlayheadToPoints = true;
-  if (next.redoPreroll === undefined) next.redoPreroll = 1.5;
-  // The key predates the default flip, so every old blob carries an explicit
-  // false that a plain undefined guard would never reach.
-  if (version < 6) next.preserveBracketsOnExtraction = true;
-  return next;
-}
-
 // -- Store --------------------------------------------------------------------
 
 const useSettingsStore = create<SettingsState & SettingsActions>()(
@@ -277,13 +255,5 @@ export {
   DEFAULT_COBALT_INSTANCE_ID,
   getActiveCobaltInstance,
   isUsingDefaultCobaltInstance,
-  migrateSettings as migrateSettingsForTest,
 };
-export type {
-  SettingsState,
-  CobaltInstanceStatus,
-  LinkedDivergenceAction,
-  VocalModelVariant,
-  LibraryView,
-  LaunchScreen,
-};
+export type { SettingsState, CobaltInstanceStatus, LinkedDivergenceAction, VocalModelVariant };

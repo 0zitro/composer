@@ -2,8 +2,7 @@ import { cdp } from "vitest/browser";
 
 // -- Helpers --------------------------------------------------------------------
 
-// Motion caches the preference in a module global refreshed only by the media
-// query change event, so settle on the event rather than on matchMedia.
+// Motion refreshes its cached preference only on the media query change event, so settle on that event.
 async function emulateReducedMotion(value: "reduce" | "no-preference"): Promise<void> {
   const query = window.matchMedia("(prefers-reduced-motion)");
   if (query.matches === (value === "reduce")) return;

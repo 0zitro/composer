@@ -1,8 +1,13 @@
 import { allowConsole } from "@/test/console-guard";
+import { stepFrames } from "@/test/frame-steps";
 import { emulateReducedMotion } from "@/test/reduced-motion";
 import { render } from "@/test/render";
 import { KawarpBackdrop } from "@/ui/kawarp-backdrop";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+// -- Constants ----------------------------------------------------------------
+
+const BROKEN_IMAGE_SRC = "data:image/png;base64,AAAA";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -30,13 +35,39 @@ function readCenterPixel(canvas: HTMLCanvasElement): Uint8Array {
   return pixel;
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function brightness(canvas: HTMLCanvasElement): number {
+  const [red, green, blue] = readCenterPixel(canvas);
+  return red + green + blue;
 }
 
-// Reduced motion collapses Kawarp's crossfade to an instant cut (transitionDuration
-// becomes 0), so a single renderFrame after a paint resolves shows the full new
-// content instead of a time-blended mix. That determinism is what these tests need.
+function isRed(canvas: HTMLCanvasElement): boolean {
+  const [red, green, blue] = readCenterPixel(canvas);
+  return red > 150 && red > green && red > blue;
+}
+
+async function paintedCanvas(container: HTMLElement): Promise<HTMLCanvasElement> {
+  await expect.poll(() => container.querySelector("canvas")).not.toBeNull();
+  const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+  await expect.poll(() => brightness(canvas)).toBeGreaterThan(0);
+  return canvas;
+}
+
+async function settleFailedImageLoad(src: string): Promise<void> {
+  const bitmap = await fetch(src)
+    .then((response) => response.blob())
+    .then((blob) => createImageBitmap(blob))
+    .catch((error: unknown) => error);
+  if (bitmap instanceof ImageBitmap) throw new Error("expected the image to fail to decode");
+  await new Promise<void>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => resolve();
+    image.src = src;
+  });
+  await stepFrames(2);
+}
+
+// Reduced motion turns Kawarp's crossfade into an instant cut, so one frame after a paint shows only the new content.
 describe("KawarpBackdrop redraws while idle", () => {
   beforeAll(() => emulateReducedMotion("reduce"));
   afterAll(() => emulateReducedMotion("no-preference"));
@@ -44,42 +75,29 @@ describe("KawarpBackdrop redraws while idle", () => {
   describe("regressions", () => {
     it("regression: redraws after a resize while idle instead of leaving the canvas blank", async () => {
       const screen = await render(<Card />);
-      await expect.poll(() => screen.container.querySelector("canvas")).not.toBeNull();
-      await wait(200);
-      const canvas = screen.container.querySelector("canvas") as HTMLCanvasElement;
+      const canvas = await paintedCanvas(screen.container);
       canvas.style.width = "150px";
       canvas.style.height = "90px";
       await expect.poll(() => canvas.width).toBe(150);
-      await wait(300);
-      const pixel = readCenterPixel(canvas);
-      expect(pixel[0] + pixel[1] + pixel[2]).toBeGreaterThan(0);
+      await expect.poll(() => brightness(canvas)).toBeGreaterThan(0);
     });
 
     it("regression: redraws after a src change while idle instead of leaving the canvas stale", async () => {
       const screen = await render(<Card />);
-      await expect.poll(() => screen.container.querySelector("canvas")).not.toBeNull();
-      await wait(200);
+      const canvas = await paintedCanvas(screen.container);
       await screen.rerender(<Card src={solidColorDataUrl("rgb(220, 20, 20)")} />);
-      await wait(300);
-      const canvas = screen.container.querySelector("canvas") as HTMLCanvasElement;
-      const pixel = readCenterPixel(canvas);
-      expect(pixel[0]).toBeGreaterThan(pixel[1]);
-      expect(pixel[0]).toBeGreaterThan(pixel[2]);
+      await expect.poll(() => isRed(canvas)).toBe(true);
     });
 
     it("regression: a slow older src resolving after a newer one does not overwrite it", async () => {
       allowConsole(/could not load the cover art/);
-      const screen = await render(<Card src={solidColorDataUrl("rgb(0, 0, 0)")} />);
-      await expect.poll(() => screen.container.querySelector("canvas")).not.toBeNull();
-      await wait(200);
-      await screen.rerender(<Card src="data:image/png;base64,AAAA" />);
+      const screen = await render(<Card />);
+      const canvas = await paintedCanvas(screen.container);
+      await screen.rerender(<Card src={BROKEN_IMAGE_SRC} />);
       await screen.rerender(<Card src={solidColorDataUrl("rgb(220, 20, 20)")} />);
-      const canvas = screen.container.querySelector("canvas") as HTMLCanvasElement;
-      await expect.poll(() => readCenterPixel(canvas)[0]).toBeGreaterThan(150);
-      await wait(500);
-      const pixel = readCenterPixel(canvas);
-      expect(pixel[0]).toBeGreaterThan(pixel[1]);
-      expect(pixel[0]).toBeGreaterThan(pixel[2]);
+      await expect.poll(() => isRed(canvas)).toBe(true);
+      await settleFailedImageLoad(BROKEN_IMAGE_SRC);
+      expect(isRed(canvas)).toBe(true);
     });
   });
 });

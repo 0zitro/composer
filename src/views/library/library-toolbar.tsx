@@ -1,6 +1,6 @@
 import { type LibrarySort, isLibrarySort } from "@/domain/project/library-order";
 import { LIBRARY_FILTERS, type LibraryFilter } from "@/domain/project/library-view";
-import type { LibraryView } from "@/stores/settings";
+import type { LibraryView } from "@/domain/project/library-preferences";
 import { getEffectiveKeysArray, useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { Button } from "@/ui/button";
 import { IconField } from "@/ui/icon-field";

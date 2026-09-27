@@ -128,12 +128,5 @@ async function importProjectFromInput(event: ChangeEvent<HTMLInputElement>): Pro
 
 // -- Exports ------------------------------------------------------------------
 
-export {
-  findImportConflict,
-  projectFileSummary,
-  importProjectAsNew,
-  replaceProjectFromFile,
-  importProjectFile,
-  importProjectFromInput,
-};
+export { findImportConflict, projectFileSummary, replaceProjectFromFile, importProjectFile, importProjectFromInput };
 export type { ImportConflict, ImportConflictReason, ProjectFileSummary };
