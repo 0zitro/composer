@@ -2,7 +2,7 @@ import type { ProjectTab } from "@/domain/project/tab";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { clearAudioFile, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
-import { cancelPendingSave, debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
+import { cancelPendingSave, debouncedSave, flushPendingSaveQuietly } from "@/lib/persistence-debounce";
 import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { setProjectLastTab } from "@/lib/project-repository";
 import { isRestoringProject } from "@/lib/project-restore";
@@ -121,7 +121,7 @@ function usePersistence(): void {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Always flush; only the leave prompt is gated on real lyrics, so audio-only reloads are not nagged.
-      void flushPendingSave();
+      flushPendingSaveQuietly();
       const state = useProjectStore.getState();
       if (state.isDirty && state.lines.length > 0) {
         e.preventDefault();

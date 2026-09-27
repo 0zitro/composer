@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { flushPendingSave } from "@/lib/persistence-debounce";
+import { flushPendingSaveQuietly } from "@/lib/persistence-debounce";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { useEnsureAuth } from "@/hooks/useEnsureAuth";
 import { useAudioStore } from "@/stores/audio";
@@ -183,7 +183,7 @@ function useResolveYouTubeTunnel(): void {
         const bridgeIsrc = data.isrc ? normalizeIsrc(data.isrc) : undefined;
         if (bridgeIsrc) metadataPatch.isrc = bridgeIsrc;
         project.setMetadata(metadataPatch);
-        void flushPendingSave();
+        flushPendingSaveQuietly();
       }
       if (
         data.instanceId !== BRIDGE_INSTANCE_ID &&

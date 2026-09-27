@@ -1,6 +1,6 @@
 import { bindSaveTarget } from "@/lib/open-project-session";
 import { type ProjectSaveArgs, saveProjectTo } from "@/lib/persistence";
-import { setSavePending, trackSave } from "@/lib/save-status";
+import { awaitInFlightSaves, setSavePending, trackSave } from "@/lib/save-status";
 import { useSettingsStore } from "@/stores/settings";
 
 // -- Constants ----------------------------------------------------------------
@@ -27,16 +27,14 @@ function clearSaveTimer(): void {
   saveTimeout = null;
 }
 
-function writePendingSave(failureMessage: string): Promise<void> {
+function takePendingSave(): Promise<void> {
   const pending = pendingSave;
   pendingSave = null;
   if (!pending) {
     setSavePending(false);
     return Promise.resolve();
   }
-  const written = trackSave("project", saveProjectTo(pending.target, ...pending.args)).catch((err: unknown) =>
-    console.error(LOG_PREFIX, failureMessage, err),
-  );
+  const written = trackSave("project", saveProjectTo(pending.target, ...pending.args));
   setSavePending(false);
   return written;
 }
@@ -49,7 +47,7 @@ function debouncedSave(...args: ProjectSaveArgs): void {
   clearSaveTimer();
   saveTimeout = setTimeout(() => {
     saveTimeout = null;
-    void writePendingSave("Auto-save failed:");
+    takePendingSave().catch((err: unknown) => console.error(LOG_PREFIX, "Auto-save failed:", err));
   }, useSettingsStore.getState().autoSaveDelay);
 }
 
@@ -61,9 +59,13 @@ function cancelPendingSave(): void {
 
 function flushPendingSave(): Promise<void> {
   clearSaveTimer();
-  return writePendingSave("Flush save failed:");
+  return takePendingSave().then(() => awaitInFlightSaves());
+}
+
+function flushPendingSaveQuietly(): void {
+  flushPendingSave().catch((err: unknown) => console.error(LOG_PREFIX, "Flush save failed:", err));
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { debouncedSave, cancelPendingSave, flushPendingSave };
+export { debouncedSave, cancelPendingSave, flushPendingSave, flushPendingSaveQuietly };

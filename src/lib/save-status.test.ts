@@ -1,4 +1,11 @@
-import { getSaveStatus, resetSaveStatus, setSavePending, subscribeSaveStatus, trackSave } from "@/lib/save-status";
+import {
+  awaitInFlightSaves,
+  getSaveStatus,
+  resetSaveStatus,
+  setSavePending,
+  subscribeSaveStatus,
+  trackSave,
+} from "@/lib/save-status";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -95,6 +102,40 @@ describe("save-status", () => {
       await expect(trackSave("audio", Promise.reject(new Error("quota")))).rejects.toThrow("quota");
       await trackSave("audio", Promise.resolve());
       expect(getSaveStatus()).toBe("saved");
+    });
+  });
+});
+
+describe("awaitInFlightSaves", () => {
+  beforeEach(() => {
+    resetSaveStatus();
+  });
+
+  it("resolves once every tracked write settles", async () => {
+    const write = deferred();
+    const tracked = trackSave("audio", write.promise);
+    let settled = false;
+    const waiting = awaitInFlightSaves().then(() => {
+      settled = true;
+    });
+    expect(settled).toBe(false);
+    write.resolve();
+    await tracked;
+    await waiting;
+    expect(settled).toBe(true);
+  });
+
+  describe("edge cases", () => {
+    it("resolves immediately when nothing is in flight", async () => {
+      await expect(awaitInFlightSaves()).resolves.toBeUndefined();
+    });
+  });
+
+  describe("invariants", () => {
+    it("never rejects even when a tracked write fails", async () => {
+      const rejecting = trackSave("project", Promise.reject(new Error("quota")));
+      await expect(awaitInFlightSaves()).resolves.toBeUndefined();
+      await expect(rejecting).rejects.toThrow("quota");
     });
   });
 });

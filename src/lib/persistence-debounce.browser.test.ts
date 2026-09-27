@@ -1,11 +1,16 @@
 import { adoptOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
-import { cancelPendingSave, debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
+import {
+  cancelPendingSave,
+  debouncedSave,
+  flushPendingSave,
+  flushPendingSaveQuietly,
+} from "@/lib/persistence-debounce";
 import { DB_NAME, DB_VERSION, PROJECT_RECORD_STORE_NAME, getAllFromStore } from "@/lib/persistence-idb";
 import { listProjectIndex, loadProjectAudio, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { clearRecoveryStorage } from "@/lib/recovery";
-import { getSaveStatus, subscribeSaveStatus } from "@/lib/save-status";
+import { getSaveStatus, subscribeSaveStatus, trackSave } from "@/lib/save-status";
 import { useSettingsStore } from "@/stores/settings";
 import { allowConsole } from "@/test/console-guard";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
@@ -139,21 +144,19 @@ describe("persistence-debounce · save target", () => {
 
     describe("regressions", () => {
       it("regression: a rejected debounced write is reported as failed", async () => {
-        allowConsole(/Flush save failed/);
         await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
         adoptOpenProjectId("project-a");
         debouncedSave(...saveArgsTitled("Alpha"));
-        await flushPendingSave();
+        await expect(flushPendingSave()).rejects.toThrow();
         expect(getSaveStatus()).toBe("failed");
         await deleteDatabase(DB_NAME);
       });
 
       it("regression: edits to an open project deleted elsewhere are reported as not saved", async () => {
-        allowConsole(/Flush save failed/);
         adoptOpenProjectId("d");
         await removeProjectData("d");
         debouncedSave(...saveArgsTitled("Lost edit"));
-        await flushPendingSave();
+        await expect(flushPendingSave()).rejects.toThrow();
         expect(getSaveStatus()).toBe("failed");
         expect(await loadProjectRecord("d")).toBeUndefined();
       });
@@ -170,6 +173,48 @@ describe("persistence-debounce · save target", () => {
 
       it("regression: a failed status from a previous test never leaks into the next one", () => {
         expect(getSaveStatus()).toBe("saved");
+      });
+    });
+  });
+
+  describe("in-flight writes", () => {
+    it("flush waits for a write that was already in flight before it started", async () => {
+      adoptOpenProjectId("project-a");
+      let resolveOther: () => void = () => undefined;
+      const other = new Promise<void>((resolve) => {
+        resolveOther = resolve;
+      });
+      trackSave("audio", other);
+      debouncedSave(...saveArgsTitled("Alpha"));
+      let flushed = false;
+      const flushing = flushPendingSave().then(() => {
+        flushed = true;
+      });
+      await expect.poll(async () => (await loadProjectRecord("project-a"))?.metadata.title).toBe("Alpha");
+      expect(flushed).toBe(false);
+      resolveOther();
+      await flushing;
+      expect(flushed).toBe(true);
+    });
+  });
+
+  describe("flushPendingSaveQuietly", () => {
+    it("writes a pending save without returning a promise the caller must handle", async () => {
+      adoptOpenProjectId("project-a");
+      debouncedSave(...saveArgsTitled("Alpha"));
+      flushPendingSaveQuietly();
+      await expect.poll(async () => (await loadProjectRecord("project-a"))?.metadata.title).toBe("Alpha");
+    });
+
+    describe("error paths", () => {
+      it("logs and swallows a failed write instead of throwing", async () => {
+        allowConsole(/Flush save failed/);
+        await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+        adoptOpenProjectId("project-a");
+        debouncedSave(...saveArgsTitled("Alpha"));
+        expect(() => flushPendingSaveQuietly()).not.toThrow();
+        await expect.poll(() => getSaveStatus()).toBe("failed");
+        await deleteDatabase(DB_NAME);
       });
     });
   });

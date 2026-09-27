@@ -6,7 +6,7 @@ import {
   openProjectIdSnapshot,
 } from "@/lib/open-project-session";
 import { buildSavedProject } from "@/lib/persistence";
-import { cancelPendingSave, flushPendingSave } from "@/lib/persistence-debounce";
+import { cancelPendingSave, flushPendingSaveQuietly } from "@/lib/persistence-debounce";
 import {
   createProjectId,
   markProjectOpened,
@@ -86,7 +86,7 @@ async function openProject(id: string): Promise<void> {
     claimRequest();
     return;
   }
-  void flushPendingSave();
+  flushPendingSaveQuietly();
   const request = ++latestRequest;
   const payload = await loadProjectForRestore(id);
   const openable = await isOpenable(id, payload);
@@ -98,7 +98,7 @@ async function openProject(id: string): Promise<void> {
   appliedRequest = request;
   if (id === openProjectIdSnapshot()) return;
   markOpenProjectChanged();
-  void flushPendingSave();
+  flushPendingSaveQuietly();
   adoptOpenProjectId(id);
   applyProjectToStores(payload);
   await Promise.all([
@@ -113,7 +113,7 @@ async function openProject(id: string): Promise<void> {
 function createProject(): string {
   claimRequest();
   markOpenProjectChanged();
-  void flushPendingSave();
+  flushPendingSaveQuietly();
   const id = createProjectId();
   adoptOpenProjectId(id);
   applyProjectToStores(EMPTY_RESTORE);

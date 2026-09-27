@@ -13,6 +13,7 @@ let writesInFlight = 0;
 const failedKinds = new Set<SaveKind>();
 let status: SaveStatus = "saved";
 const listeners = new Set<() => void>();
+const inFlightSaves = new Set<Promise<void>>();
 
 // -- Publishing ---------------------------------------------------------------
 
@@ -51,7 +52,7 @@ function setSavePending(pending: boolean): void {
 function trackSave(kind: SaveKind, write: Promise<void>): Promise<void> {
   writesInFlight++;
   publishStatus();
-  return write
+  const tracked: Promise<void> = write
     .then(
       () => {
         failedKinds.delete(kind);
@@ -65,17 +66,25 @@ function trackSave(kind: SaveKind, write: Promise<void>): Promise<void> {
     .finally(() => {
       writesInFlight--;
       publishStatus();
+      inFlightSaves.delete(tracked);
     });
+  inFlightSaves.add(tracked);
+  return tracked;
+}
+
+function awaitInFlightSaves(): Promise<void> {
+  return Promise.allSettled([...inFlightSaves]).then(() => undefined);
 }
 
 function resetSaveStatus(): void {
   savePending = false;
   writesInFlight = 0;
   failedKinds.clear();
+  inFlightSaves.clear();
   status = "saved";
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { getSaveStatus, subscribeSaveStatus, setSavePending, trackSave, resetSaveStatus };
+export { getSaveStatus, subscribeSaveStatus, setSavePending, trackSave, awaitInFlightSaves, resetSaveStatus };
 export type { SaveStatus };
