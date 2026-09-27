@@ -16,15 +16,16 @@ type VideoProjectOutcome =
 // -- Public API ---------------------------------------------------------------
 
 async function openProjectForVideo(videoId: string): Promise<VideoProjectOutcome> {
-  if (isYouTubeSourceFor(useAudioStore.getState().source, videoId)) return { kind: "current" };
-
   const openId = openProjectIdSnapshot();
+  if (isYouTubeSourceFor(useAudioStore.getState().source, videoId)) {
+    return openId ? { kind: "reopened", id: openId } : { kind: "current" };
+  }
+
   const match = await findProjectByVideoId(videoId);
-  if (match && match.id !== openId) {
-    await openProject(match.id);
+  if (match) {
+    if (match.id !== openId) await openProject(match.id);
     return { kind: "reopened", id: match.id };
   }
-  if (match) return { kind: "current" };
 
   const { lines, metadata } = useProjectStore.getState();
   if (!openId || !hasLyricLines(lines)) return { kind: "current" };

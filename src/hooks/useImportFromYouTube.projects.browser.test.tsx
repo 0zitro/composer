@@ -65,6 +65,7 @@ describe("useImportFromYouTube · projects", () => {
     expect(outcome).toBe("reopened");
     expect(openProjectIdSnapshot()).toBe("b");
     expect(useProjectStore.getState().metadata.title).toBe("Bravo");
+    expect((await loadProjectRecord("a"))?.metadata.title).toBe("Alpha");
   });
 
   it("opens a new project when no project has the video and the open one has lyrics", async () => {
@@ -113,14 +114,24 @@ describe("useImportFromYouTube · projects", () => {
       expect(useProjectStore.getState().metadata.title).toBe(LINKED_VIDEO_ID);
     });
 
-    it("the link to the open project's own video is a cache hit", async () => {
+    it("the link to the open project's own video reopens it without a prompt", async () => {
       await seedStoredProject("a", {
         open: true,
         project: { ...songTitled("Alpha"), audioSource: { kind: "youtube", videoId: LINKED_VIDEO_ID } },
       });
       const { outcome } = await bootWithLink(`?v=${LINKED_VIDEO_ID}`);
-      expect(outcome).toBe("current");
+      expect(outcome).toBe("reopened");
       expect(openProjectIdSnapshot()).toBe("a");
+      expect(useProjectStore.getState().metadata.title).toBe("Alpha");
+    });
+
+    it("a link carrying metadata for the open project's own video does not prompt or overwrite it", async () => {
+      await seedStoredProject("a", {
+        open: true,
+        project: { ...songTitled("Alpha"), audioSource: { kind: "youtube", videoId: LINKED_VIDEO_ID } },
+      });
+      await bootWithLink(`?title=Other%20Title&videoId=${LINKED_VIDEO_ID}`);
+      expect(useConfirmStore.getState().isOpen).toBe(false);
       expect(useProjectStore.getState().metadata.title).toBe("Alpha");
     });
 
