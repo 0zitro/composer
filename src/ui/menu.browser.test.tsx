@@ -95,6 +95,34 @@ describe("Menu", () => {
     await expect.element(screen.getByRole("menuitem", { name: "Delete" })).toHaveClass("text-composer-negative");
   });
 
+  describe("keyboard", () => {
+    it("Home and End jump to the first and last item", async () => {
+      const screen = await render(<Harness />);
+      await screen.getByRole("button", { name: "More" }).click();
+      await userEvent.keyboard("{End}");
+      await expect.element(screen.getByRole("menuitem", { name: "Delete" })).toHaveFocus();
+      await userEvent.keyboard("{Home}");
+      await expect.element(screen.getByRole("menuitem", { name: "Rename" })).toHaveFocus();
+    });
+
+    it("Tab closes the menu", async () => {
+      const screen = await render(<Harness />);
+      await screen.getByRole("button", { name: "More" }).click();
+      await expect.element(screen.getByRole("menuitem", { name: "Rename" })).toHaveFocus();
+      await userEvent.keyboard("{Tab}");
+      await expect.element(screen.getByRole("menu")).not.toBeInTheDocument();
+    });
+
+    it("gives focus back to the opening button after a click on an item", async () => {
+      const selected: string[] = [];
+      const screen = await render(<Harness onSelect={(label) => selected.push(label)} />);
+      await screen.getByRole("button", { name: "More" }).click();
+      await screen.getByRole("menuitem", { name: "Duplicate" }).click();
+      expect(selected).toEqual(["Duplicate"]);
+      await expect.element(screen.getByRole("button", { name: "More" })).toHaveFocus();
+    });
+  });
+
   describe("regressions", () => {
     it("regression: clicking the opening button again closes the menu instead of reopening it", async () => {
       const screen = await render(<Harness />);

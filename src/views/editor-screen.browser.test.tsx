@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 import { useProjectStore } from "@/stores/project";
 import { createLine } from "@/test/factories";
 import { render } from "@/test/render";
@@ -19,7 +20,9 @@ describe("EditorScreen", () => {
     const screen = await render(<EditorScreen />, { withRouter: true });
     const editTab = screen.container.querySelector('[data-tour="tab-edit"]') as HTMLButtonElement;
     editTab.focus();
-    editTab.click();
-    expect(useProjectStore.getState().activeTab).toBe("edit");
+    await userEvent.keyboard("{Enter}");
+    await expect.poll(() => useProjectStore.getState().activeTab).toBe("edit");
+    const importPanel = screen.container.querySelector('[data-tour="import-dropzone"]') as HTMLElement | null;
+    expect(importPanel?.checkVisibility() ?? false).toBe(false);
   });
 });
