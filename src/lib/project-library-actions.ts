@@ -2,11 +2,10 @@ import { displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
-import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
+import { flushPendingSave, saveOpenProjectNow } from "@/lib/persistence-debounce";
 import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
 import { loadProjectAudio } from "@/lib/project-audio";
 import { createProjectId, saveProjectRecordWithAudio, updateProjectRecord } from "@/lib/project-repository";
-import { currentSaveArgs } from "@/lib/project-snapshot";
 import { loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
 import { useProjectStore } from "@/stores/project";
@@ -35,8 +34,7 @@ async function renameProject(id: string, title: string): Promise<void> {
   const nextTitle = title.trim();
   if (id === openProjectIdSnapshot()) {
     useProjectStore.getState().setMetadata({ title: nextTitle });
-    debouncedSave(...currentSaveArgs());
-    await flushPendingSave();
+    await saveOpenProjectNow();
     return;
   }
   await updateProjectRecord(id, (project) => ({

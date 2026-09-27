@@ -1,5 +1,6 @@
 import { bindSaveTarget } from "@/lib/open-project-session";
 import { type ProjectSaveArgs, saveProjectTo } from "@/lib/persistence";
+import { currentSaveArgs } from "@/lib/project-snapshot";
 import { awaitInFlightSaves, setSavePending, trackSave } from "@/lib/save-status";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
@@ -70,6 +71,11 @@ function flushPendingSaveQuietly(): void {
   flushPendingSave().catch((err: unknown) => console.error(LOG_PREFIX, "Flush save failed:", err));
 }
 
+function saveOpenProjectNow(): Promise<void> {
+  debouncedSave(...currentSaveArgs());
+  return flushPendingSave();
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { debouncedSave, cancelPendingSave, flushPendingSave, flushPendingSaveQuietly };
+export { debouncedSave, cancelPendingSave, flushPendingSave, flushPendingSaveQuietly, saveOpenProjectNow };

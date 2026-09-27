@@ -1,3 +1,4 @@
+import { restoreOpenProject } from "@/lib/open-project";
 import { adoptOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import {
@@ -5,6 +6,7 @@ import {
   debouncedSave,
   flushPendingSave,
   flushPendingSaveQuietly,
+  saveOpenProjectNow,
 } from "@/lib/persistence-debounce";
 import { DB_NAME, DB_VERSION, PROJECT_RECORD_STORE_NAME, getAllFromStore } from "@/lib/persistence-idb";
 import { loadProjectAudio } from "@/lib/project-audio";
@@ -12,10 +14,11 @@ import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { clearRecoveryStorage } from "@/lib/recovery";
 import { getSaveStatus, subscribeSaveStatus, trackSave } from "@/lib/save-status";
+import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { allowConsole } from "@/test/console-guard";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
-import { saveArgsTitled } from "@/test/projects";
+import { saveArgsTitled, seedStoredProject, songTitled } from "@/test/projects";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // -- Tests --------------------------------------------------------------------
@@ -174,6 +177,27 @@ describe("persistence-debounce · save target", () => {
 
       it("regression: a failed status from a previous test never leaks into the next one", () => {
         expect(getSaveStatus()).toBe("saved");
+      });
+    });
+  });
+
+  describe("saveOpenProjectNow", () => {
+    it("writes the open project's current state at once", async () => {
+      useSettingsStore.setState({ autoSaveDelay: 60_000 });
+      await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+      await restoreOpenProject();
+      useProjectStore.getState().setMetadata({ title: "Alpha now" });
+      await saveOpenProjectNow();
+      expect((await loadProjectRecord("a"))?.metadata.title).toBe("Alpha now");
+    });
+
+    describe("error paths", () => {
+      it("rejects when the write fails", async () => {
+        allowConsole(/Auto-save failed|Flush save failed/);
+        await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
+        await restoreOpenProject();
+        await removeProjectData("a");
+        await expect(saveOpenProjectNow()).rejects.toThrow();
       });
     });
   });

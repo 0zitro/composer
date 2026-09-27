@@ -26,6 +26,7 @@ import {
   type RestorePayload,
 } from "@/lib/project-restore";
 import { buildSaveArgs, storedAudioFile } from "@/lib/project-snapshot";
+import { clearAllProjects } from "@/lib/project-storage";
 import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
@@ -172,6 +173,15 @@ async function deleteProject(id: string): Promise<void> {
   closeIfOpen(id);
 }
 
+async function deleteAllProjects(): Promise<void> {
+  claimRequest();
+  markOpenProjectChanged();
+  cancelPendingSave();
+  await clearAllProjects();
+  forgetOpenProjectId();
+  applyProjectToStores(EMPTY_RESTORE);
+}
+
 // -- Recovery -----------------------------------------------------------------
 
 async function forkOpenProject(): Promise<string> {
@@ -198,6 +208,7 @@ export {
   startSongInNewProject,
   reloadOpenProject,
   deleteProject,
+  deleteAllProjects,
   forkOpenProject,
 };
 export type { NewSongProject };
