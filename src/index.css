@@ -57,6 +57,7 @@
 
   /* Animation */
   --transition-timing-scroll: cubic-bezier(0.86, 0, 0.07, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Base styles */

@@ -56,7 +56,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
       }}
       className={CARD_STYLES}
     >
-      <div className="relative z-1 pointer-events-none transition-[translate] duration-160 ease-[cubic-bezier(0.2,0,0,1)] group-hover/card:-translate-y-0.5">
+      <div className="relative z-1 pointer-events-none transition-[translate] duration-160 ease-emphasized group-hover/card:-translate-y-0.5">
         <ProjectArt
           src={project.thumbnailDataUrl}
           size="card"

@@ -2,13 +2,16 @@ import { cn } from "@/utils/cn";
 
 // -- Types --------------------------------------------------------------------
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "destructive";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "quiet" | "danger" | "destructive";
 type ButtonSize = "sm" | "md" | "icon";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonStyleOptions {
   variant?: ButtonVariant;
   size?: ButtonSize;
   hasIcon?: boolean;
+}
+
+interface ButtonProps extends ButtonStyleOptions, React.ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -21,6 +24,8 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
   primary: "bg-composer-accent-dark hover:bg-composer-accent text-composer-on-accent",
   secondary: "bg-composer-button hover:bg-composer-button-hover text-composer-text",
   ghost: "text-composer-text-muted hover:text-composer-text hover:bg-composer-button",
+  quiet:
+    "text-composer-text/60 hover:text-composer-text hover:bg-composer-button [&_svg]:text-composer-text [&_svg]:opacity-60 [&_svg]:transition-opacity hover:[&_svg]:opacity-100",
   danger: "text-composer-negative hover:bg-composer-negative/14",
   destructive: "bg-composer-error hover:bg-[color-mix(in_srgb,var(--color-composer-error)_85%,white)] text-white",
 };
@@ -37,31 +42,21 @@ const SIZE_STYLES_WITH_ICON: Record<ButtonSize, string> = {
   icon: "size-8 p-0",
 };
 
+// -- Class names --------------------------------------------------------------
+
+function buttonClassName({ variant = "secondary", size = "md", hasIcon = false }: ButtonStyleOptions = {}): string {
+  const sizeStyles = hasIcon ? SIZE_STYLES_WITH_ICON[size] : SIZE_STYLES[size];
+  return cn(BASE_STYLES, VARIANT_STYLES[variant], sizeStyles);
+}
+
 // -- Component ----------------------------------------------------------------
 
-const Button: React.FC<ButtonProps> = ({
-  variant = "secondary",
-  size = "md",
-  hasIcon = false,
-  className,
-  children,
-  ref,
-  ...props
-}) => {
-  const sizeStyles = hasIcon ? SIZE_STYLES_WITH_ICON[size] : SIZE_STYLES[size];
-
-  return (
-    <button
-      ref={ref}
-      type="button"
-      className={cn(BASE_STYLES, VARIANT_STYLES[variant], sizeStyles, className)}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
+const Button: React.FC<ButtonProps> = ({ variant, size, hasIcon, className, children, ref, ...props }) => (
+  <button ref={ref} type="button" className={cn(buttonClassName({ variant, size, hasIcon }), className)} {...props}>
+    {children}
+  </button>
+);
 
 // -- Exports ------------------------------------------------------------------
 
-export { Button };
+export { Button, buttonClassName };

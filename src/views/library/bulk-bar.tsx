@@ -1,6 +1,5 @@
 import { useModalStackStore } from "@/stores/modal-stack";
 import { Button } from "@/ui/button";
-import { cn } from "@/utils/cn";
 import { IconDownload, IconTrash, IconX } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
@@ -17,8 +16,7 @@ interface BulkBarProps {
 // -- Constants ----------------------------------------------------------------
 
 const BAR_STYLES =
-  "flex items-center gap-1 p-1.5 rounded-[14px] bg-composer-bg-elevated pointer-events-auto select-none animate-[library-toast-in_200ms_cubic-bezier(0.2,0,0,1)] shadow-pop";
-const QUIET_BUTTON = "text-composer-text/60";
+  "flex items-center gap-1 p-1.5 rounded-[14px] bg-composer-bg-elevated pointer-events-auto select-none animate-[library-toast-in_200ms_var(--ease-emphasized)] shadow-pop";
 
 // -- Sub-components -------------------------------------------------------------
 
@@ -36,13 +34,13 @@ const BulkBar: React.FC<BulkBarProps> = ({ selectedCount, visibleCount, onSelect
         <span className="pl-2 pr-2.5 font-medium tabular-nums">{selectedCount} selected</span>
         {selectedCount < visibleCount && (
           <>
-            <Button variant="ghost" size="sm" onClick={onSelectAll} className={QUIET_BUTTON}>
+            <Button variant="quiet" size="sm" onClick={onSelectAll}>
               Select all {visibleCount}
             </Button>
             <Divider />
           </>
         )}
-        <Button variant="ghost" size="sm" hasIcon onClick={onExport} className={QUIET_BUTTON}>
+        <Button variant="quiet" size="sm" hasIcon onClick={onExport}>
           <IconDownload aria-hidden="true" className="size-3.5" />
           Export
         </Button>
@@ -51,13 +49,7 @@ const BulkBar: React.FC<BulkBarProps> = ({ selectedCount, visibleCount, onSelect
           Delete
         </Button>
         <Divider />
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Clear selection"
-          onClick={onClear}
-          className={cn(QUIET_BUTTON, "size-7")}
-        >
+        <Button variant="quiet" size="icon" aria-label="Clear selection" onClick={onClear} className="size-7">
           <IconX aria-hidden="true" className="size-4" />
         </Button>
       </div>

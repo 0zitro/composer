@@ -136,7 +136,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: ItemIcon, label, onSelect, to
     >
       <ItemIcon
         aria-hidden="true"
-        className={cn("size-4 shrink-0", tone === "danger" ? "text-composer-negative" : "text-composer-text-muted")}
+        className={cn(
+          "size-4 shrink-0",
+          tone === "danger" ? "text-composer-negative" : "text-composer-text opacity-50",
+        )}
       />
       <span className="truncate">{label}</span>
       {trail && <span className="ms-auto flex gap-[3px]">{trail}</span>}

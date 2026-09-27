@@ -5,7 +5,7 @@ import { useOpenProjectId } from "@/hooks/useOpenProjectId";
 import { useProjectIndex } from "@/hooks/useProjectIndex";
 import { createProject, openProject } from "@/lib/open-project";
 import { getEffectiveKeysArray } from "@/stores/shortcut-bindings";
-import { Button } from "@/ui/button";
+import { Button, buttonClassName } from "@/ui/button";
 import { InlineKeyBadge } from "@/ui/inline-key-badge";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { ProjectProgress } from "@/ui/projects/project-progress";
@@ -138,7 +138,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
   return (
     <div className="w-[440px]">
       <div className="flex items-center gap-2.5 h-12 px-3 border-b border-composer-border">
-        <IconSearch aria-hidden="true" className="size-[18px] shrink-0 text-composer-text-muted" />
+        <IconSearch aria-hidden="true" className="size-[18px] shrink-0 text-composer-text opacity-50" />
         <input
           type="text"
           role="combobox"
@@ -197,17 +197,20 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
           onClick={startNewProject}
           className="text-[13px] text-composer-text-secondary"
         >
-          <IconPlus aria-hidden="true" className="size-[15px] text-composer-text-muted" />
+          <IconPlus aria-hidden="true" className="size-[15px] text-composer-text opacity-50" />
           New project
           <InlineKeyBadge keys={getEffectiveKeysArray("global.newProject")} />
         </Button>
         <Link
           to={LIBRARY_PATH}
           onClick={onClose}
-          className="inline-flex items-center gap-2 h-7 px-2.5 rounded-lg text-[13px] font-medium text-composer-text-secondary hover:bg-composer-button transition-colors cursor-pointer"
+          className={cn(
+            buttonClassName({ variant: "ghost", size: "sm" }),
+            "gap-2 text-[13px] text-composer-text-secondary",
+          )}
         >
           All projects
-          <IconArrowRight aria-hidden="true" className="size-[15px] text-composer-text-muted" />
+          <IconArrowRight aria-hidden="true" className="size-[15px] text-composer-text opacity-50" />
         </Link>
       </div>
     </div>

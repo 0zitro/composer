@@ -36,7 +36,7 @@ interface OpenMenu {
 const NO_PROJECTS: readonly ProjectIndexEntry[] = [];
 const PAGE_LOAD_LOCATION_KEY = "default";
 const FIRST_PAINT_MS = 700;
-const RISE = "group-data-[first-paint=true]/lib:animate-[library-rise_420ms_cubic-bezier(0.2,0,0,1)_both]";
+const RISE = "group-data-[first-paint=true]/lib:animate-[library-rise_420ms_var(--ease-emphasized)_both]";
 
 // -- Helpers ------------------------------------------------------------------
 

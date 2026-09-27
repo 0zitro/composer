@@ -105,13 +105,7 @@ const NewSongPanel: React.FC<NewSongPanelProps> = ({ className }) => {
         <h2 id={headingId} className="text-[15px] font-bold">
           Start a new song
         </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          hasIcon
-          onClick={() => importInputRef.current?.click()}
-          className="text-composer-text/60"
-        >
+        <Button variant="quiet" size="sm" hasIcon onClick={() => importInputRef.current?.click()}>
           <IconFileImport aria-hidden="true" className="size-3.5" />
           Import project
         </Button>

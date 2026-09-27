@@ -62,6 +62,6 @@ describe("SelectCheckbox", () => {
     const screen = await render(<Harness />);
     await expect
       .element(screen.getByRole("checkbox", { name: "Select Heat Waves" }))
-      .toHaveClass("before:ease-[cubic-bezier(0.2,0,0,1)]");
+      .toHaveClass("before:ease-emphasized");
   });
 });
