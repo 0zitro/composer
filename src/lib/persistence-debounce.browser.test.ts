@@ -7,7 +7,8 @@ import {
   flushPendingSaveQuietly,
 } from "@/lib/persistence-debounce";
 import { DB_NAME, DB_VERSION, PROJECT_RECORD_STORE_NAME, getAllFromStore } from "@/lib/persistence-idb";
-import { listProjectIndex, loadProjectAudio, removeProjectData } from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
+import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { clearRecoveryStorage } from "@/lib/recovery";
 import { getSaveStatus, subscribeSaveStatus, trackSave } from "@/lib/save-status";

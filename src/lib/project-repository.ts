@@ -17,6 +17,7 @@ import { notifyProjectIndexChanged } from "@/lib/project-index-changes";
 import { OPEN_PROJECT_KEY, PROJECT_DATA_STORES } from "@/lib/project-storage";
 import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
+import { notifyStorageSignal } from "@/lib/storage-signals";
 import { nanoid } from "nanoid";
 
 // -- Types --------------------------------------------------------------------
@@ -135,6 +136,7 @@ async function saveProjectRecordWithAudio(id: string, project: SavedProject, aud
   });
   notifyProjectIndexChanged();
   if (createdFirstEntry) protectStorageForFirstProject();
+  if (saved) notifyStorageSignal("media-stored");
 }
 
 function updateProjectRecord(id: string, update: ProjectUpdate): Promise<void> {
@@ -208,34 +210,6 @@ function setProjectLastTab(id: string, lastTab: ProjectTab): Promise<void> {
   return patchProjectIndex(id, { lastTab });
 }
 
-// -- Audio --------------------------------------------------------------------
-
-async function saveProjectAudio(id: string, file: File): Promise<void> {
-  const data = await file.arrayBuffer();
-  const saved: SavedAudioFile = { name: file.name, type: file.type, data };
-  const stores = [PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME, APP_STATE_STORE_NAME];
-  await runTransaction(stores, "readwrite", (tx, abort) => {
-    whenProjectWritable(tx, abort, id, () => {
-      tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
-      patchIndexEntry(tx, id, { storedAudioBytes: data.byteLength });
-    });
-  });
-  notifyProjectIndexChanged();
-}
-
-async function loadProjectAudio(id: string): Promise<File | undefined> {
-  const saved = await getFromStore<SavedAudioFile>(PROJECT_AUDIO_STORE_NAME, id);
-  if (!saved) return undefined;
-  return new File([saved.data], saved.name, { type: saved.type });
-}
-
-function deleteProjectAudio(id: string): Promise<void> {
-  return runTransaction([PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => {
-    tx.objectStore(PROJECT_AUDIO_STORE_NAME).delete(id);
-    patchIndexEntry(tx, id, { storedAudioBytes: 0 });
-  }).then(notifyProjectIndexChanged);
-}
-
 // -- Removal ------------------------------------------------------------------
 
 function removeProjectData(id: string): Promise<void> {
@@ -268,9 +242,7 @@ export {
   findProjectByVideoId,
   markProjectOpened,
   setProjectLastTab,
-  saveProjectAudio,
-  loadProjectAudio,
-  deleteProjectAudio,
+  patchIndexEntry,
   removeProjectData,
 };
-export type { ProjectUpdate };
+export type { ProjectUpdate, IndexPatch };

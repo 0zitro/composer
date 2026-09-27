@@ -3,7 +3,7 @@ import { usePersistence } from "@/hooks/usePersistence";
 import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
 import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
-import { loadProjectAudio } from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";

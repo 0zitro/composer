@@ -1,7 +1,8 @@
 import { restoreOpenProject } from "@/lib/open-project";
 import { projectFileFrom } from "@/lib/project-file";
 import { importProjectFile } from "@/lib/project-import";
-import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
+import { listProjectIndex } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useProjectStore } from "@/stores/project";
 import { createAudioFile } from "@/test/audio-fixtures";

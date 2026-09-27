@@ -9,7 +9,8 @@ import {
   exportProjectFiles,
   renameProject,
 } from "@/lib/project-library-actions";
-import { loadProjectAudio, loadProjectIndexEntry, removeProjectData } from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
+import { loadProjectIndexEntry, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { useProjectStore } from "@/stores/project";

@@ -4,7 +4,7 @@ import { useResolveYouTubeTunnel } from "@/hooks/useResolveYouTubeTunnel";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { flushPendingSave } from "@/lib/persistence-debounce";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
-import { loadProjectAudio } from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
 import { getSaveStatus } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";

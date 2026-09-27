@@ -1,7 +1,8 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { ProjectSaveArgs } from "@/lib/persistence";
 import { findOpenProjectId } from "@/lib/open-project-session";
-import { loadProjectAudio, saveProjectAudio, saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
+import { loadProjectAudio, saveProjectAudio } from "@/lib/project-audio";
+import { saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/domain/project/syllable-split-defaults";

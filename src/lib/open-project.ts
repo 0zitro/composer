@@ -7,11 +7,11 @@ import {
 } from "@/lib/open-project-session";
 import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave, flushPendingSaveQuietly } from "@/lib/persistence-debounce";
+import { saveProjectAudio } from "@/lib/project-audio";
 import {
   createProjectId,
   markProjectOpened,
   removeProjectData,
-  saveProjectAudio,
   saveProjectRecord,
   setOpenProjectId,
 } from "@/lib/project-repository";

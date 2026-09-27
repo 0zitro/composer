@@ -6,7 +6,8 @@ import {
   getFromStore,
 } from "@/lib/persistence-idb";
 import { migrateLegacyProject } from "@/lib/project-migration";
-import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
+import { listProjectIndex } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { allowConsole } from "@/test/console-guard";
 import { seedAudioFile, seedProject } from "@/test/idb";

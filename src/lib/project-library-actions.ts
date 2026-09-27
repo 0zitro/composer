@@ -4,12 +4,8 @@ import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
-import {
-  createProjectId,
-  loadProjectAudio,
-  saveProjectRecordWithAudio,
-  updateProjectRecord,
-} from "@/lib/project-repository";
+import { loadProjectAudio } from "@/lib/project-audio";
+import { createProjectId, saveProjectRecordWithAudio, updateProjectRecord } from "@/lib/project-repository";
 import { currentSaveArgs } from "@/lib/project-snapshot";
 import { loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";

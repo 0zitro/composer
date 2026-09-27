@@ -1,10 +1,9 @@
 import { subscribeProjectIndexChanges } from "@/lib/project-index-changes";
+import { loadProjectAudio, saveProjectAudio } from "@/lib/project-audio";
 import {
-  loadProjectAudio,
   loadProjectIndexEntry,
   markProjectOpened,
   removeProjectData,
-  saveProjectAudio,
   saveProjectRecord,
   saveProjectRecordWithAudio,
   setProjectLastTab,
