@@ -50,4 +50,18 @@ describe("SelectCheckbox", () => {
     await userEvent.keyboard(" ");
     await expect.element(screen.getByRole("checkbox", { name: "Select Heat Waves" })).toBeChecked();
   });
+
+  describe("regressions", () => {
+    it("regression: is its own positioning context, so its hit-area pseudo-element cannot expand onto an ancestor", async () => {
+      const screen = await render(<Harness />);
+      await expect.element(screen.getByRole("checkbox", { name: "Select Heat Waves" })).toHaveClass("relative");
+    });
+  });
+
+  it("uses the mockup easing curve for the tick", async () => {
+    const screen = await render(<Harness />);
+    await expect
+      .element(screen.getByRole("checkbox", { name: "Select Heat Waves" }))
+      .toHaveClass("before:ease-[cubic-bezier(0.2,0,0,1)]");
+  });
 });

@@ -1,5 +1,5 @@
 import { render } from "@/test/render";
-import { ProgressBar } from "@/ui/projects/progress-bar";
+import { ProgressBar } from "@/ui/progress-bar";
 import { describe, expect, it } from "vitest";
 
 describe("ProgressBar", () => {
@@ -20,6 +20,20 @@ describe("ProgressBar", () => {
     it("uses the on-media colors for the resume card", async () => {
       const screen = await render(<ProgressBar percent={0} label="x" tone="on-media" />);
       await expect.element(screen.getByRole("progressbar")).toHaveClass("h-1.5");
+    });
+
+    it("clamps a percent above 100 to a full bar", async () => {
+      const screen = await render(<ProgressBar percent={140} label="x" />);
+      const bar = screen.getByRole("progressbar");
+      await expect.element(bar).toHaveAttribute("aria-valuenow", "100");
+      expect((screen.container.querySelector("[role='progressbar'] > span") as HTMLElement).style.width).toBe("100%");
+    });
+
+    it("clamps a negative percent to an empty bar", async () => {
+      const screen = await render(<ProgressBar percent={-20} label="x" />);
+      const bar = screen.getByRole("progressbar");
+      await expect.element(bar).toHaveAttribute("aria-valuenow", "0");
+      expect((screen.container.querySelector("[role='progressbar'] > span") as HTMLElement).style.width).toBe("0%");
     });
   });
 });

@@ -1,5 +1,5 @@
 import { projectStage, syncedPercent } from "@/domain/project/progress";
-import { ProgressBar } from "@/ui/projects/progress-bar";
+import { ProgressBar } from "@/ui/progress-bar";
 import { cn } from "@/utils/cn";
 import { IconCircleCheck } from "@tabler/icons-react";
 

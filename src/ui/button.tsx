@@ -22,7 +22,7 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
   secondary: "bg-composer-button hover:bg-composer-button-hover text-composer-text",
   ghost: "text-composer-text-muted hover:text-composer-text hover:bg-composer-button",
   danger: "text-composer-negative hover:bg-composer-negative/14",
-  destructive: "bg-composer-error hover:bg-[#c46262] text-white",
+  destructive: "bg-composer-error hover:bg-[color-mix(in_srgb,var(--color-composer-error)_85%,white)] text-white",
 };
 
 const SIZE_STYLES: Record<ButtonSize, string> = {

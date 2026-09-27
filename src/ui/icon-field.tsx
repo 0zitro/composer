@@ -1,14 +1,18 @@
+import { INPUT_STYLES } from "@/ui/input-styles";
 import { cn } from "@/utils/cn";
 import type { Icon } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
 
-interface IconFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface IconFieldBaseProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon: Icon;
-  trailing?: React.ReactNode;
   wrapperClassName?: string;
   ref?: React.Ref<HTMLInputElement>;
 }
+
+type IconFieldProps =
+  | (IconFieldBaseProps & { trailing: React.ReactNode; placeholder: string })
+  | (IconFieldBaseProps & { trailing?: undefined });
 
 // -- Component ----------------------------------------------------------------
 
@@ -31,13 +35,13 @@ const IconField: React.FC<IconFieldProps> = ({
       autoComplete="off"
       {...inputProps}
       onKeyDown={(event) => {
-        event.stopPropagation();
+        const staysLocal = event.key !== "Escape" && !event.metaKey && !event.ctrlKey && !event.altKey;
+        if (staysLocal) event.stopPropagation();
         onKeyDown?.(event);
       }}
       className={cn(
-        "peer w-full h-8 pl-8 pr-3 text-sm rounded-lg bg-composer-input border border-composer-border text-composer-text transition-colors",
-        "hover:border-composer-border-hover focus:outline-none focus:border-composer-accent",
-        "placeholder:text-composer-text-muted cursor-text select-text",
+        INPUT_STYLES,
+        "peer w-full h-8 pl-8 pr-3 rounded-lg hover:border-composer-border-hover placeholder:text-composer-text-muted select-text",
         className,
       )}
     />

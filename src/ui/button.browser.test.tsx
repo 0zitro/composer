@@ -82,4 +82,13 @@ describe("Button danger variants", () => {
     await expect.element(screen.getByRole("button", { name: "Delete" })).toHaveClass("text-composer-negative");
     await expect.element(screen.getByRole("button", { name: "Replace project" })).toHaveClass("bg-composer-error");
   });
+
+  describe("regressions", () => {
+    it("regression: destructive hover is derived from the composer-error token, not a hardcoded hex", async () => {
+      const screen = await render(<Button variant="destructive">Replace project</Button>);
+      const button = screen.getByRole("button", { name: "Replace project" });
+      await expect.element(button).toHaveClass("hover:bg-[color-mix(in_srgb,var(--color-composer-error)_85%,white)]");
+      await expect.element(button).not.toHaveClass("hover:bg-[#c46262]");
+    });
+  });
 });

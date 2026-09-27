@@ -91,12 +91,18 @@ describe("FileDropZone ids", () => {
         <FileDropZone accept="audio/*" onFileDrop={() => {}}>
           second
         </FileDropZone>
+        <FileDropZone accept="audio/*" onFileDrop={() => {}}>
+          third
+        </FileDropZone>
       </>,
     );
     const labels = [...screen.container.querySelectorAll("label")];
-    expect(labels).toHaveLength(2);
-    expect(labels[0]?.htmlFor).not.toBe(labels[1]?.htmlFor);
-    expect(labels[0]?.querySelector("input")?.id).toBe(labels[0]?.htmlFor);
+    expect(labels).toHaveLength(3);
+    for (const label of labels) {
+      expect(label.querySelector("input")?.id).toBe(label.htmlFor);
+    }
+    const ids = labels.map((label) => label.htmlFor);
+    expect(new Set(ids).size).toBe(labels.length);
   });
 
   it("merges a className over its defaults", async () => {

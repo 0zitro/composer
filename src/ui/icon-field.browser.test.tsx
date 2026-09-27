@@ -1,5 +1,6 @@
 import { render } from "@/test/render";
 import { IconField } from "@/ui/icon-field";
+import { Modal } from "@/ui/modal";
 import { IconSearch } from "@tabler/icons-react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -47,7 +48,7 @@ describe("IconField", () => {
   });
 
   describe("regressions", () => {
-    it("regression: keys typed into the field do not reach window shortcuts", async () => {
+    it("regression: plain keys typed into the field do not reach window shortcuts", async () => {
       const seen: string[] = [];
       const onKey = (event: KeyboardEvent) => seen.push(event.key);
       window.addEventListener("keydown", onKey);
@@ -56,6 +57,48 @@ describe("IconField", () => {
       await userEvent.keyboard("/");
       window.removeEventListener("keydown", onKey);
       expect(seen).toEqual([]);
+    });
+
+    it("regression: a plain Space does not reach a parent keydown handler", async () => {
+      let handledByParent = false;
+      const screen = await render(
+        <div
+          onKeyDown={() => {
+            handledByParent = true;
+          }}
+        >
+          <Harness />
+        </div>,
+      );
+      await screen.getByRole("textbox", { name: "Search projects" }).click();
+      await userEvent.keyboard(" ");
+      expect(handledByParent).toBe(false);
+    });
+
+    it("regression: Escape still reaches a window-level shortcut listener", async () => {
+      const seen: string[] = [];
+      const onKey = (event: KeyboardEvent) => seen.push(event.key);
+      window.addEventListener("keydown", onKey);
+      const screen = await render(<Harness />);
+      await screen.getByRole("textbox", { name: "Search projects" }).click();
+      await userEvent.keyboard("{Escape}");
+      window.removeEventListener("keydown", onKey);
+      expect(seen).toEqual(["Escape"]);
+    });
+
+    it("regression: Escape inside the field closes an ancestor Modal", async () => {
+      const ModalHarness: React.FC = () => {
+        const [isOpen, setIsOpen] = useState(true);
+        return (
+          <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Rename">
+            <IconField icon={IconSearch} aria-label="Project title" placeholder="Title" />
+          </Modal>
+        );
+      };
+      const screen = await render(<ModalHarness />);
+      await screen.getByRole("textbox", { name: "Project title" }).click();
+      await userEvent.keyboard("{Escape}");
+      await expect.element(screen.getByRole("dialog", { name: "Rename" })).not.toBeInTheDocument();
     });
   });
 });

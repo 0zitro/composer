@@ -25,21 +25,24 @@ const FILL_STYLES: Record<ProgressBarTone, string> = {
 
 // -- Component ----------------------------------------------------------------
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ percent, label, tone = "default", className }) => (
-  <div
-    role="progressbar"
-    aria-label={label}
-    aria-valuenow={percent}
-    aria-valuemin={0}
-    aria-valuemax={100}
-    className={cn("relative overflow-hidden rounded-full", TRACK_STYLES[tone], className)}
-  >
-    <span
-      className={cn("absolute inset-y-0 left-0 rounded-full", FILL_STYLES[tone])}
-      style={{ width: `${percent}%` }}
-    />
-  </div>
-);
+const ProgressBar: React.FC<ProgressBarProps> = ({ percent, label, tone = "default", className }) => {
+  const clamped = Math.min(100, Math.max(0, percent));
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuenow={clamped}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      className={cn("relative overflow-hidden rounded-full", TRACK_STYLES[tone], className)}
+    >
+      <span
+        className={cn("absolute inset-y-0 left-0 rounded-full", FILL_STYLES[tone])}
+        style={{ width: `${clamped}%` }}
+      />
+    </div>
+  );
+};
 
 // -- Exports ------------------------------------------------------------------
 
