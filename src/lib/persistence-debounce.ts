@@ -5,7 +5,7 @@ import { useSettingsStore } from "@/stores/settings";
 
 // -- Constants ----------------------------------------------------------------
 
-const LOG_PREFIX = "[Persistence]";
+const LOG_PREFIX = "[SaveQueue]";
 
 // -- Types --------------------------------------------------------------------
 

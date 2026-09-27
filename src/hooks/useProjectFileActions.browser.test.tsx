@@ -1,13 +1,17 @@
 import { useProjectFileActions } from "@/hooks/useProjectFileActions";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
-import { debouncedSave } from "@/lib/persistence-debounce";
+import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
+import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import { listProjectIndex } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { saveArgsTitled, seedStoredProject } from "@/test/projects";
-import { sleep } from "@/test/async";
+import { allowConsole } from "@/test/console-guard";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
+import { render } from "@/test/render";
+import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
@@ -31,13 +35,28 @@ describe("useProjectFileActions · clear", () => {
     expect(useProjectStore.getState().metadata.title).toBe("");
   });
 
+  describe("error paths", () => {
+    it("a failed delete keeps the click handler from rejecting and says so", async () => {
+      allowConsole(/could not clear the project/);
+      useSettingsStore.setState({ confirmClearProject: false });
+      await seedStoredProject("a", { open: true });
+      await restoreOpenProject();
+      const screen = await render(<Toaster />);
+      const { result } = await renderHook(() => useProjectFileActions({ current: null }));
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      await expect(result.current.handleClearProject()).resolves.toBeUndefined();
+      await expect.element(screen.getByText("Couldn't clear the project")).toBeInTheDocument();
+      await deleteDatabase(DB_NAME);
+    });
+  });
+
   describe("regressions", () => {
     it("regression: clearing before anything was saved discards a pending save instead of persisting it", async () => {
       useSettingsStore.setState({ confirmClearProject: false, autoSaveDelay: 60_000 });
       debouncedSave(...saveArgsTitled("Unsaved"));
       const { result } = await renderHook(() => useProjectFileActions({ current: null }));
       await result.current.handleClearProject();
-      await sleep(150);
+      await flushPendingSave();
       expect(await listProjectIndex()).toEqual([]);
     });
   });

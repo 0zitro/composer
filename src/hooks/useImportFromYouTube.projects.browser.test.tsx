@@ -15,7 +15,7 @@ import { allowConsole } from "@/test/console-guard";
 import { seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { render } from "@/test/render";
 import { Toaster } from "sonner";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -116,6 +116,8 @@ describe("useImportFromYouTube · projects", () => {
   });
 
   it("rolls back the created project when the linked video fails to load", async () => {
+    allowConsole(/the linked video did not load/);
+    const warn = vi.spyOn(console, "warn");
     await seedOpenAlpha();
     const { screen } = await bootWithLink(`?title=Blinding%20Lights&videoId=${LINKED_VIDEO_ID}`);
     const newId = openProjectIdSnapshot();
@@ -127,6 +129,8 @@ describe("useImportFromYouTube · projects", () => {
     expect(useProjectStore.getState().metadata.title).toBe("Alpha");
     await expect.poll(() => isProjectDeleted(newId ?? "")).toBe(true);
     await expect.element(screen.getByText("Opened “Blinding Lights” from Better Lyrics")).not.toBeInTheDocument();
+    expect(warn.mock.calls.some((args) => args.includes("the linked video did not load"))).toBe(true);
+    warn.mockRestore();
   });
 
   it("a new project takes the link's metadata without the replace prompt", async () => {

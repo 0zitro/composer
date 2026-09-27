@@ -23,6 +23,17 @@ class YouTubeLoadSupersededError extends Error {
   }
 }
 
+class YouTubeLoadFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "YouTubeLoadFailedError";
+  }
+}
+
+function isYouTubeLoadError(error: unknown): boolean {
+  return error instanceof YouTubeLoadFailedError || error instanceof YouTubeLoadSupersededError;
+}
+
 // -- Hook ---------------------------------------------------------------------
 
 function useLoadYouTubeSource(): (videoId: string) => Promise<void> {
@@ -142,7 +153,7 @@ function waitForYouTubeLoad(videoId: string): Promise<void> {
       }
       if (state.youtubeLoadError) {
         unsubscribe();
-        reject(new Error(state.youtubeLoadError));
+        reject(new YouTubeLoadFailedError(state.youtubeLoadError));
         return;
       }
       if (!isYouTubeSourceFor(state.source, videoId)) {
@@ -155,4 +166,4 @@ function waitForYouTubeLoad(videoId: string): Promise<void> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { useLoadYouTubeSource, loadVideoWithRollback };
+export { useLoadYouTubeSource, loadVideoWithRollback, isYouTubeLoadError };

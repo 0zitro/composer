@@ -8,6 +8,11 @@ import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
 import { useCallback } from "react";
+import { toast } from "sonner";
+
+// -- Constants ----------------------------------------------------------------
+
+const LOG_PREFIX = "[ProjectFileActions]";
 
 // -- Hook ---------------------------------------------------------------------
 
@@ -96,7 +101,10 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
     if (!ok) return;
     const id = openProjectIdSnapshot();
     if (id) {
-      await deleteProject(id);
+      await deleteProject(id).catch((error: unknown) => {
+        console.error(LOG_PREFIX, "could not clear the project", error);
+        toast.error("Couldn't clear the project");
+      });
     } else {
       cancelPendingSave();
       createProject();

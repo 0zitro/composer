@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 // -- Constants ----------------------------------------------------------------
 
-const LOG_PREFIX = "[Projects]";
+const LOG_PREFIX = "[ProjectChannel]";
 
 // -- Module state -------------------------------------------------------------
 

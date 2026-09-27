@@ -22,7 +22,7 @@ interface RestorePayload {
 
 // -- Constants ----------------------------------------------------------------
 
-const LOG_PREFIX = "[Persistence]";
+const LOG_PREFIX = "[ProjectRestore]";
 const EMPTY_RESTORE: RestorePayload = { project: undefined, audio: undefined, lastTab: undefined };
 
 // -- Module state -------------------------------------------------------------

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 // -- Constants ----------------------------------------------------------------
 
-const LOG_PREFIX = "[Projects]";
+const LOG_PREFIX = "[ProjectToast]";
 const NEW_PROJECT_TOAST_DURATION_MS = 10_000;
 
 // -- Copy -----------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { loadVideoWithRollback, useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
+import { isYouTubeLoadError, loadVideoWithRollback, useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { type VideoProjectOutcome, openProjectForVideo } from "@/lib/open-video-project";
 import { getPersistenceSettled, getQueryImportSettled, markLinkProjectSettled } from "@/lib/persistence-settled";
 import { useAudioStore } from "@/stores/audio";
@@ -29,12 +29,15 @@ function announceLinkedProject(outcome: CreatedVideoProject): void {
   });
 }
 
+function logLinkedVideoFailure(error: unknown): void {
+  if (isYouTubeLoadError(error)) console.warn(LOG_PREFIX, "the linked video did not load", error);
+  else console.error(LOG_PREFIX, "loading the linked video failed", error);
+}
+
 function loadCreatedProjectVideo(videoId: string, outcome: CreatedVideoProject): void {
   loadVideoWithRollback(videoId, outcome.id, outcome.previousId)
     .then(() => announceLinkedProject(outcome))
-    .catch(() => {
-      // Rollback already ran inside loadVideoWithRollback; the tunnel/store surfaces the failure.
-    });
+    .catch(logLinkedVideoFailure);
 }
 
 // -- Hook ---------------------------------------------------------------------
@@ -74,9 +77,7 @@ function useImportFromYouTube(): void {
           return;
         }
         if (hasLoadedYouTubeSourceFor(useAudioStore.getState().source, videoId)) return;
-        loadRef.current(videoId).catch(() => {
-          // The load error is surfaced through useAudioStore.youtubeLoadError and the tunnel toast.
-        });
+        loadRef.current(videoId).catch(logLinkedVideoFailure);
       })
       .catch((error: unknown) => {
         console.error(`${LOG_PREFIX} could not open the project for the link`, error);
