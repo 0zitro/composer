@@ -1,5 +1,6 @@
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
+import { reportStorageWriteError } from "@/lib/storage-signals";
 
 // -- Types --------------------------------------------------------------------
 
@@ -58,6 +59,7 @@ function trackSave(kind: SaveKind, write: Promise<void>): Promise<void> {
         failedKinds.delete(kind);
       },
       (error: unknown) => {
+        reportStorageWriteError(error);
         if (isRefusedForClosedProject(error)) return;
         failedKinds.add(kind);
         throw error;

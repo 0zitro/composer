@@ -6,6 +6,7 @@ import {
   subscribeSaveStatus,
   trackSave,
 } from "@/lib/save-status";
+import { type StorageSignal, subscribeStorageSignals } from "@/lib/storage-signals";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -103,6 +104,24 @@ describe("save-status", () => {
       await trackSave("audio", Promise.resolve());
       expect(getSaveStatus()).toBe("saved");
     });
+  });
+});
+
+describe("trackSave · storage full", () => {
+  it("signals storage full when a save fails with a quota error", async () => {
+    const seen: StorageSignal[] = [];
+    const unsubscribe = subscribeStorageSignals((signal) => seen.push(signal));
+    await expect(trackSave("audio", Promise.reject(new DOMException("full", "QuotaExceededError")))).rejects.toThrow();
+    unsubscribe();
+    expect(seen).toEqual(["storage-full"]);
+  });
+
+  it("does not signal for other failures", async () => {
+    const seen: StorageSignal[] = [];
+    const unsubscribe = subscribeStorageSignals((signal) => seen.push(signal));
+    await expect(trackSave("project", Promise.reject(new Error("disk")))).rejects.toThrow();
+    unsubscribe();
+    expect(seen).toEqual([]);
   });
 });
 
