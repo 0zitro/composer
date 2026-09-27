@@ -14,7 +14,7 @@ const bindingSignature = (binding: ShortcutBinding): string =>
     binding.mod ? "mod" : "",
   ].join("|");
 
-const SCOPES: ShortcutScope[] = ["global", "sync", "timeline"];
+const SCOPES: ShortcutScope[] = ["global", "sync", "timeline", "library"];
 
 // -- Tests --------------------------------------------------------------------
 
@@ -72,6 +72,17 @@ describe("SHORTCUT_DEFINITIONS", () => {
       expect(definition?.scope).toBe("global");
       expect(definition?.defaultBinding).toEqual(binding);
     }
+  });
+
+  it("registers the library shortcuts with their exact default bindings in the library scope", () => {
+    const search = SHORTCUT_DEFINITIONS.find((d) => d.id === "library.focusSearch");
+    const remove = SHORTCUT_DEFINITIONS.find((d) => d.id === "library.deleteSelection");
+    expect(search).toMatchObject({ scope: "library", description: "Search projects", defaultBinding: { key: "/" } });
+    expect(remove).toMatchObject({
+      scope: "library",
+      description: "Delete selected projects",
+      defaultBinding: { key: "Backspace" },
+    });
   });
 
   describe("invariants", () => {

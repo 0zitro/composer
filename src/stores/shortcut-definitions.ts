@@ -9,7 +9,7 @@ interface ShortcutBinding {
   mod?: boolean;
 }
 
-type ShortcutScope = "global" | "sync" | "timeline";
+type ShortcutScope = "global" | "sync" | "timeline" | "library";
 
 interface ShortcutDefinition {
   id: string;
@@ -98,6 +98,18 @@ const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     scope: "global",
     description: "New project",
     defaultBinding: { key: "n", mod: true, alt: true },
+  },
+  {
+    id: "library.focusSearch",
+    scope: "library",
+    description: "Search projects",
+    defaultBinding: { key: "/" },
+  },
+  {
+    id: "library.deleteSelection",
+    scope: "library",
+    description: "Delete selected projects",
+    defaultBinding: { key: "Backspace" },
   },
   {
     id: "sync.tap",

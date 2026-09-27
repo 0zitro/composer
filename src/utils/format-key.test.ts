@@ -11,6 +11,7 @@ describe("formatKey", () => {
     expect(formatKey("ArrowUp")).toBe("↑");
     expect(formatKey("ArrowDown")).toBe("↓");
     expect(formatKey("Space")).toBe("Space");
+    expect(formatKey("Backspace")).toBe("⌫");
   });
 
   it("maps modifier keys according to the host platform", () => {

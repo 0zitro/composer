@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SCOPE_GROUPS: { scope: ShortcutScope; title: string }[] = [
   { scope: "global", title: "General" },
+  { scope: "library", title: "Projects" },
   { scope: "sync", title: "Sync Mode" },
   { scope: "timeline", title: "Timeline Mode" },
 ];

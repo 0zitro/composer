@@ -30,6 +30,13 @@ const SHORTCUT_SECTIONS: ShortcutSectionProps[] = [
     ],
   },
   {
+    title: "Projects",
+    shortcuts: [
+      { keys: ["/"], description: "Search projects", shortcutId: "library.focusSearch" },
+      { keys: ["Backspace"], description: "Delete selected projects", shortcutId: "library.deleteSelection" },
+    ],
+  },
+  {
     title: "Navigation",
     shortcuts: [
       { keys: ["Mod", "1"], description: "Go to Import tab" },
