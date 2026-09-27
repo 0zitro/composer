@@ -1,4 +1,4 @@
-import { progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
+import { hasLyrics, progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
 import { describe, expect, it } from "vitest";
 
 describe("projectStage", () => {
@@ -64,6 +64,19 @@ describe("progressDescription", () => {
       expect(progressDescription({ lineCount: 58, syncedLineCount: 0, hasWordTiming: false })).toBe(
         "0 of 58 lines synced",
       );
+    });
+  });
+});
+
+describe("hasLyrics", () => {
+  it("is true when the project has at least one line", () => {
+    expect(hasLyrics({ lineCount: 1 })).toBe(true);
+    expect(hasLyrics({ lineCount: 38 })).toBe(true);
+  });
+
+  describe("edge cases", () => {
+    it("is false for a project with no lines", () => {
+      expect(hasLyrics({ lineCount: 0 })).toBe(false);
     });
   });
 });

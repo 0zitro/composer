@@ -7,6 +7,10 @@ type ProgressCounts = Pick<ProjectIndexEntry, "lineCount" | "syncedLineCount">;
 
 // -- Derivations --------------------------------------------------------------
 
+function hasLyrics({ lineCount }: Pick<ProjectIndexEntry, "lineCount">): boolean {
+  return lineCount > 0;
+}
+
 function projectStage({ lineCount, syncedLineCount }: ProgressCounts): ProjectStage {
   if (lineCount === 0 || syncedLineCount <= 0) return "not-synced";
   return syncedLineCount >= lineCount ? "synced" : "syncing";
@@ -23,7 +27,7 @@ function progressDescription({
   syncedLineCount,
   hasWordTiming,
 }: ProgressCounts & Pick<ProjectIndexEntry, "hasWordTiming">): string {
-  if (lineCount === 0) return "No lyrics yet";
+  if (!hasLyrics({ lineCount })) return "No lyrics yet";
   const synced = `${Math.min(Math.max(syncedLineCount, 0), lineCount)} of ${lineCount} lines synced`;
   if (syncedLineCount <= 0) return synced;
   return `${synced}, ${hasWordTiming ? "word by word" : "line by line"}`;
@@ -31,5 +35,5 @@ function progressDescription({
 
 // -- Exports ------------------------------------------------------------------
 
-export { projectStage, syncedPercent, progressDescription };
+export { hasLyrics, projectStage, syncedPercent, progressDescription };
 export type { ProjectStage, ProgressCounts };

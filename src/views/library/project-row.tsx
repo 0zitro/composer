@@ -1,15 +1,16 @@
-import { displayTitle } from "@/domain/project/display-title";
+import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
-import { progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
+import { hasLyrics, progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
 import { Button } from "@/ui/button";
 import { type MenuAnchor, menuTriggerProps } from "@/ui/menu";
 import { ProgressBar } from "@/ui/progress-bar";
 import { ProjectArt } from "@/ui/projects/project-art";
+import { SyncedBadge } from "@/ui/projects/synced-badge";
 import { SelectCheckbox } from "@/ui/select-checkbox";
 import { cn } from "@/utils/cn";
 import { formatRelativeTime } from "@/utils/format-relative-time";
 import { AudioStatusLabel } from "@/views/library/audio-status-label";
-import { IconCircleCheck, IconDots } from "@tabler/icons-react";
+import { IconDots } from "@tabler/icons-react";
 import { memo } from "react";
 
 // -- Types --------------------------------------------------------------------
@@ -48,14 +49,16 @@ const REVEAL_ON_ROW = "opacity-0 group-hover/row:opacity-100 group-data-[selecti
 // -- Sub-components -----------------------------------------------------------
 
 const RowProgress: React.FC<{ project: ProjectIndexEntry }> = ({ project }) => {
-  if (project.lineCount === 0) return <span className={cn("text-[13px]", ROW_MUTED)}>No lyrics yet</span>;
+  if (!hasLyrics(project)) {
+    return <span className={cn("text-[13px]", ROW_MUTED)}>{progressDescription(project)}</span>;
+  }
   const percent = syncedPercent(project);
   return (
     <div className="flex items-center gap-3 pointer-events-none">
       <ProgressBar percent={percent} label={progressDescription(project)} className="flex-1" />
       {projectStage(project) === "synced" ? (
-        <span className="inline-flex justify-end w-9 shrink-0 text-composer-positive">
-          <IconCircleCheck role="img" aria-label="Synced" className="size-[18px]" />
+        <span className="inline-flex justify-end w-9 shrink-0">
+          <SyncedBadge />
         </span>
       ) : (
         <span className={cn("w-9 shrink-0 text-right text-[13px] tabular-nums", ROW_MUTED)}>{percent}%</span>
@@ -88,7 +91,14 @@ const ProjectRowContent: React.FC<ProjectItemProps> = ({
       className={ROW_STYLES}
     >
       <div className="relative size-10">
-        <ProjectArt src={project.thumbnailDataUrl} size="row" />
+        <ProjectArt
+          src={project.thumbnailDataUrl}
+          size="row"
+          className={cn(
+            "[&_svg]:transition-opacity [&_svg]:duration-100",
+            "group-hover/row:[&_svg]:opacity-0 group-data-selected/row:[&_svg]:opacity-0 group-data-[selecting=true]/list:[&_svg]:opacity-0",
+          )}
+        />
         <span
           aria-hidden="true"
           className={cn(
@@ -113,7 +123,7 @@ const ProjectRowContent: React.FC<ProjectItemProps> = ({
         >
           {title}
         </button>
-        <div className={cn("truncate text-[13px]", ROW_MUTED)}>{project.artists.join(", ") || "No artist"}</div>
+        <div className={cn("truncate text-[13px]", ROW_MUTED)}>{displayArtists(project.artists)}</div>
       </div>
       <div className={cn("truncate text-[13px]", ROW_MUTED, ALBUM_COLUMN)}>{project.album || "No album"}</div>
       <RowProgress project={project} />

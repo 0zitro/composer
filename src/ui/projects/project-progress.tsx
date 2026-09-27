@@ -1,7 +1,7 @@
-import { projectStage, syncedPercent } from "@/domain/project/progress";
+import { hasLyrics, projectStage, syncedPercent } from "@/domain/project/progress";
 import { ProgressBar } from "@/ui/progress-bar";
+import { SyncedBadge } from "@/ui/projects/synced-badge";
 import { cn } from "@/utils/cn";
-import { IconCircleCheck } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
 
@@ -15,7 +15,7 @@ interface ProjectProgressProps {
 
 const ProjectProgress: React.FC<ProjectProgressProps> = ({ lineCount, syncedLineCount, isActive = false }) => {
   const counts = { lineCount, syncedLineCount };
-  if (lineCount === 0) {
+  if (!hasLyrics(counts)) {
     return (
       <span className={cn("text-[13px]", isActive ? "text-composer-text-secondary" : "text-composer-text-muted")}>
         No lyrics
@@ -23,9 +23,7 @@ const ProjectProgress: React.FC<ProjectProgressProps> = ({ lineCount, syncedLine
     );
   }
   if (projectStage(counts) === "synced") {
-    return (
-      <IconCircleCheck role="img" aria-label="Synced" className="justify-self-end size-[18px] text-composer-positive" />
-    );
+    return <SyncedBadge className="justify-self-end" />;
   }
   return <ProgressBar percent={syncedPercent(counts)} label={`${syncedLineCount} of ${lineCount} lines synced`} />;
 };

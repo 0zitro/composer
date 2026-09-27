@@ -1,4 +1,4 @@
-import { displayTitle } from "@/domain/project/display-title";
+import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import { projectFileSummary } from "@/lib/project-import";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
 import { Button } from "@/ui/button";
@@ -45,7 +45,7 @@ const ImportConflictModalHost: React.FC = () => {
           <div className="min-w-0">
             <div className="truncate font-medium select-text">{displayTitle(existing.title)}</div>
             <div className="truncate text-[13px] text-composer-text-muted select-text">
-              {existing.artists.join(", ") || "No artist"}
+              {displayArtists(existing.artists)}
             </div>
           </div>
         </div>

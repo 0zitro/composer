@@ -1,4 +1,4 @@
-import { displayTitle } from "@/domain/project/display-title";
+import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { recentProjects } from "@/domain/project/recent-projects";
 import { useOpenProjectId } from "@/hooks/useOpenProjectId";
@@ -61,7 +61,7 @@ const SwitcherRow: React.FC<SwitcherRowProps> = ({ project, optionId, isActive, 
           isActive ? "text-composer-text-secondary" : "text-composer-text-muted",
         )}
       >
-        {project.artists.join(", ") || "No artist"}
+        {displayArtists(project.artists)}
       </span>
     </span>
     <ProjectProgress lineCount={project.lineCount} syncedLineCount={project.syncedLineCount} isActive={isActive} />

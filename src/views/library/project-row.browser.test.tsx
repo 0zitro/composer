@@ -1,15 +1,19 @@
 import { indexEntry } from "@/test/index-entries";
 import { render } from "@/test/render";
 import { ProjectRow } from "@/views/library/project-row";
+import { Profiler, useState } from "react";
 import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 
 // -- Constants ----------------------------------------------------------------
 
 const NOW = new Date(2026, 8, 27, 12, 0, 0).getTime();
+const noop = () => {};
+const STABLE_PROJECT_B = indexEntry("b", { title: "Bravo" });
 
 // -- Helpers ------------------------------------------------------------------
 
-function renderRow(overrides: Parameters<typeof indexEntry>[1] = {}) {
+function renderRow(overrides: Parameters<typeof indexEntry>[1] = {}, onOpen: (id: string) => void = noop) {
   return render(
     <ul>
       <ProjectRow
@@ -29,9 +33,9 @@ function renderRow(overrides: Parameters<typeof indexEntry>[1] = {}) {
         now={NOW}
         isSelected={false}
         isMenuOpen={false}
-        onOpen={() => {}}
-        onToggleSelect={() => {}}
-        onOpenMenu={() => {}}
+        onOpen={onOpen}
+        onToggleSelect={noop}
+        onOpenMenu={noop}
       />
     </ul>,
   );
@@ -64,6 +68,13 @@ describe("ProjectRow", () => {
     const menu = screen.getByRole("button", { name: "More actions for Midnight City" });
     await expect.element(menu).toHaveAttribute("aria-haspopup", "menu");
     await expect.element(menu).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens from the keyboard", async () => {
+    const opened: string[] = [];
+    await renderRow({}, (id) => opened.push(id));
+    await userEvent.keyboard("{Tab}{Tab}{Enter}");
+    expect(opened).toEqual(["p01"]);
   });
 
   describe("edge cases", () => {
@@ -100,6 +111,63 @@ describe("ProjectRow", () => {
       expect(row?.hasAttribute("data-selected")).toBe(true);
       expect(row?.hasAttribute("data-menu")).toBe(true);
       expect(row?.getAttribute("data-project-id")).toBe("p01");
+    });
+
+    it("does not re-render a sibling row when only one row's project changes", async () => {
+      const updateDurations: { a: number[]; b: number[] } = { a: [], b: [] };
+      const trackUpdate = (id: "a" | "b") => (_id: string, phase: string, actualDuration: number) => {
+        if (phase === "update") updateDurations[id].push(actualDuration);
+      };
+      const onRenderA = trackUpdate("a");
+      const onRenderB = trackUpdate("b");
+
+      const Harness: React.FC = () => {
+        const [renameCount, setRenameCount] = useState(0);
+        return (
+          <ul>
+            <Profiler id="a" onRender={onRenderA}>
+              <ProjectRow
+                project={indexEntry("a", { title: `Alpha ${renameCount}` })}
+                now={NOW}
+                isSelected={false}
+                isMenuOpen={false}
+                onOpen={noop}
+                onToggleSelect={noop}
+                onOpenMenu={noop}
+              />
+            </Profiler>
+            <Profiler id="b" onRender={onRenderB}>
+              <ProjectRow
+                project={STABLE_PROJECT_B}
+                now={NOW}
+                isSelected={false}
+                isMenuOpen={false}
+                onOpen={noop}
+                onToggleSelect={noop}
+                onOpenMenu={noop}
+              />
+            </Profiler>
+            <button type="button" onClick={() => setRenameCount((count) => count + 1)}>
+              Rename
+            </button>
+          </ul>
+        );
+      };
+
+      const screen = await render(<Harness />);
+      const renameButton = screen.getByRole("button", { name: "Rename" });
+      const renameRounds = 20;
+      for (let round = 0; round < renameRounds; round += 1) {
+        await renameButton.click();
+      }
+      await expect.element(screen.getByText(`Alpha ${renameRounds}`)).toBeInTheDocument();
+
+      // Summed over many commits, not one: a real re-render's cost scales with update count, a memo bailout's residual overhead does not.
+      const totalA = updateDurations.a.reduce((sum, duration) => sum + duration, 0);
+      const totalB = updateDurations.b.reduce((sum, duration) => sum + duration, 0);
+      expect(updateDurations.a).toHaveLength(renameRounds);
+      expect(updateDurations.b).toHaveLength(renameRounds);
+      expect(totalB).toBeLessThan(totalA / 4);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { displayTitle } from "@/domain/project/display-title";
+import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { progressDescription, syncedPercent } from "@/domain/project/progress";
 import type { ProjectTab } from "@/domain/project/tab";
@@ -80,7 +80,7 @@ const ResumeCard: React.FC<ResumeCardProps> = ({ project, now, onOpen, className
           <h2 id={titleId} className="text-[32px] font-bold leading-[1.1] tracking-[-0.015em] text-balance select-text">
             {displayTitle(project.title)}
           </h2>
-          <p className="mt-1.5 text-[15px] text-white/80 select-text">{project.artists.join(", ") || "No artist"}</p>
+          <p className="mt-1.5 text-[15px] text-white/80 select-text">{displayArtists(project.artists)}</p>
         </div>
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-6">
