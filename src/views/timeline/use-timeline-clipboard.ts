@@ -1,16 +1,19 @@
-import { useProjectStore } from "@/stores/project";
+import type { ReadableLine } from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
+import { trackWords } from "@/domain/line/tracks";
+import { useProjectStore } from "@/stores/project";
 import { applyWordDeletion } from "@/views/timeline/apply-word-deletion";
 import { buildCandidateLines } from "@/views/timeline/build-candidate-lines";
 import type { ClipboardData, ClipboardEntry } from "@/views/timeline/selection-types";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { getWordsInInstance } from "@/views/timeline/utils";
+import { pluralize } from "@/utils/pluralize";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
 // -- Hook ---------------------------------------------------------------------
 
-function useTimelineClipboard(lines: LyricLine[]) {
+function useTimelineClipboard(lines: readonly ReadableLine[]) {
   const handleCopy = useCallback(() => {
     const { selectedWords } = useTimelineStore.getState();
     if (selectedWords.length === 0) return;
@@ -21,7 +24,7 @@ function useTimelineClipboard(lines: LyricLine[]) {
     for (const sel of selectedWords) {
       const line = lines[sel.lineIndex];
       if (!line) continue;
-      const wordsArray = sel.type === "word" ? line.words : line.backgroundWords;
+      const wordsArray = trackWords(line, sel.type);
       const word = wordsArray?.[sel.wordIndex];
       if (!word) continue;
 
@@ -48,8 +51,8 @@ function useTimelineClipboard(lines: LyricLine[]) {
     useTimelineStore.getState().setClipboard(clipboard);
     toast(
       sourceInstance
-        ? `Copied linked instance (${entries.length} word${entries.length > 1 ? "s" : ""})`
-        : `Copied ${entries.length} word${entries.length > 1 ? "s" : ""}`,
+        ? `Copied linked instance (${pluralize(entries.length, "word")})`
+        : `Copied ${pluralize(entries.length, "word")}`,
     );
   }, [lines]);
 
@@ -87,7 +90,7 @@ function useTimelineClipboard(lines: LyricLine[]) {
 // -- Helpers ------------------------------------------------------------------
 
 function detectFullInstance(
-  lines: LyricLine[],
+  lines: readonly ReadableLine[],
   selectedWords: ReadonlyArray<{ lineId: string; wordIndex: number; type: "word" | "bg" }>,
 ): { groupId: string; instanceIdx: number } | undefined {
   const linesById = new Map<string, LyricLine>();

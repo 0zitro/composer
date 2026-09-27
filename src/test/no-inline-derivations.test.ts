@@ -46,6 +46,7 @@ interface ForbiddenPattern {
   regex: RegExp;
   use: string;
   ownerFile?: string;
+  includeDomain?: boolean;
 }
 
 const FORBIDDEN: ForbiddenPattern[] = [
@@ -95,10 +96,55 @@ const FORBIDDEN: ForbiddenPattern[] = [
     use: "snapPointTimes from @/domain/snap-point/model",
   },
   {
+    name: "inline project timing granularity",
+    regex: /\.some\(\s*(?:isWordSynced\b|\(?\s*(\w+)\s*\)?\s*=>\s*\1\.words\?\.length)/,
+    use: "timingGranularityOf from @/domain/project/timing-granularity",
+  },
+  {
     name: "local BG drop zone height",
     regex: /\bBG_DROP_ZONE_HEIGHT\s*=/,
     use: "BG_DROP_ZONE_HEIGHT / bgTrackHeight / lineRowHeight from @/views/timeline/row-geometry",
     ownerFile: "views/timeline/row-geometry.ts",
+  },
+  {
+    name: "inline line timed check",
+    regex: /effectiveBounds\([^()]*\)\s*!==\s*null/,
+    use: "isLineTimed from @/domain/line/sync-progress",
+  },
+  {
+    name: "inline raw line begin check",
+    regex: /\?\.begin\s*!==\s*undefined/,
+    use: "isLineTimed from @/domain/line/sync-progress or isLineSynced from @/domain/line/predicates",
+  },
+  {
+    name: "raw main-word edit outside the effective-line owner",
+    regex: /\bmainWordEditFields\(/,
+    use: "effectiveMainWordEdit from @/domain/line/effective-words",
+  },
+  {
+    name: "inline instance ordinal",
+    regex: /instanceIdx\b(?:\s*\?\?\s*\d+\))?\s*\+\s*1\b/,
+    use: "instanceOrdinal from @/domain/instance/enumerate",
+  },
+  {
+    name: "inline instance count",
+    regex: /instanceIndicesOf\((?:[^()]|\([^()]*\))*\)\.length/,
+    use: "instanceCount from @/domain/instance/enumerate",
+  },
+  {
+    name: "inline word track pick",
+    regex:
+      /=== "word" \?\s*\(?[\w.?]+\.words\b[^:]*:\s*\(?[\w.?]+\.backgroundWords\b|=== "bg" \?\s*\(?[\w.?]+\.backgroundWords\b[^:]*:\s*\(?[\w.?]+\.words\b/,
+    use: "trackWords from @/domain/line/tracks",
+    ownerFile: "domain/line/tracks.ts",
+    includeDomain: true,
+  },
+  {
+    name: "inline word track field name",
+    regex: /=== "word" \?\s*"words"\s*:\s*"backgroundWords"|=== "bg" \?\s*"backgroundWords"\s*:\s*"words"/,
+    use: "trackField from @/domain/line/tracks",
+    ownerFile: "domain/line/tracks.ts",
+    includeDomain: true,
   },
 ];
 
@@ -109,7 +155,7 @@ describe("no common inline domain derivations outside src/domain", () => {
 
       for (const file of walk(SRC_ROOT)) {
         const rel = relative(SRC_ROOT, file).replace(/\\/g, "/");
-        if (isWhitelisted(rel)) continue;
+        if (!pattern.includeDomain && isWhitelisted(rel)) continue;
         if (rel === pattern.ownerFile) continue;
         if (rel.endsWith(".test.ts") || rel.endsWith(".test.tsx")) continue;
 

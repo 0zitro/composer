@@ -1,7 +1,9 @@
+import { applySavedProject } from "@/lib/apply-saved-project";
 import {
   clearAudioFile,
   loadAudioFile,
   saveAudioFile,
+  type ProjectSaveInput,
   saveCurrentProject,
   type SavedAudioSource,
 } from "@/lib/persistence";
@@ -10,9 +12,6 @@ import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { loadCurrentProjectWithPrimingMigration } from "@/lib/priming-migration";
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
-import { DEFAULT_AGENTS } from "@/domain/agent/colors";
-import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
 import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { useEffect } from "react";
@@ -37,9 +36,7 @@ function playableFile(source: AudioSource): File | null {
   return null;
 }
 
-type ProjectSaveArgs = Parameters<typeof debouncedSave>;
-
-function buildSaveArgs(): ProjectSaveArgs | null {
+function buildSaveInput(): ProjectSaveInput | null {
   const projectState = useProjectStore.getState();
   const liveAudioSource = useAudioStore.getState().source;
   // Skip only when the session is truly empty. Audio-loaded sessions need to
@@ -48,37 +45,39 @@ function buildSaveArgs(): ProjectSaveArgs | null {
   const hasContent = projectState.lines.length > 0 || projectState.metadata.title;
   const hasContext = liveAudioSource !== null;
   if (!hasContent && !hasContext) return null;
-  return [
-    projectState.metadata,
-    projectState.agents,
-    projectState.lines,
-    projectState.groups,
-    projectState.granularity,
-    projectState.syllableSplitDefaults,
-    toSavedAudioSource(liveAudioSource),
-    projectState.dismissedSuggestions,
-    projectState.dismissedExplicitSuggestions,
-    useSeparationStore.getState().currentStem,
-    projectState.primingStripped,
-    projectState.customSnapPoints,
-    projectState.hasUnexportedImport,
-  ];
+  return {
+    metadata: projectState.metadata,
+    agents: projectState.agents,
+    lines: projectState.lines,
+    groups: projectState.groups,
+    granularity: projectState.granularity,
+    syllableSplitDefaults: projectState.syllableSplitDefaults,
+    audioSource: toSavedAudioSource(liveAudioSource),
+    dismissedSuggestions: projectState.dismissedSuggestions,
+    dismissedExplicitSuggestions: projectState.dismissedExplicitSuggestions,
+    currentStem: useSeparationStore.getState().currentStem,
+    primingStripped: projectState.primingStripped,
+    customSnapPoints: projectState.customSnapPoints,
+    hasUnexportedImport: projectState.hasUnexportedImport,
+    importedMetadataKeys: projectState.importedMetadataKeys,
+    ttmlEditState: projectState.ttmlEditState,
+  };
 }
 
 function commitProjectSave(): void {
-  const args = buildSaveArgs();
-  if (!args) return;
-  debouncedSave(...args);
+  const input = buildSaveInput();
+  if (!input) return;
+  debouncedSave(input);
 }
 
 // Discrete user actions (stem picking) should not wait for the typing-tuned
 // debounce. Cancel any queued debounced save so it can't overwrite this one
 // with stale args, then write to IDB now.
 function commitProjectSaveNow(): void {
-  const args = buildSaveArgs();
-  if (!args) return;
+  const input = buildSaveInput();
+  if (!input) return;
   cancelPendingSave();
-  saveCurrentProject(...args).catch((err) => console.error(LOG_PREFIX, "Immediate save failed:", err));
+  saveCurrentProject(input).catch((err) => console.error(LOG_PREFIX, "Immediate save failed:", err));
 }
 
 // -- Hook ---------------------------------------------------------------------
@@ -88,19 +87,6 @@ function usePersistence(): void {
     Promise.all([loadCurrentProjectWithPrimingMigration(), loadAudioFile()])
       .then(([project, file]) => {
         if (project) {
-          const issues: string[] = [];
-          const safeLines = project.lines ?? [];
-          if (!project.lines) issues.push("missing lines");
-          const safeAgents = project.agents && project.agents.length > 0 ? project.agents : DEFAULT_AGENTS;
-          if (!project.agents || project.agents.length === 0) issues.push("missing or empty agents");
-          const safeGranularity = project.granularity ?? useSettingsStore.getState().defaultGranularity;
-          if (project.granularity === undefined) issues.push("missing granularity");
-          if (issues.length > 0) {
-            console.warn(
-              `${LOG_PREFIX} loaded project has malformed fields (${issues.join(", ")}); using safe defaults. The raw record is still in IndexedDB; visit /recover to download it.`,
-            );
-          }
-
           // Restore the saved stem selection BEFORE setting the audio source.
           // useAutoSeparate's source subscription will then run refreshForCurrentSource
           // which preserves currentStem when the cached stems are still available, and
@@ -116,19 +102,12 @@ function usePersistence(): void {
             useAudioStore.getState().setSource({ type: "file", file });
           }
 
-          const state = useProjectStore.getState();
-          state.setMetadata(normalizeLoadedMetadata(project.metadata));
-          state.setLines(safeLines);
-          state.setGroups(project.groups ?? []);
-          state.setGranularity(safeGranularity);
-          state.setSyllableSplitDefaults(project.syllableSplitDefaults ?? DEFAULT_SYLLABLE_SPLIT_DEFAULTS);
-          state.setAgents(safeAgents);
-          state.setDismissedSuggestions(project.dismissedSuggestions ?? []);
-          state.setDismissedExplicitSuggestions(project.dismissedExplicitSuggestions ?? []);
-          state.setPrimingStripped(project.primingStripped ?? false);
-          state.setCustomSnapPoints(project.customSnapPoints ?? []);
-          if (project.hasUnexportedImport) state.markSongDetailsImported();
-          state.markClean();
+          const issues = applySavedProject(project, "storage");
+          if (issues.length > 0) {
+            console.warn(
+              `${LOG_PREFIX} loaded project has malformed fields (${issues.join(", ")}); using safe defaults. The raw record is still in IndexedDB; visit /recover to download it.`,
+            );
+          }
         } else if (file) {
           useAudioStore.getState().setSource({ type: "file", file });
         }

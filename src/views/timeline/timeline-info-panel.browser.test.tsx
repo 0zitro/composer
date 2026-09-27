@@ -37,6 +37,45 @@ describe("TimelineInfoPanel", () => {
   });
 });
 
+describe("TimelineInfoPanel selected word label", () => {
+  function lineWithBackground(backgroundWordText: string) {
+    return createLine({
+      id: "l1",
+      text: "Hello there",
+      words: [createWord({ text: "Hello there", begin: 1, end: 3 })],
+      backgroundText: backgroundWordText,
+      backgroundWords: [createWord({ text: backgroundWordText, begin: 3, end: 4 })],
+      backgroundTextSource: "manual",
+    });
+  }
+
+  it("regression: shows a bracketed background word once, as stored", async () => {
+    useAudioStore.setState({ duration: 10 });
+    useProjectStore.setState({ lines: [lineWithBackground("(yeah)")] });
+    useTimelineStore.setState({ selectedWords: [{ lineId: "l1", lineIndex: 0, wordIndex: 0, type: "bg" }] });
+    const screen = await render(<TimelineInfoPanel />);
+    await expect.element(screen.getByText("(yeah)", { exact: true })).toBeInTheDocument();
+    expect(screen.container.textContent).not.toContain("((yeah))");
+  });
+
+  it("labels a background word as background instead of inventing brackets", async () => {
+    useAudioStore.setState({ duration: 10 });
+    useProjectStore.setState({ lines: [lineWithBackground("yeah")] });
+    useTimelineStore.setState({ selectedWords: [{ lineId: "l1", lineIndex: 0, wordIndex: 0, type: "bg" }] });
+    const screen = await render(<TimelineInfoPanel />);
+    await expect.element(screen.getByText("Line 1 ・ Background")).toBeInTheDocument();
+    await expect.element(screen.getByText("yeah", { exact: true })).toBeInTheDocument();
+  });
+
+  it("keeps the plain line label for a main word", async () => {
+    useAudioStore.setState({ duration: 10 });
+    useProjectStore.setState({ lines: [lineWithBackground("(yeah)")] });
+    selectWordAt("l1", 0);
+    const screen = await render(<TimelineInfoPanel />);
+    await expect.element(screen.getByText("Line 1", { exact: true })).toBeInTheDocument();
+  });
+});
+
 describe("TimelineInfoPanel bg word retiming provenance", () => {
   function lineWithBg() {
     return createLine({
@@ -189,5 +228,31 @@ describe("TimelineInfoPanel cursor buttons · rolling edit", () => {
     await screen.getByRole("button", { name: /Set End/ }).click();
 
     await expect.poll(() => currentWords()[1].end).toBeCloseTo(1.2, 10);
+  });
+});
+
+describe("TimelineInfoPanel selection copy", () => {
+  it("regression: uses singular 'line' for one selected line-synced row", async () => {
+    useAudioStore.setState({ duration: 30 });
+    useProjectStore.setState({
+      lines: [
+        createLine({
+          id: "w",
+          text: "a b",
+          words: [createWord({ text: "a ", begin: 0, end: 1 }), createWord({ text: "b", begin: 1, end: 2 })],
+        }),
+        { id: "ls", text: "line synced", agentId: "v1", begin: 3, end: 5 },
+      ],
+    });
+    useTimelineStore.setState({
+      selectedWords: [
+        { lineId: "w", lineIndex: 0, wordIndex: 0, type: "word" },
+        { lineId: "w", lineIndex: 0, wordIndex: 1, type: "word" },
+        { lineId: "ls", lineIndex: 1, wordIndex: 0, type: "word" },
+      ],
+    });
+    const screen = await render(<TimelineInfoPanel />);
+    await expect.poll(() => screen.container.textContent ?? "").toContain("selected");
+    expect(screen.container.textContent).toContain("2 words, 1 line selected");
   });
 });

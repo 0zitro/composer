@@ -1,4 +1,4 @@
-import { effectiveBounds } from "@/domain/line/bounds";
+import { syncProgress } from "@/domain/line/sync-progress";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { generateTTML } from "@/utils/ttml";
@@ -9,22 +9,15 @@ function useGeneratedTtml() {
   const agents = useProjectStore((state) => state.agents);
   const lines = useProjectStore((state) => state.lines);
   const groups = useProjectStore((state) => state.groups);
-  const granularity = useProjectStore((state) => state.granularity);
   const duration = useAudioStore((state) => state.duration);
 
-  const syncedLineCount = useMemo(() => {
-    let count = 0;
-    for (const line of lines) {
-      if (effectiveBounds(line) !== null) count++;
-    }
-    return count;
-  }, [lines]);
+  const progress = useMemo(() => syncProgress(lines, "line"), [lines]);
   const content = useMemo(
-    () => (syncedLineCount > 0 ? generateTTML({ metadata, agents, lines, groups, granularity, duration }) : ""),
-    [metadata, agents, lines, groups, granularity, duration, syncedLineCount],
+    () => (progress.done > 0 ? generateTTML({ metadata, agents, lines, groups, duration }) : ""),
+    [metadata, agents, lines, groups, duration, progress.done],
   );
 
-  return { content, duration, lineCount: lines.length, syncedLineCount, title: metadata.title };
+  return { content, duration, lineCount: progress.total, syncedLineCount: progress.done, title: metadata.title };
 }
 
 export { useGeneratedTtml };

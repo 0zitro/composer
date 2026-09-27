@@ -1,12 +1,4 @@
-import type { Stem } from "@/audio/separation/types";
-import type { Agent } from "@/domain/agent/model";
-import type { LinkGroup } from "@/domain/group/template";
-import type { LyricLine } from "@/domain/line/model";
-import type { ProjectMetadata } from "@/domain/project/metadata";
-import type { SnapPoint } from "@/domain/snap-point/model";
-import { type SavedAudioSource, saveCurrentProject } from "@/lib/persistence";
-import type { GranularityMode } from "@/stores/project";
-import type { SyllableSplitDefaults } from "@/stores/project/types";
+import { type ProjectSaveInput, saveCurrentProject } from "@/lib/persistence";
 import { useSettingsStore } from "@/stores/settings";
 
 // -- Constants ----------------------------------------------------------------
@@ -15,65 +7,21 @@ const LOG_PREFIX = "[Persistence]";
 
 // -- Module state -------------------------------------------------------------
 
-type SaveArgs = [
-  ProjectMetadata,
-  Agent[],
-  LyricLine[],
-  LinkGroup[],
-  GranularityMode,
-  SyllableSplitDefaults,
-  SavedAudioSource | undefined,
-  string[],
-  string[],
-  Stem,
-  boolean,
-  SnapPoint[],
-  boolean,
-];
-
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-let pendingSaveArgs: SaveArgs | null = null;
+let pendingSave: ProjectSaveInput | null = null;
 
 // -- Public API ---------------------------------------------------------------
 
-function debouncedSave(
-  metadata: ProjectMetadata,
-  agents: Agent[],
-  lines: LyricLine[],
-  groups: LinkGroup[],
-  granularity: GranularityMode,
-  syllableSplitDefaults: SyllableSplitDefaults,
-  audioSource: SavedAudioSource | undefined,
-  dismissedSuggestions: string[],
-  dismissedExplicitSuggestions: string[],
-  currentStem: Stem,
-  primingStripped: boolean,
-  customSnapPoints: SnapPoint[],
-  hasUnexportedImport: boolean,
-): void {
-  pendingSaveArgs = [
-    metadata,
-    agents,
-    lines,
-    groups,
-    granularity,
-    syllableSplitDefaults,
-    audioSource,
-    dismissedSuggestions,
-    dismissedExplicitSuggestions,
-    currentStem,
-    primingStripped,
-    customSnapPoints,
-    hasUnexportedImport,
-  ];
+function debouncedSave(input: ProjectSaveInput): void {
+  pendingSave = input;
   if (saveTimeout) {
     clearTimeout(saveTimeout);
   }
   const saveDelay = useSettingsStore.getState().autoSaveDelay;
   saveTimeout = setTimeout(() => {
-    if (pendingSaveArgs) {
-      saveCurrentProject(...pendingSaveArgs).catch((err) => console.error(LOG_PREFIX, "Auto-save failed:", err));
-      pendingSaveArgs = null;
+    if (pendingSave) {
+      saveCurrentProject(pendingSave).catch((err) => console.error(LOG_PREFIX, "Auto-save failed:", err));
+      pendingSave = null;
     }
     saveTimeout = null;
   }, saveDelay);
@@ -84,7 +32,7 @@ function cancelPendingSave(): void {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
-  pendingSaveArgs = null;
+  pendingSave = null;
 }
 
 function flushPendingSave(): void {
@@ -92,9 +40,9 @@ function flushPendingSave(): void {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
-  if (pendingSaveArgs) {
-    saveCurrentProject(...pendingSaveArgs).catch((err) => console.error(LOG_PREFIX, "Flush save failed:", err));
-    pendingSaveArgs = null;
+  if (pendingSave) {
+    saveCurrentProject(pendingSave).catch((err) => console.error(LOG_PREFIX, "Flush save failed:", err));
+    pendingSave = null;
   }
 }
 

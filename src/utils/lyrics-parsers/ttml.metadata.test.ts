@@ -15,7 +15,7 @@ const metadata: ProjectMetadata = {
 const lines = [{ id: "l1", text: "hi", begin: 1, end: 2, agentId: "v1" }];
 
 describe("parseTtml metadata round-trip", () => {
-  const ttml = generateTTML({ metadata, agents: [], lines, granularity: "line" });
+  const ttml = generateTTML({ metadata, agents: [], lines });
   const parsed = parseTtml(ttml).metadata;
   it("recovers title from ttm:title", () => expect(parsed.title).toBe("Song"));
   it("recovers all artists including comma names", () => {
@@ -40,7 +40,7 @@ describe("parseTtml metadata round-trip", () => {
       duration: 0,
       extra: { url: "x<y&z" },
     };
-    const out = parseTtml(generateTTML({ metadata: special, agents: [], lines, granularity: "line" })).metadata;
+    const out = parseTtml(generateTTML({ metadata: special, agents: [], lines })).metadata;
     expect(out.artists).toEqual(["Tom & Jerry", 'A "Q" B']);
     expect(out.album).toBe("a < b");
     expect(out.extra).toEqual({ url: "x<y&z" });
@@ -58,5 +58,14 @@ describe("parseTtml metadata round-trip", () => {
     const out = parseTtml(undeclared).metadata;
     expect(out.artists).toEqual(["A", "B"]);
     expect(out.album).toBe("Al");
+  });
+});
+
+describe("parseTtml line timing", () => {
+  it('regression: a line-timed <p begin="0"> stays timed', () => {
+    const ttml =
+      '<?xml version="1.0" encoding="UTF-8"?><tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><body><div><p begin="0" end="2.5">Hello there</p></div></body></tt>';
+    const [line] = parseTtml(ttml).lines;
+    expect(line).toMatchObject({ text: "Hello there", begin: 0, end: 2.5 });
   });
 });

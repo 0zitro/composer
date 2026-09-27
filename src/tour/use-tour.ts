@@ -3,6 +3,7 @@ import type { GuideCardState } from "@/tour/guide-card";
 import { driver, type Driver, type DriveStep, type PopoverDOM } from "driver.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
+import { useModalStackStore } from "@/stores/modal-stack";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -38,6 +39,11 @@ function clearResumeState() {
   localStorage.removeItem(TOUR_RESUME_KEY);
 }
 
+function resetTour() {
+  localStorage.removeItem(TOUR_SEEN_KEY);
+  clearResumeState();
+}
+
 // -- Watch the closing walkthrough --------------------------------------------
 
 // The conventions step overrides its next button to hand off to the help modal, which ends the tour,
@@ -67,7 +73,9 @@ interface UseTourOptions {
 
 function useTour({ onOpenBestPractices }: UseTourOptions) {
   const driverRef = useRef<Driver | null>(null);
+  const releaseModalRef = useRef<(() => void) | null>(null);
   const gateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const gateSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [guideCard, setGuideCard] = useState<GuideCardState | null>(null);
   const reducedMotion = useReducedMotion();
 
@@ -77,28 +85,35 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
     localStorage.setItem(TOUR_SEEN_KEY, "true");
   }, []);
 
-  const clearGateInterval = useCallback(() => {
+  const clearGateTimers = useCallback(() => {
     if (gateIntervalRef.current) {
       clearInterval(gateIntervalRef.current);
       gateIntervalRef.current = null;
     }
+    if (gateSuccessTimeoutRef.current) {
+      clearTimeout(gateSuccessTimeoutRef.current);
+      gateSuccessTimeoutRef.current = null;
+    }
   }, []);
 
   const destroyDriver = useCallback(() => {
-    if (driverRef.current) {
-      driverRef.current.destroy();
-      driverRef.current = null;
-    }
+    const tourDriver = driverRef.current;
+    driverRef.current = null;
+    tourDriver?.destroy();
+    releaseModalRef.current?.();
+    releaseModalRef.current = null;
   }, []);
 
   const openBestPractices = useCallback(() => {
     destroyDriver();
+    clearResumeState();
     onOpenBestPractices();
   }, [destroyDriver, onOpenBestPractices]);
 
-  const createDriverInstance = useCallback(
-    (steps: DriveStep[], onStepChange?: (index: number) => void) => {
-      return driver({
+  const launchDriver = useCallback(
+    (steps: DriveStep[], startIndex: number) => {
+      destroyDriver();
+      const tourDriver = driver({
         steps,
         popoverClass: "composer-tour",
         overlayColor: "#000",
@@ -117,20 +132,28 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
         onHighlighted: (_el, _step, opts) => {
           const idx = opts.state.activeIndex;
           if (idx !== undefined) {
-            onStepChange?.(idx);
+            saveResumeState(idx, steps.length);
           }
         },
-        onDestroyed: () => {
-          driverRef.current = null;
+        // onDestroyed is skipped when the user closes mid transition, so user closes route through here.
+        onDestroyStarted: (_el, _step, opts) => {
+          if (opts.state.activeIndex === steps.length - 1) clearResumeState();
+          destroyDriver();
         },
       });
+
+      const { push, pop } = useModalStackStore.getState();
+      push();
+      releaseModalRef.current = pop;
+      driverRef.current = tourDriver;
+      tourDriver.drive(startIndex);
     },
-    [reducedMotion],
+    [reducedMotion, destroyDriver],
   );
 
   const startGuideCard = useCallback(
     (gatedStep: GatedStep, totalSteps: number, patchedSteps: DriveStep[]) => {
-      clearGateInterval();
+      clearGateTimers();
 
       const nextStepIndex = gatedStep.stepIndex + 1;
       const stepLabel = `Step ${gatedStep.stepIndex + 1} / ${totalSteps}`;
@@ -140,19 +163,18 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
 
       gateIntervalRef.current = setInterval(() => {
         if (gatedStep.gateCheck()) {
-          clearGateInterval();
+          clearGateTimers();
           setGuideCard((prev) => (prev ? { ...prev, isComplete: true } : null));
 
-          setTimeout(() => {
+          gateSuccessTimeoutRef.current = setTimeout(() => {
+            gateSuccessTimeoutRef.current = null;
             setGuideCard(null);
-            const d = createDriverInstance(patchedSteps, (idx) => saveResumeState(idx, patchedSteps.length));
-            driverRef.current = d;
-            d.drive(nextStepIndex);
+            launchDriver(patchedSteps, nextStepIndex);
           }, GATE_SUCCESS_DELAY);
         }
       }, GATE_CHECK_INTERVAL);
     },
-    [clearGateInterval, createDriverInstance],
+    [clearGateTimers, launchDriver],
   );
 
   const patchStepsWithGates = useCallback(
@@ -189,7 +211,7 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
   );
 
   const skipGuideCard = useCallback(() => {
-    clearGateInterval();
+    clearGateTimers();
     const currentIdx = guideCard?.stepIndex;
     setGuideCard(null);
     if (currentIdx === undefined) return;
@@ -202,27 +224,17 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
     }
 
     if (nextIdx < steps.length) {
-      const patchedSteps = patchStepsWithGates(steps);
-      const d = createDriverInstance(patchedSteps, (idx) => saveResumeState(idx, patchedSteps.length));
-      driverRef.current = d;
-      d.drive(nextIdx);
+      launchDriver(patchStepsWithGates(steps), nextIdx);
     }
-  }, [guideCard, clearGateInterval, createDriverInstance, patchStepsWithGates, openBestPractices]);
+  }, [guideCard, clearGateTimers, launchDriver, patchStepsWithGates, openBestPractices]);
 
   const driveTour = useCallback(
     (startIndex?: number) => {
-      destroyDriver();
-      clearGateInterval();
+      clearGateTimers();
       setGuideCard(null);
-
-      const steps = createTourSteps(openBestPractices);
-      const patchedSteps = patchStepsWithGates(steps);
-
-      const d = createDriverInstance(patchedSteps, (idx) => saveResumeState(idx, patchedSteps.length));
-      driverRef.current = d;
-      d.drive(startIndex ?? 0);
+      launchDriver(patchStepsWithGates(createTourSteps(openBestPractices)), startIndex ?? 0);
     },
-    [destroyDriver, clearGateInterval, createDriverInstance, patchStepsWithGates, openBestPractices],
+    [clearGateTimers, launchDriver, patchStepsWithGates, openBestPractices],
   );
 
   const startTour = useCallback(() => {
@@ -234,15 +246,15 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
   useEffect(() => {
     return () => {
       destroyDriver();
-      clearGateInterval();
+      clearGateTimers();
     };
-  }, [destroyDriver, clearGateInterval]);
+  }, [destroyDriver, clearGateTimers]);
 
   const resumeOrStartTour = useCallback(() => {
     const isActive = driverRef.current?.isActive() || guideCard !== null;
     if (isActive) {
       destroyDriver();
-      clearGateInterval();
+      clearGateTimers();
       setGuideCard(null);
       return;
     }
@@ -254,7 +266,7 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
     } else {
       startTour();
     }
-  }, [guideCard, destroyDriver, clearGateInterval, markTourSeen, driveTour, startTour, openBestPractices]);
+  }, [guideCard, destroyDriver, clearGateTimers, markTourSeen, driveTour, startTour, openBestPractices]);
 
   return {
     startTour,
@@ -267,4 +279,4 @@ function useTour({ onOpenBestPractices }: UseTourOptions) {
 
 // -- Exports ------------------------------------------------------------------
 
-export { TOUR_RESUME_KEY, TOUR_SEEN_KEY, useTour };
+export { resetTour, TOUR_RESUME_KEY, TOUR_SEEN_KEY, useTour };

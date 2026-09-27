@@ -3,11 +3,17 @@ import type { Agent } from "@/domain/agent/model";
 import type { LinkGroup } from "@/domain/group/template";
 import { migrateLegacyTransliterationLine } from "@/domain/language/migrate";
 import type { LyricLine } from "@/domain/line/model";
+import type { MetadataKey } from "@/domain/project/imported-metadata";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
+import { downloadText, localDateStamp, sanitizeFileName } from "@/lib/download-file";
 import { PROJECT_STORE_NAME, deleteFromStore, getFromStore, setInStore } from "@/lib/persistence-idb";
 import type { GranularityMode } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS, type SyllableSplitDefaults } from "@/stores/project/types";
+import {
+  DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
+  type SyllableSplitDefaults,
+  type TtmlEditState,
+} from "@/stores/project/types";
 
 // -- Types --------------------------------------------------------------------
 
@@ -30,7 +36,32 @@ interface SavedProject {
   primingStripped?: boolean;
   customSnapPoints?: (SnapPoint | number)[];
   hasUnexportedImport?: boolean;
+  importedMetadataKeys?: MetadataKey[];
+  ttmlEditState?: TtmlEditState;
 }
+
+interface ProjectSaveInput {
+  metadata: ProjectMetadata;
+  agents: Agent[];
+  lines: LyricLine[];
+  groups: LinkGroup[];
+  granularity: GranularityMode;
+  syllableSplitDefaults: SyllableSplitDefaults;
+  audioSource: SavedAudioSource | undefined;
+  dismissedSuggestions: string[];
+  dismissedExplicitSuggestions: string[];
+  currentStem: Stem;
+  primingStripped: boolean;
+  customSnapPoints: SnapPoint[];
+  hasUnexportedImport: boolean;
+  importedMetadataKeys: MetadataKey[];
+  ttmlEditState: TtmlEditState;
+}
+
+type ProjectFileInput = Omit<
+  ProjectSaveInput,
+  "audioSource" | "currentStem" | "primingStripped" | "hasUnexportedImport"
+> & { audioFileName: string | undefined };
 
 // -- Constants ----------------------------------------------------------------
 
@@ -39,40 +70,9 @@ const AUDIO_FILE_KEY = "current-audio";
 
 // -- Public API ---------------------------------------------------------------
 
-async function saveCurrentProject(
-  metadata: ProjectMetadata,
-  agents: Agent[],
-  lines: LyricLine[],
-  groups: LinkGroup[],
-  granularity: GranularityMode,
-  syllableSplitDefaults: SyllableSplitDefaults,
-  audioSource: SavedAudioSource | undefined,
-  dismissedSuggestions: string[],
-  dismissedExplicitSuggestions: string[],
-  currentStem: Stem,
-  primingStripped: boolean,
-  customSnapPoints: SnapPoint[],
-  hasUnexportedImport = false,
-): Promise<void> {
-  const audioFileName = audioSource?.kind === "file" ? audioSource.name : undefined;
-  const project: SavedProject = {
-    version: 3,
-    savedAt: Date.now(),
-    metadata,
-    agents,
-    lines,
-    groups,
-    granularity,
-    syllableSplitDefaults,
-    audioFileName,
-    audioSource,
-    dismissedSuggestions,
-    dismissedExplicitSuggestions,
-    currentStem,
-    primingStripped,
-    customSnapPoints,
-    hasUnexportedImport,
-  };
+async function saveCurrentProject(input: ProjectSaveInput): Promise<void> {
+  const audioFileName = input.audioSource?.kind === "file" ? input.audioSource.name : undefined;
+  const project: SavedProject = { version: 3, savedAt: Date.now(), ...input, audioFileName };
   await setInStore(PROJECT_STORE_NAME, CURRENT_PROJECT_KEY, project);
 }
 
@@ -122,42 +122,14 @@ async function clearAudioFile(): Promise<void> {
   await deleteFromStore(PROJECT_STORE_NAME, AUDIO_FILE_KEY);
 }
 
-function exportProjectToFile(
-  metadata: ProjectMetadata,
-  agents: Agent[],
-  lines: LyricLine[],
-  groups: LinkGroup[],
-  granularity: GranularityMode,
-  syllableSplitDefaults: SyllableSplitDefaults,
-  dismissedSuggestions: string[],
-  dismissedExplicitSuggestions: string[],
-  customSnapPoints: SnapPoint[],
-  audioFileName?: string,
-): void {
-  const project: SavedProject = {
-    version: 3,
-    savedAt: Date.now(),
-    metadata,
-    agents,
-    lines,
-    groups,
-    granularity,
-    syllableSplitDefaults,
-    audioFileName,
-    dismissedSuggestions,
-    dismissedExplicitSuggestions,
-    customSnapPoints,
-  };
+function exportProjectToFile(input: ProjectFileInput): void {
+  const project: SavedProject = { version: 3, savedAt: Date.now(), ...input };
 
-  const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${metadata.title || "project"}-${new Date().toISOString().slice(0, 10)}.ttml-project.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadText(
+    JSON.stringify(project, null, 2),
+    `${sanitizeFileName(input.metadata.title, "project")}-${localDateStamp()}.ttml-project.json`,
+    "application/json",
+  );
 }
 
 async function importProjectFromFile(file: File): Promise<SavedProject> {
@@ -192,4 +164,4 @@ export {
   loadAudioFile,
   clearAudioFile,
 };
-export type { SavedAudioSource, SavedProject };
+export type { ProjectSaveInput, SavedAudioSource, SavedProject };

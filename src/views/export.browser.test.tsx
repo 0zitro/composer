@@ -1,7 +1,11 @@
+import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { ExportPanel } from "@/views/export";
 import { useProjectStore } from "@/stores/project";
+import { useSettingsStore } from "@/stores/settings";
+import { useThemeStore } from "@/stores/theme";
+import { stubClipboard } from "@/test/clipboard";
 import { createLine, createWord, snapPoints } from "@/test/factories";
 import { render } from "@/test/render";
 
@@ -22,6 +26,50 @@ function dispatchFileChange(input: HTMLInputElement, file: File): void {
   });
   input.dispatchEvent(new Event("change", { bubbles: true }));
 }
+
+describe("ExportPanel preview highlight", () => {
+  it("keeps the night owl colours on the elevated background in a dark theme", async () => {
+    const root = document.documentElement;
+    root.style.setProperty("--color-composer-bg-elevated", "rgb(4, 5, 6)");
+    try {
+      useThemeStore.setState({ activeThemeId: "default" });
+      useProjectStore.setState({
+        lines: [createLine({ text: "Hi", words: [createWord({ text: "Hi", begin: 0, end: 1 })] })],
+      });
+      const screen = await render(<ExportPanel />);
+      await expect.poll(() => screen.container.querySelector("pre .token.tag")).not.toBe(null);
+      const pre = screen.container.querySelector("pre");
+      if (!pre) throw new Error("highlighted preview not rendered");
+      expect(getComputedStyle(pre).color).toBe("rgb(214, 222, 235)");
+      expect(getComputedStyle(pre).backgroundColor).toBe("rgb(4, 5, 6)");
+    } finally {
+      root.style.removeProperty("--color-composer-bg-elevated");
+    }
+  });
+
+  it("resolves token colours through the composer theme variables in a light theme", async () => {
+    useThemeStore.setState({ activeThemeId: "light" });
+    const root = document.documentElement;
+    root.style.setProperty("--color-composer-accent-text", "rgb(1, 2, 3)");
+    root.style.setProperty("--color-composer-bg-elevated", "rgb(4, 5, 6)");
+    try {
+      useProjectStore.setState({
+        lines: [createLine({ text: "Hi", words: [createWord({ text: "Hi", begin: 0, end: 1 })] })],
+      });
+      const screen = await render(<ExportPanel />);
+      await expect.poll(() => screen.container.querySelector("pre .token.tag")).not.toBe(null);
+      const pre = screen.container.querySelector("pre");
+      const tag = screen.container.querySelector("pre .token.tag:not(.punctuation)");
+      if (!pre || !tag) throw new Error("highlighted preview not rendered");
+      expect(getComputedStyle(tag).color).toBe("rgb(1, 2, 3)");
+      expect(getComputedStyle(pre).backgroundColor).toBe("rgb(4, 5, 6)");
+    } finally {
+      root.style.removeProperty("--color-composer-accent-text");
+      root.style.removeProperty("--color-composer-bg-elevated");
+      useThemeStore.setState({ activeThemeId: "default" });
+    }
+  });
+});
 
 describe("ExportPanel", () => {
   it("shows the 'No lyrics to export' empty state when there are no lines", async () => {
@@ -220,5 +268,222 @@ describe("ExportPanel · project file customSnapPoints", () => {
     dispatchFileChange(getProjectImportInput(), file);
 
     await expect.poll(() => useProjectStore.getState().customSnapPoints.map((p) => p.time)).toEqual([7, 8]);
+  });
+});
+
+describe("D10 export edits survive a remount", () => {
+  it("keeps the hand-edited TTML after the Export panel remounts", async () => {
+    useProjectStore.setState({
+      lines: [createLine({ text: "Hello", begin: 0, end: 1 }), createLine({ text: "World", begin: 1, end: 2 })],
+    });
+    const first = await render(<ExportPanel />);
+    await first.getByRole("button", { name: /Edit$/ }).click();
+    const textarea = first.getByRole("textbox", { name: "Edit TTML content" });
+    const generated = (textarea.element() as HTMLTextAreaElement).value;
+    await textarea.fill(generated.replace("Hello", "HELLO EDITED"));
+    await first.getByRole("button", { name: "Done" }).click();
+    await expect.poll(() => document.body.textContent ?? "").toContain("HELLO EDITED");
+    await first.rerender(<ExportPanel key="remounted" />);
+    await expect.poll(() => document.body.textContent ?? "", { timeout: 2000 }).toContain("HELLO EDITED");
+  });
+});
+
+function captureDownloads(): { names: string[]; restore: () => void } {
+  const names: string[] = [];
+  const originalClick = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+    if (this.download) names.push(this.download);
+  };
+  return {
+    names,
+    restore: () => {
+      HTMLAnchorElement.prototype.click = originalClick;
+    },
+  };
+}
+
+describe("U8 invalid XML is exported without warning", () => {
+  it("warns or blocks before downloading TTML that is not well-formed", async () => {
+    useProjectStore.setState({ lines: [createLine({ text: "Hello", begin: 0, end: 1 })] });
+    const screen = await render(<ExportPanel />);
+    await screen.getByRole("button", { name: /Edit$/ }).click();
+    const textarea = screen.getByRole("textbox", { name: "Edit TTML content" });
+    const generated = (textarea.element() as HTMLTextAreaElement).value;
+    await textarea.fill(generated.replace("</tt>", ""));
+    await screen.getByRole("button", { name: "Done" }).click();
+
+    const downloads = captureDownloads();
+    try {
+      await screen.getByRole("button", { name: /Download TTML/ }).click();
+    } finally {
+      downloads.restore();
+    }
+    const warned = /invalid|not well-formed|malformed|xml error/i.test(document.body.textContent ?? "");
+    expect(warned || downloads.names.length === 0).toBe(true);
+  });
+});
+
+describe("ExportPanel · invalid XML is blocked", () => {
+  async function renderWithBrokenEdit() {
+    useProjectStore.setState({ lines: [createLine({ text: "Hello", begin: 0, end: 1 })] });
+    const screen = await render(
+      <>
+        <ExportPanel />
+        <Toaster />
+      </>,
+    );
+    await screen.getByRole("button", { name: /Edit$/ }).click();
+    const textarea = screen.getByRole("textbox", { name: "Edit TTML content" });
+    const generated = (textarea.element() as HTMLTextAreaElement).value;
+    await textarea.fill(generated.replace("</tt>", ""));
+    await screen.getByRole("button", { name: "Done" }).click();
+    return screen;
+  }
+
+  it("does not copy invalid XML and explains why", async () => {
+    const screen = await renderWithBrokenEdit();
+    const clipboard = stubClipboard();
+    try {
+      await screen.getByRole("button", { name: "Copy" }).click();
+      await expect.element(screen.getByText(/The TTML has an XML error: /)).toBeInTheDocument();
+      expect(clipboard.writes).toEqual([]);
+    } finally {
+      clipboard.restore();
+    }
+  });
+
+  it("does not download invalid XML and explains why", async () => {
+    const screen = await renderWithBrokenEdit();
+    const downloads = captureDownloads();
+    try {
+      await screen.getByRole("button", { name: /Download TTML/ }).click();
+      await expect.element(screen.getByText(/The TTML has an XML error: /)).toBeInTheDocument();
+      expect(downloads.names).toEqual([]);
+    } finally {
+      downloads.restore();
+    }
+  });
+
+  it("does not clear the unexported-import flag when the export is blocked", async () => {
+    const screen = await renderWithBrokenEdit();
+    useProjectStore.setState({ hasUnexportedImport: true });
+    const clipboard = stubClipboard();
+    try {
+      await screen.getByRole("button", { name: "Copy" }).click();
+      await expect.element(screen.getByText(/The TTML has an XML error: /)).toBeInTheDocument();
+      expect(useProjectStore.getState().hasUnexportedImport).toBe(true);
+    } finally {
+      clipboard.restore();
+    }
+  });
+
+  it("still copies valid XML", async () => {
+    useProjectStore.setState({ lines: [createLine({ text: "Hello", begin: 0, end: 1 })] });
+    const screen = await render(<ExportPanel />);
+    const clipboard = stubClipboard();
+    try {
+      await screen.getByRole("button", { name: "Copy" }).click();
+      await expect.poll(() => clipboard.writes.length).toBe(1);
+      expect(clipboard.writes[0]).toContain("Hello");
+    } finally {
+      clipboard.restore();
+    }
+  });
+});
+
+describe("ExportPanel · project file keeps the hand-edited TTML with its project", () => {
+  const STALE_EDIT = { source: "<tt>a</tt>", content: "<tt>a edited</tt>" };
+  const SAVED_EDIT = { source: "<tt>b</tt>", content: "<tt>b edited</tt>" };
+
+  function projectFile(extra: Record<string, unknown> = {}): File {
+    const payload = {
+      version: 3 as const,
+      savedAt: Date.now(),
+      metadata: { title: "Project B", artists: [], album: "Album B", duration: 0 },
+      agents: DEFAULT_AGENTS,
+      lines: [createLine({ text: "B", words: [createWord({ text: "B", begin: 0, end: 1 })] })],
+      groups: [],
+      granularity: "word" as const,
+      ...extra,
+    };
+    return new File([JSON.stringify(payload)], "b.ttml-project.json", { type: "application/json" });
+  }
+
+  async function renderWithProjectA(): Promise<Awaited<ReturnType<typeof render>>> {
+    useSettingsStore.setState({ confirmReplaceLyrics: false });
+    useProjectStore.setState({
+      lines: [createLine({ text: "A", words: [createWord({ text: "A", begin: 0, end: 1 })] })],
+      ttmlEditState: STALE_EDIT,
+      importedMetadataKeys: ["title"],
+    });
+    return render(<ExportPanel />);
+  }
+
+  async function exportedProjectText(screen: Awaited<ReturnType<typeof render>>): Promise<string> {
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    const blobs: Blob[] = [];
+    URL.createObjectURL = (obj: Blob | MediaSource) => {
+      if (obj instanceof Blob) blobs.push(obj);
+      return "blob:stub";
+    };
+    URL.revokeObjectURL = () => {};
+    try {
+      await screen.getByRole("button", { name: "Export Project" }).click();
+      await expect.poll(() => blobs.length).toBe(1);
+      return await blobs[0].text();
+    } finally {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+  }
+
+  it("drops the previous project's edit when a file without an edit is opened", async () => {
+    await renderWithProjectA();
+
+    dispatchFileChange(getProjectImportInput(), projectFile());
+
+    await expect.poll(() => useProjectStore.getState().metadata.title).toBe("Project B");
+    expect(useProjectStore.getState().ttmlEditState).toBeNull();
+  });
+
+  it("restores the edit saved in the opened file", async () => {
+    await renderWithProjectA();
+
+    dispatchFileChange(getProjectImportInput(), projectFile({ ttmlEditState: SAVED_EDIT }));
+
+    await expect.poll(() => useProjectStore.getState().ttmlEditState).toEqual(SAVED_EDIT);
+  });
+
+  it("restores the imported song detail keys saved in the opened file", async () => {
+    await renderWithProjectA();
+
+    dispatchFileChange(getProjectImportInput(), projectFile({ importedMetadataKeys: ["album"] }));
+
+    await expect.poll(() => useProjectStore.getState().metadata.title).toBe("Project B");
+    expect(useProjectStore.getState().importedMetadataKeys).toEqual(["album"]);
+  });
+
+  it("keeps the edit and the imported keys through an export and import round trip", async () => {
+    const screen = await renderWithProjectA();
+    const text = await exportedProjectText(screen);
+    useProjectStore.setState({ ttmlEditState: null, importedMetadataKeys: [] });
+
+    dispatchFileChange(getProjectImportInput(), new File([text], "a.ttml-project.json", { type: "application/json" }));
+
+    await expect.poll(() => useProjectStore.getState().ttmlEditState).toEqual(STALE_EDIT);
+    expect(useProjectStore.getState().importedMetadataKeys).toEqual(["title"]);
+  });
+
+  describe("invariants", () => {
+    it("leaves the opened project clean and flagged as an unexported import", async () => {
+      await renderWithProjectA();
+
+      dispatchFileChange(getProjectImportInput(), projectFile({ ttmlEditState: SAVED_EDIT }));
+
+      await expect.poll(() => useProjectStore.getState().ttmlEditState).toEqual(SAVED_EDIT);
+      expect(useProjectStore.getState().isDirty).toBe(false);
+      expect(useProjectStore.getState().hasUnexportedImport).toBe(true);
+    });
   });
 });

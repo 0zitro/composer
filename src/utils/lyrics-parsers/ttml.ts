@@ -2,6 +2,7 @@ import type { Agent, AgentType } from "@/domain/agent/model";
 import type { LinkGroup } from "@/domain/group/template";
 import { type LyricLine, reconcileLine } from "@/domain/line/model";
 import { reconstructLineText } from "@/domain/line/reconstruct-text";
+import { normalizeLanguageTag } from "@/domain/project/language";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { fromComposerMeta } from "@/domain/project/metadata-ttml";
 import { inferSyllableGroupIds } from "@/domain/word/syllable-groups";
@@ -10,6 +11,7 @@ import { COMPOSER_NAMESPACES } from "@/utils/lyrics-parsers/composer-namespace";
 import { type ParseResult, generateLineId } from "@/utils/lyrics-parsers/shared";
 import { parseTtmlAlternates } from "@/utils/lyrics-parsers/ttml-alternates";
 import { declareMissingNamespaces, extractTimedWords, parseTtmlTimestamp } from "@/utils/lyrics-parsers/ttml-helpers";
+import { parseXmlDocument } from "@/utils/xml-document";
 import { getSplitCharacter } from "@/utils/split-character";
 
 // -- Helpers ------------------------------------------------------------------
@@ -38,16 +40,12 @@ function parseTtml(content: string, _fallbackDuration?: number): ParseResult {
   const lineIndexByKey = new Map<string, number>();
   const paragraphByKey = new Map<string, Element>();
 
-  const parser = new DOMParser();
   const unescapedContent = content.replace(/\\"/g, '"').replace(/\\n/g, "\n");
-  const cleanedContent = declareMissingNamespaces(unescapedContent);
-  const doc = parser.parseFromString(cleanedContent, "text/xml");
-
-  // Check for parse errors
-  const parseError = doc.querySelector("parsererror");
-  if (parseError) {
-    return { lines: [], metadata: {}, hasTimingData: false };
+  const parsed = parseXmlDocument(declareMissingNamespaces(unescapedContent));
+  if (!parsed.ok) {
+    return { lines: [], metadata: {}, hasTimingData: false, issues: [{ line: 1, text: "", reason: "empty-document" }] };
   }
+  const doc = parsed.doc;
 
   // Extract metadata (use getElementsByTagName for namespace compatibility)
   const titleEl = doc.getElementsByTagName("title")[0];
@@ -57,7 +55,7 @@ function parseTtml(content: string, _fallbackDuration?: number): ParseResult {
   const ttmTitleEl = doc.getElementsByTagName("ttm:title")[0];
   if (ttmTitleEl?.textContent && !metadata.title) metadata.title = ttmTitleEl.textContent;
 
-  const documentLanguage = doc.documentElement.getAttribute("xml:lang")?.trim();
+  const documentLanguage = normalizeLanguageTag(doc.documentElement.getAttribute("xml:lang") ?? "");
   if (documentLanguage) metadata.language = documentLanguage;
 
   const metaEls = Array.from(
@@ -213,8 +211,8 @@ function parseTtml(content: string, _fallbackDuration?: number): ParseResult {
             id: generateLineId(),
             text,
             agentId,
-            begin: begin || undefined,
-            end: end || undefined,
+            begin: p.hasAttribute("begin") && Number.isFinite(begin) ? begin : undefined,
+            end: p.hasAttribute("end") && Number.isFinite(end) ? end : undefined,
             backgroundText,
             backgroundWords,
             backgroundTextSource,
@@ -237,6 +235,7 @@ function parseTtml(content: string, _fallbackDuration?: number): ParseResult {
     hasTimingData: lines.some((l) => l.begin !== undefined || l.words?.length),
     agents: agents.length > 0 ? agents : undefined,
     groups: groups.length > 0 ? groups : undefined,
+    issues: [],
   };
 }
 

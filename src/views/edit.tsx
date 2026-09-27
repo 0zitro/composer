@@ -1,7 +1,6 @@
-import { isLinked } from "@/domain/instance/predicates";
-import { isSupportedLyricsFile, LYRICS_FORMATS_PROSE } from "@/domain/lyrics-file/supported-formats";
+import { instanceCount, instanceOrdinal } from "@/domain/instance/enumerate";
+import { LYRICS_FORMATS_PROSE } from "@/domain/lyrics-file/supported-formats";
 import { useDualClickImport } from "@/hooks/useDualClickImport";
-import { useAudioStore } from "@/stores/audio";
 import { useConfirm } from "@/stores/confirm-store";
 import { useImportModal, useImportModalStore, useLastImportResult } from "@/stores/import-modal-store";
 import { isAnyModalOpen } from "@/stores/modal-stack";
@@ -17,19 +16,19 @@ import { Popover } from "@/ui/popover";
 import { Scroll } from "@/ui/scroll";
 import { Select } from "@/ui/select";
 import { classifyLine, extractBackgroundVocals, extractInlineFromLine } from "@/utils/background-vocal-extraction";
-import { type ParseResult, parseLyricsFile } from "@/utils/lyrics-parsers";
 import { remapWordTextsPreservingTiming } from "@/domain/word/remap-text";
 import { stripSplitCharacter } from "@/utils/split-character";
 import { AgentManager } from "@/views/edit/agent-manager";
+import { ImportSuccessBanner } from "@/views/edit/import-success-banner";
 import { decideEditTextAction } from "@/views/edit/decide-edit-text-action";
 import { detachInstancesFromLines } from "@/views/edit/diff-edit-text";
+import { linesToEditText } from "@/views/edit/edit-text";
 import { parseLyrics } from "@/views/edit/parse-lyrics";
+import { useComposedTextareaChange, useEditTextCaret } from "@/views/edit/use-edit-text-caret";
 import type { ParsedLine } from "@/views/edit/parse-lyrics";
-import {
-  importParsedLyrics,
-  type ImportParsedLyricsContext,
-} from "@/views/lyrics-import-modal/use-import-modal-actions";
-import { IconAlertTriangle, IconFileImport, IconMicrophone, IconX } from "@tabler/icons-react";
+import { importLyricsFile, useImportContext } from "@/views/lyrics-import-modal/import-lyrics";
+import { pluralize, pluralWord } from "@/utils/pluralize";
+import { IconAlertTriangle, IconFileImport, IconMicrophone } from "@tabler/icons-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 // -- Constants ----------------------------------------------------------------
@@ -51,35 +50,8 @@ const BracketWarning: React.FC<{ count: number }> = ({ count }) => {
     <div className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-composer-error/10 text-composer-error">
       <IconAlertTriangle className="size-4 shrink-0" />
       <span>
-        {count} line{count > 1 ? "s" : ""} contain{count === 1 ? "s" : ""} [brackets]
+        {pluralize(count, "line")} {pluralWord(count, "contains", "contain")} [brackets]
       </span>
-    </div>
-  );
-};
-
-const ImportSuccessBanner: React.FC<{
-  result: ParseResult;
-  filename: string;
-  onDismiss: () => void;
-}> = ({ result, filename, onDismiss }) => {
-  const lineCount = result.lines.length;
-  const timedLineCount = result.lines.filter((l) => l.begin !== undefined).length;
-  const wordTimedCount = result.lines.filter((l) => l.words?.length).length;
-
-  return (
-    <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg bg-composer-accent/10 text-composer-accent-text">
-      <div className="flex items-center gap-2">
-        <IconFileImport className="size-4 shrink-0" />
-        <span>
-          Imported {lineCount} lines from {filename}
-          {result.hasTimingData && (
-            <> with {wordTimedCount > 0 ? `${wordTimedCount} word-timed` : `${timedLineCount} timed`} lines</>
-          )}
-        </span>
-      </div>
-      <Button size="icon" variant="ghost" onClick={onDismiss} className="size-6">
-        <IconX className="size-4" />
-      </Button>
     </div>
   );
 };
@@ -292,17 +264,17 @@ const EditPanel: React.FC = () => {
   const lines = useProjectStore((s) => s.lines);
   const groups = useProjectStore((s) => s.groups);
   const activeTab = useProjectStore((s) => s.activeTab);
-  const setLines = useProjectStore((s) => s.setLines);
   const confirm = useConfirm();
   const openImportModal = useImportModal();
   const lastImportResult = useLastImportResult();
-  const autoExtractBackgroundVocals = useSettingsStore((s) => s.autoExtractBackgroundVocals);
+  const dropImportContext = useImportContext("Drop");
   const mergeStandaloneBackgroundLines = useSettingsStore((s) => s.mergeStandaloneBackgroundLines);
   const preserveBracketsOnExtraction = useSettingsStore((s) => s.preserveBracketsOnExtraction);
 
-  const [rawText, setRawText] = useState(() => (lines.length > 0 ? lines.map((l) => l.text).join("\n") : ""));
+  const [rawText, setRawText] = useState(() => linesToEditText(lines));
   const rawTextRef = useRef(rawText);
   rawTextRef.current = rawText;
+  const { textareaRef, showEditText } = useEditTextCaret(rawText, setRawText);
   const linesSetByUs = useRef<LyricLine[] | null>(null);
   const modalPendingRef = useRef(false);
   const pastedRef = useRef(false);
@@ -319,29 +291,17 @@ const EditPanel: React.FC = () => {
       linesSetByUs.current = null;
       return;
     }
-    setRawText(lines.length > 0 ? lines.map((l) => l.text).join("\n") : "");
+    setRawText(linesToEditText(lines));
   }, [lines]);
 
   const defaultAgentId = agents?.[0]?.id ?? "v1";
   const parsed = useMemo(() => parseLyrics(rawText, lines, defaultAgentId), [rawText, lines, defaultAgentId]);
   const bracketCount = useMemo(() => parsed.filter((p) => p.hasBrackets).length, [parsed]);
   const nonEmptyCount = useMemo(() => parsed.filter((p) => !p.isEmpty).length, [parsed]);
-  const instanceCountByGroup = useMemo(() => {
-    const indices = new Map<string, Set<number>>();
-    for (const l of lines) {
-      if (isLinked(l)) {
-        let set = indices.get(l.groupId);
-        if (!set) {
-          set = new Set();
-          indices.set(l.groupId, set);
-        }
-        set.add(l.instanceIdx);
-      }
-    }
-    const counts = new Map<string, number>();
-    for (const [k, v] of indices) counts.set(k, v.size);
-    return counts;
-  }, [lines]);
+  const instanceCountByGroup = useMemo(
+    () => new Map(groups.map((g) => [g.id, instanceCount(lines, g.id)])),
+    [groups, lines],
+  );
 
   const extractOptions = useMemo(
     () => ({
@@ -359,7 +319,7 @@ const EditPanel: React.FC = () => {
     useProjectStore.getState().setLinesWithHistory(nextLines, nextGroups);
     const committed = useProjectStore.getState().lines;
     linesSetByUs.current = committed;
-    setRawText(committed.map((line) => line.text).join("\n"));
+    setRawText(linesToEditText(committed));
   }, []);
 
   const handleExtractBackgroundVocals = useCallback(() => {
@@ -526,12 +486,12 @@ const EditPanel: React.FC = () => {
 
   useEffect(() => () => finalizeRun(), [finalizeRun]);
 
-  const handleTextChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const applyTextareaText = useCallback(
+    (textarea: HTMLTextAreaElement) => {
       const wasPaste = pastedRef.current;
       pastedRef.current = false;
 
-      const text = e.target.value;
+      const text = textarea.value;
       const action = decideEditTextAction({
         text,
         defaultAgentId,
@@ -545,8 +505,8 @@ const EditPanel: React.FC = () => {
       // textarea on a state-less return path and the user's keystrokes persist
       // visually even though the store rejected them.
       const snapBack = () => {
-        if (e.target.value !== rawTextRef.current) {
-          e.target.value = rawTextRef.current;
+        if (textarea.value !== rawTextRef.current) {
+          textarea.value = rawTextRef.current;
         }
       };
 
@@ -560,7 +520,7 @@ const EditPanel: React.FC = () => {
         modalPendingRef.current = true;
         const labelText =
           action.labels.length === 0
-            ? `${action.impacted.length} instance${action.impacted.length === 1 ? "" : "s"}`
+            ? pluralize(action.impacted.length, "instance")
             : action.labels.length === 1
               ? `[${action.labels[0]}]`
               : action.labels.map((l) => `[${l}]`).join(", ");
@@ -585,10 +545,12 @@ const EditPanel: React.FC = () => {
         return;
       }
 
-      setRawText(text);
       useImportModalStore.getState().clearImportResult();
 
-      if (action.kind === "noop") return;
+      if (action.kind === "noop") {
+        showEditText(text, text, textarea);
+        return;
+      }
 
       let finalLines = action.finalLines;
 
@@ -604,38 +566,19 @@ const EditPanel: React.FC = () => {
         return;
       }
 
+      showEditText(text, action.editText, textarea);
+
       if (runBaselineRef.current === null) {
         const projectState = useProjectStore.getState();
         runBaselineRef.current = { lines: projectState.lines, wasDirty: projectState.isDirtySinceHistory };
       }
       linesSetByUs.current = finalLines;
-      setLines(finalLines);
+      useProjectStore.getState().setLines(finalLines);
       scheduleRunFinalize();
     },
-    [confirm, defaultAgentId, groups, lines, setLines, scheduleRunFinalize, commitLinesWithHistory, finalizeRun],
+    [confirm, defaultAgentId, groups, lines, scheduleRunFinalize, commitLinesWithHistory, finalizeRun, showEditText],
   );
-
-  const handleDroppedFile = useCallback(
-    async (file: File) => {
-      const content = await file.text();
-      const audioDuration = useAudioStore.getState().duration;
-      const parsed = parseLyricsFile(file.name, content, audioDuration > 0 ? audioDuration : undefined);
-      const context: ImportParsedLyricsContext = {
-        confirm,
-        agents,
-        audioDuration,
-        applyBackgroundExtraction: autoExtractBackgroundVocals,
-        backgroundExtractionMergeStandalone: mergeStandaloneBackgroundLines,
-        backgroundExtractionPreserveBrackets: preserveBracketsOnExtraction,
-        source: { label: "Drop", filename: file.name },
-        onResult: (result, source) => {
-          useImportModalStore.getState().recordImportResult(result, source);
-        },
-      };
-      await importParsedLyrics(parsed, context);
-    },
-    [agents, autoExtractBackgroundVocals, confirm, mergeStandaloneBackgroundLines, preserveBracketsOnExtraction],
-  );
+  const textareaChange = useComposedTextareaChange(setRawText, applyTextareaText);
 
   const importTriggers = useDualClickImport(openImportModal);
 
@@ -643,11 +586,9 @@ const EditPanel: React.FC = () => {
     (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
-      if (file && isSupportedLyricsFile(file.name)) {
-        handleDroppedFile(file);
-      }
+      if (file) void importLyricsFile(file, dropImportContext);
     },
-    [handleDroppedFile],
+    [dropImportContext],
   );
 
   return (
@@ -660,9 +601,7 @@ const EditPanel: React.FC = () => {
       <div className="flex items-center justify-between select-none">
         <h2 className="text-lg font-medium">Lyrics Editor</h2>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-composer-text-muted">
-            {nonEmptyCount} line{nonEmptyCount !== 1 ? "s" : ""}
-          </span>
+          <span className="text-sm text-composer-text-muted">{pluralize(nonEmptyCount, "line")}</span>
           <Button
             hasIcon
             variant="secondary"
@@ -706,9 +645,12 @@ const EditPanel: React.FC = () => {
           {/* react-doctor-disable-next-line react-doctor/control-has-associated-label */}
           <textarea
             id={textareaId}
+            ref={textareaRef}
             value={rawText}
-            onChange={handleTextChange}
+            onChange={textareaChange.onChange}
             onBlur={handleTextareaBlur}
+            onCompositionStart={textareaChange.onCompositionStart}
+            onCompositionEnd={textareaChange.onCompositionEnd}
             onPaste={() => {
               pastedRef.current = true;
             }}
@@ -725,9 +667,7 @@ const EditPanel: React.FC = () => {
             <div
               className={`flex items-center gap-2 transition-opacity ${selectedLines.size > 0 ? "opacity-100" : "opacity-0 pointer-events-none"}`}
             >
-              <span className="text-xs text-composer-text-muted">
-                {selectedLines.size} line{selectedLines.size !== 1 ? "s" : ""} selected
-              </span>
+              <span className="text-xs text-composer-text-muted">{pluralize(selectedLines.size, "line")} selected</span>
               {agents.length > 1 && (
                 <Select
                   aria-label="Assign agent"
@@ -769,18 +709,18 @@ const EditPanel: React.FC = () => {
                   const totalInstances = group ? (instanceCountByGroup.get(group.id) ?? 0) : 0;
                   const groupTooltip =
                     group && totalInstances > 1
-                      ? `Part of ${group.label} · linked to ${totalInstances - 1} other instance${totalInstances - 1 === 1 ? "" : "s"}. Edits propagate.`
+                      ? `Part of ${group.label} · linked to ${pluralize(totalInstances - 1, "other instance")}. Edits propagate.`
                       : undefined;
                   return (
                     <div key={line.lineNumber}>
-                      {isFirstOfInstance && group && (
+                      {isFirstOfInstance && group && line.instanceIdx !== undefined && (
                         <div
                           className="mx-3 mt-2 mb-1 flex items-center gap-2 text-xs text-composer-text-muted select-none"
                           aria-hidden
                         >
                           <span className="font-medium text-composer-text">{group.label}</span>
                           <span className="tabular-nums">
-                            · {(line.instanceIdx ?? 0) + 1} of {totalInstances}
+                            · {instanceOrdinal(lines, group.id, line.instanceIdx)} of {totalInstances}
                           </span>
                           <span className="flex-1 h-px" style={{ backgroundColor: group.color, opacity: 0.4 }} />
                         </div>

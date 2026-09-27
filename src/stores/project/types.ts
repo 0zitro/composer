@@ -1,6 +1,7 @@
 import type { Agent } from "@/domain/agent/model";
 import type { LineTemplate, LinkGroup } from "@/domain/group/template";
-import type { LyricLine } from "@/domain/line/model";
+import type { LineUpdate, LyricLine, RawLine } from "@/domain/line/model";
+import type { MetadataKey } from "@/domain/project/imported-metadata";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import type { WordTiming } from "@/domain/word/timing";
@@ -10,6 +11,7 @@ import type { WordTiming } from "@/domain/word/timing";
 type GranularityMode = "line" | "word";
 type EditorMode = "simple" | "advanced";
 type SimpleTab = "import" | "edit" | "languages" | "sync" | "timeline" | "preview" | "export";
+type TtmlEditState = { source: string; content: string } | null;
 
 interface SyllableSplitDefaults {
   applyToAll: boolean;
@@ -24,6 +26,7 @@ const DEFAULT_SYLLABLE_SPLIT_DEFAULTS: SyllableSplitDefaults = {
 interface HistoryEntry {
   lines: LyricLine[];
   groups: LinkGroup[];
+  agents: Agent[];
   customSnapPoints: SnapPoint[];
   timestamp: number;
 }
@@ -35,12 +38,15 @@ interface MetadataState {
   /** In-memory identity for replacements, including files that reuse line IDs. */
   projectSession: number;
   hasUnexportedImport: boolean;
+  importedMetadataKeys: MetadataKey[];
+  ttmlEditState: TtmlEditState;
 }
 
 interface SongIdentity {
   metadata: ProjectMetadata;
   agents: Agent[];
   hasUnexportedImport: boolean;
+  importedMetadataKeys: MetadataKey[];
 }
 
 interface AgentsState {
@@ -76,10 +82,10 @@ interface HistoryState {
   isDirty: boolean;
   history: HistoryEntry[];
   historyIndex: number;
-  // True when state.lines or state.groups has changed since the last history
-  // entry was written (e.g., per-keystroke setLines from the Edit textarea).
-  // The next history-aware mutator snapshots this state into history first
-  // so undo lands on the pending edit instead of skipping past it.
+  // True when any snapshotted state (lines, groups, agents) has changed since
+  // the last history entry was written (e.g., per-keystroke setLines from the
+  // Edit textarea). The next history-aware mutator, and undo itself, snapshot
+  // this state first so undo lands on the pending edit instead of skipping it.
   isDirtySinceHistory: boolean;
 }
 
@@ -90,15 +96,23 @@ interface MetadataActions {
   startProjectSession: () => void;
   resetSongIdentity: (title: string) => void;
   restoreSongIdentity: (identity: SongIdentity) => void;
+  replaceLyricsWithHistory: (input: {
+    lines: RawLine[];
+    groups: LinkGroup[];
+    agents: Agent[] | undefined;
+    metadata: Partial<ProjectMetadata>;
+  }) => void;
   markSongDetailsImported: () => void;
+  restoreImportedMetadataKeys: (keys: MetadataKey[]) => void;
   clearUnexportedImport: () => void;
+  setTtmlEditState: (editState: TtmlEditState | ((current: TtmlEditState) => TtmlEditState)) => void;
   reset: () => void;
 }
 
 interface AgentActions {
   addAgent: (agent: Agent) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
-  removeAgent: (id: string) => void;
+  removeAgentWithHistory: (id: string) => void;
   setAgents: (agents: Agent[]) => void;
 }
 
@@ -140,10 +154,11 @@ interface HistoryActions {
 }
 
 interface LineActions {
-  setLines: (lines: LyricLine[]) => void;
+  setLines: (lines: RawLine[]) => void;
   // See the JSDoc on the implementation in lines-slice.ts before using this.
-  setTransientLines: (lines: LyricLine[]) => void;
-  setLinesWithHistory: (lines: LyricLine[], groups?: LinkGroup[]) => void;
+  setTransientLines: (lines: RawLine[]) => void;
+  setLinesWithHistory: (lines: RawLine[], groups?: LinkGroup[]) => void;
+  insertEmptyLineWithHistory: (anchorLineId: string, position: "above" | "below") => void;
   updateLine: (id: string, updates: Partial<LyricLine>, options?: { deriveText?: boolean }) => void;
   updateLineWithHistory: (
     id: string,
@@ -151,7 +166,7 @@ interface LineActions {
     options?: { deriveText?: boolean; propagateToSiblings?: boolean },
   ) => void;
   updateLinesWithHistory: (
-    updates: Array<{ id: string; updates: Partial<LyricLine> }>,
+    updates: LineUpdate[],
     options?: { deriveText?: boolean; propagateToSiblings?: boolean },
   ) => void;
   moveWordToBg: (lineId: string, wordIndices: number[], timeDelta: number, duration: number) => void;
@@ -218,6 +233,7 @@ export type {
   GranularityMode,
   SimpleTab,
   SyllableSplitDefaults,
+  TtmlEditState,
   MetadataState,
   SongIdentity,
   AgentsState,
@@ -226,6 +242,7 @@ export type {
   UiState,
   DismissalsState,
   SnapPointsState,
+  HistoryEntry,
   HistoryState,
   MetadataActions,
   AgentActions,

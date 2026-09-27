@@ -1,18 +1,14 @@
-import { isWordSelected } from "@/domain/selection/identity";
 import { manualBackgroundWordEdit } from "@/domain/line/background";
-import { mainWordEditFields } from "@/domain/line/main-words";
+import { type ReadableLine, effectiveMainWordEdit } from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
-import { useProjectStore } from "@/stores/project";
-import { mergeWordsIntoTrack } from "@/domain/word/merge-track";
-import { applyWordMoveAcrossLines, type WordMove } from "@/domain/word/move-across-lines";
-import { boundsOverlap } from "@/domain/word/overlap";
+import { trackWords } from "@/domain/line/tracks";
+import { isWordSelected } from "@/domain/selection/identity";
+import type { WordSelection } from "@/domain/selection/model";
+import { type WordMove, applyWordMoveAcrossLines } from "@/domain/word/move-across-lines";
 import { reorderWordTrack } from "@/domain/word/reorder-track";
 import { expandSelectionToGroupmates } from "@/domain/word/syllable-groups";
-import type { WordTiming } from "@/domain/word/timing";
+import { useProjectStore } from "@/stores/project";
 import { cloneWord } from "@/utils/word-timing";
-import type { WordSelection } from "@/domain/selection/model";
-import { useTimelineStore } from "@/views/timeline/timeline-store";
-import type { DragEndEvent } from "@dnd-kit/core";
 import { toast } from "sonner";
 
 // -- Types ---------------------------------------------------------------------
@@ -31,6 +27,7 @@ interface DragData {
 // -- Constants -----------------------------------------------------------------
 
 const DRAG_X_MIN_THRESHOLD = 5;
+const LINE_SYNCED_REJECT_MESSAGE = "Sync this line into words first";
 
 // -- Selection helpers --------------------------------------------------------
 
@@ -52,7 +49,7 @@ function resolveWordsToOperate(activeData: DragData, selectedWords: WordSelectio
   ];
 }
 
-function expandSelectionsAcrossLines(lines: LyricLine[], selections: WordSelection[]): WordSelection[] {
+function expandSelectionsAcrossLines(lines: readonly ReadableLine[], selections: WordSelection[]): WordSelection[] {
   const linesById = new Map<string, LyricLine>();
   for (const l of lines) linesById.set(l.id, l);
   const seen = new Set<string>();
@@ -60,7 +57,7 @@ function expandSelectionsAcrossLines(lines: LyricLine[], selections: WordSelecti
   for (const sel of selections) {
     const line = linesById.get(sel.lineId);
     if (!line) continue;
-    const words = sel.type === "word" ? line.words : line.backgroundWords;
+    const words = trackWords(line, sel.type);
     if (!words) continue;
     const expanded = expandSelectionToGroupmates(words, [sel.wordIndex]);
     for (const idx of expanded) {
@@ -83,75 +80,12 @@ function groupSelectionsByLine(selections: WordSelection[]): Map<string, WordSel
   return grouped;
 }
 
-// -- Alt duplicate -------------------------------------------------------------
-
-function handleAltDuplicate(event: DragEndEvent, lines: LyricLine[], zoom: number, duration: number) {
-  const { active, delta } = event;
-  const activeData = active.data.current as DragData | undefined;
-  if (!activeData) return;
-  if (Math.abs(delta.x) < DRAG_X_MIN_THRESHOLD) return;
-
-  const { selectedWords } = useTimelineStore.getState();
-  const wordsToDuplicate = expandSelectionsAcrossLines(lines, resolveWordsToOperate(activeData, selectedWords));
-
-  const timeDelta = delta.x / zoom;
-  const updates: Array<{ id: string; updates: Partial<LyricLine> }> = [];
-
-  const grouped = groupSelectionsByLine(wordsToDuplicate);
-  const linesById = new Map<string, LyricLine>();
-  for (const l of lines) linesById.set(l.id, l);
-
-  for (const [lineId, selections] of grouped) {
-    const line = linesById.get(lineId);
-    if (!line) continue;
-
-    const wordDups: WordTiming[] = [];
-    const bgDups: WordTiming[] = [];
-
-    for (const sel of selections) {
-      const wordsArray = sel.type === "word" ? line.words : line.backgroundWords;
-      const word = wordsArray?.[sel.wordIndex];
-      if (!word) continue;
-
-      const newBegin = Math.max(0, word.begin + timeDelta);
-      const newEnd = Math.min(duration, word.end + timeDelta);
-      if (newEnd <= newBegin) continue;
-
-      const dup = cloneWord(word, { begin: newBegin, end: newEnd });
-      if (sel.type === "word") wordDups.push(dup);
-      else bgDups.push(dup);
-    }
-
-    const lineUpdates: Partial<LyricLine> = {};
-
-    if (wordDups.length > 0) {
-      const existing = line.words ?? [];
-      const hasOverlap = wordDups.some((dup) => existing.some((w) => boundsOverlap(dup, w)));
-      if (!hasOverlap) Object.assign(lineUpdates, mainWordEditFields(mergeWordsIntoTrack(existing, wordDups)));
-    }
-
-    if (bgDups.length > 0) {
-      const existing = line.backgroundWords ?? [];
-      const hasOverlap = bgDups.some((dup) => existing.some((w) => boundsOverlap(dup, w)));
-      if (!hasOverlap) Object.assign(lineUpdates, manualBackgroundWordEdit(mergeWordsIntoTrack(existing, bgDups)));
-    }
-
-    if (Object.keys(lineUpdates).length > 0) {
-      updates.push({ id: lineId, updates: lineUpdates });
-    }
-  }
-
-  if (updates.length > 0) {
-    useProjectStore.getState().updateLinesWithHistory(updates, { propagateToSiblings: false });
-  }
-}
-
 // -- Same-line reorder --------------------------------------------------------
 
 function applySameLineReorder(
   activeData: DragData,
   wordsToMove: WordSelection[],
-  lines: LyricLine[],
+  lines: readonly ReadableLine[],
   timeDelta: number,
   duration: number,
   updateLineWithHistory: ReturnType<typeof useProjectStore.getState>["updateLineWithHistory"],
@@ -171,7 +105,8 @@ function applySameLineReorder(
       const bgIndices = new Set(selections.flatMap((s) => (s.type === "bg" ? [s.wordIndex] : [])));
 
       if (wordIndices.size > 0 && line.words) {
-        Object.assign(lineUpdates, mainWordEditFields(reorderWordTrack(line.words, wordIndices, timeDelta, duration)));
+        const edit = effectiveMainWordEdit(line, reorderWordTrack(line.words, wordIndices, timeDelta, duration));
+        if (edit) Object.assign(lineUpdates, edit);
       }
       if (bgIndices.size > 0 && line.backgroundWords) {
         const reordered = reorderWordTrack(line.backgroundWords, bgIndices, timeDelta, duration);
@@ -189,7 +124,7 @@ function applySameLineReorder(
 
   const line = lines.find((l) => l.id === activeData.lineId);
   if (!line) return;
-  const wordsArray = activeData.trackType === "word" ? line.words : line.backgroundWords;
+  const wordsArray = trackWords(line, activeData.trackType);
   if (!wordsArray) return;
 
   const wordIndex = activeData.wordIndex;
@@ -197,7 +132,8 @@ function applySameLineReorder(
 
   const normalized = reorderWordTrack(wordsArray, new Set([wordIndex]), timeDelta, duration);
   if (activeData.trackType === "word") {
-    updateLineWithHistory(activeData.lineId, mainWordEditFields(normalized), { propagateToSiblings: false });
+    const edit = effectiveMainWordEdit(line, normalized);
+    if (edit) updateLineWithHistory(activeData.lineId, edit, { propagateToSiblings: false });
   } else {
     updateLineWithHistory(activeData.lineId, manualBackgroundWordEdit(normalized), { propagateToSiblings: false });
   }
@@ -210,7 +146,7 @@ interface CrossLineMoveArgs {
   targetLine: LyricLine;
   targetTrack: "word" | "bg";
   wordsToMove: WordSelection[];
-  lines: LyricLine[];
+  lines: readonly ReadableLine[];
   timeDelta: number;
   duration: number;
 }
@@ -232,7 +168,7 @@ function buildCrossLineMoves({
     if (sel.lineId !== activeData.lineId) continue;
     const sourceLine = linesById.get(sel.lineId);
     if (!sourceLine) continue;
-    const sourceArr = sel.type === "word" ? sourceLine.words : sourceLine.backgroundWords;
+    const sourceArr = trackWords(sourceLine, sel.type);
     const source = sourceArr?.[sel.wordIndex];
     if (!source) continue;
 
@@ -265,15 +201,15 @@ function applyCrossLineMove(args: CrossLineMoveArgs) {
 
   const result = applyWordMoveAcrossLines(args.lines, moves, args.duration);
   if (result.ok) {
-    useProjectStore.getState().setLinesWithHistory(result.lines);
+    useProjectStore.getState().updateLinesWithHistory(result.updates, { propagateToSiblings: false });
     return;
   }
   if (result.reject === "cross-instance") {
     toast.error("Detach the line first to move it out of the group");
     return;
   }
-  if (result.reject === "line-synced-target") {
-    toast.error("Sync this line into words first");
+  if (result.reject === "line-synced-target" || result.reject === "line-synced-source") {
+    toast.error(LINE_SYNCED_REJECT_MESSAGE);
     return;
   }
 }
@@ -282,10 +218,11 @@ function applyCrossLineMove(args: CrossLineMoveArgs) {
 
 export {
   DRAG_X_MIN_THRESHOLD,
+  LINE_SYNCED_REJECT_MESSAGE,
   applyCrossLineMove,
   applySameLineReorder,
   expandSelectionsAcrossLines,
-  handleAltDuplicate,
+  groupSelectionsByLine,
   resolveWordsToOperate,
 };
 export type { DragData };

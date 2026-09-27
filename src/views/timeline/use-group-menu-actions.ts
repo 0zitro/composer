@@ -1,4 +1,4 @@
-import { instanceIndicesOf } from "@/domain/instance/enumerate";
+import { instanceCount } from "@/domain/instance/enumerate";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
@@ -7,13 +7,10 @@ import { type ConformFailure, conformLinesToInstance } from "@/views/timeline/co
 import { deleteGroupWithConfirm } from "@/views/timeline/delete-group-with-confirm";
 import { scrollToInstanceHeader } from "@/views/timeline/scroll-helpers";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
-import type { useContextMenuTargets } from "@/views/timeline/use-context-menu-targets";
+import type { ContextMenuTargets } from "@/views/timeline/use-context-menu-targets";
+import { pluralize } from "@/utils/pluralize";
 import { useCallback } from "react";
 import { toast } from "sonner";
-
-// -- Interfaces ---------------------------------------------------------------
-
-type ContextMenuTargets = ReturnType<typeof useContextMenuTargets>;
 
 // -- Constants ----------------------------------------------------------------
 
@@ -46,7 +43,7 @@ function useGroupMenuActions(targets: ContextMenuTargets, clearContextMenu: () =
     if (!groupableSelection) return;
     const projectState = useProjectStore.getState();
     projectState.addGroupWithLines(groupableSelection.result.group, groupableSelection.result.updatedLines);
-    toast.success(`Grouped ${groupableSelection.count} line${groupableSelection.count === 1 ? "" : "s"}`);
+    toast.success(`Grouped ${pluralize(groupableSelection.count, "line")}`);
     clearContextMenu();
   }, [groupableSelection, clearContextMenu]);
 
@@ -59,7 +56,7 @@ function useGroupMenuActions(targets: ContextMenuTargets, clearContextMenu: () =
       clearContextMenu();
 
       const ok = await confirm({
-        title: `Conform ${count} line${count === 1 ? "" : "s"} to "${option.group.label}"?`,
+        title: `Conform ${pluralize(count, "line")} to "${option.group.label}"?`,
         description: "Their current text, timing, agent and background vocals are replaced by the group's.",
         confirmLabel: "Conform",
         variant: "destructive",
@@ -87,7 +84,7 @@ function useGroupMenuActions(targets: ContextMenuTargets, clearContextMenu: () =
         return;
       }
       useProjectStore.getState().setLinesWithHistory(result.updatedLines);
-      showGroupActionToast(`Conformed ${count} line${count === 1 ? "" : "s"} to "${option.group.label}"`);
+      showGroupActionToast(`Conformed ${pluralize(count, "line")} to "${option.group.label}"`);
     },
     [conformableSelection, confirm, clearContextMenu],
   );
@@ -97,10 +94,10 @@ function useGroupMenuActions(targets: ContextMenuTargets, clearContextMenu: () =
     const { groupId } = contextMenu.target;
     const group = groups.find((g) => g.id === groupId);
     if (!group) return;
-    const instanceCount = instanceIndicesOf(useProjectStore.getState().lines, groupId).length;
+    const count = instanceCount(useProjectStore.getState().lines, groupId);
 
     clearContextMenu();
-    await deleteGroupWithConfirm({ groupId, groupLabel: group.label, instanceCount });
+    await deleteGroupWithConfirm({ groupId, groupLabel: group.label, instanceCount: count });
   }, [contextMenu, groups, clearContextMenu]);
 
   const handleRenameStart = useCallback(() => {

@@ -1,46 +1,36 @@
-import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
+import { applySavedProject } from "@/lib/apply-saved-project";
 import { clearCurrentProject, exportProjectToFile, importProjectFromFile } from "@/lib/persistence";
 import { cancelPendingSave } from "@/lib/persistence-debounce";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
+import { pluralize } from "@/utils/pluralize";
 import { useCallback } from "react";
 
 // -- Hook ---------------------------------------------------------------------
 
 function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | null>) {
-  const metadata = useProjectStore((s) => s.metadata);
-  const agents = useProjectStore((s) => s.agents);
-  const lines = useProjectStore((s) => s.lines);
-  const groups = useProjectStore((s) => s.groups);
-  const granularity = useProjectStore((s) => s.granularity);
-  const setMetadata = useProjectStore((s) => s.setMetadata);
-  const setLines = useProjectStore((s) => s.setLines);
-  const setGranularity = useProjectStore((s) => s.setGranularity);
-  const setAgents = useProjectStore((s) => s.setAgents);
   const reset = useProjectStore((s) => s.reset);
-  const markClean = useProjectStore((s) => s.markClean);
   const confirm = useConfirm();
 
   const handleExportProject = useCallback(() => {
     const audioSource = useAudioStore.getState().source;
-    const audioFileName = audioSource?.type === "file" ? audioSource.file.name : undefined;
-    const { dismissedSuggestions, dismissedExplicitSuggestions, syllableSplitDefaults, customSnapPoints } =
-      useProjectStore.getState();
-    exportProjectToFile(
-      metadata,
-      agents,
-      lines,
-      groups,
-      granularity,
-      syllableSplitDefaults,
-      dismissedSuggestions,
-      dismissedExplicitSuggestions,
-      customSnapPoints,
-      audioFileName,
-    );
-  }, [metadata, agents, lines, groups, granularity]);
+    const state = useProjectStore.getState();
+    exportProjectToFile({
+      metadata: state.metadata,
+      agents: state.agents,
+      lines: state.lines,
+      groups: state.groups,
+      granularity: state.granularity,
+      syllableSplitDefaults: state.syllableSplitDefaults,
+      dismissedSuggestions: state.dismissedSuggestions,
+      dismissedExplicitSuggestions: state.dismissedExplicitSuggestions,
+      customSnapPoints: state.customSnapPoints,
+      importedMetadataKeys: state.importedMetadataKeys,
+      ttmlEditState: state.ttmlEditState,
+      audioFileName: audioSource?.type === "file" ? audioSource.file.name : undefined,
+    });
+  }, []);
 
   const handleImportProject = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +41,7 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
       if (existingLineCount > 0) {
         const ok = await confirm({
           title: "Replace current project?",
-          description: `Loading this project file will replace your ${existingLineCount} existing line${existingLineCount === 1 ? "" : "s"} and metadata. This cannot be undone.`,
+          description: `Loading this project file will replace your ${pluralize(existingLineCount, "existing line")} and metadata. This cannot be undone.`,
           confirmLabel: "Replace",
           variant: "destructive",
           settingsKey: "confirmReplaceLyrics",
@@ -63,25 +53,14 @@ function useProjectFileActions(fileInputRef: React.RefObject<HTMLInputElement | 
       }
 
       const project = await importProjectFromFile(file);
-      const store = useProjectStore.getState();
-      store.startProjectSession();
-      setMetadata(normalizeLoadedMetadata(project.metadata));
-      setLines(project.lines);
-      store.setGroups(project.groups ?? []);
-      store.setDismissedSuggestions(project.dismissedSuggestions ?? []);
-      store.setDismissedExplicitSuggestions(project.dismissedExplicitSuggestions ?? []);
-      setGranularity(project.granularity);
-      store.setSyllableSplitDefaults(project.syllableSplitDefaults ?? DEFAULT_SYLLABLE_SPLIT_DEFAULTS);
-      setAgents(project.agents);
-      store.setCustomSnapPoints(project.customSnapPoints ?? []);
-      store.markSongDetailsImported();
-      markClean();
+      useProjectStore.getState().startProjectSession();
+      applySavedProject(project, "file");
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     },
-    [setMetadata, setLines, setGranularity, setAgents, markClean, confirm, fileInputRef],
+    [confirm, fileInputRef],
   );
 
   const handleClearProject = useCallback(async () => {

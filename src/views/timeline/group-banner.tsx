@@ -1,6 +1,6 @@
 import { useProjectStore } from "@/stores/project";
 import type { LinkGroup } from "@/domain/group/template";
-import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
 import { buildGroupPingVariants } from "@/utils/animationVariants";
 import { cn } from "@/utils/cn";
 import { registerBanner } from "@/views/timeline/banner-progress-registry";
@@ -16,6 +16,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 interface GroupBannerProps {
   group: LinkGroup;
   instanceIdx: number;
+  ordinal: number;
   totalInstances: number;
   instanceStart: number;
   instanceEnd: number;
@@ -32,6 +33,7 @@ const BANNER_MIN_WIDTH = 80;
 const GroupBannerComponent: React.FC<GroupBannerProps> = ({
   group,
   instanceIdx,
+  ordinal,
   totalInstances,
   instanceStart,
   instanceEnd,
@@ -190,19 +192,19 @@ const GroupBannerComponent: React.FC<GroupBannerProps> = ({
         transform: isDragging ? `translateX(${dragOffsetPx}px)` : undefined,
       }}
     >
-      <Button
+      <IconButton
+        label={isCollapsed ? "Expand instance" : "Collapse instance"}
+        icon={
+          <IconChevronDown
+            className={cn("size-3 transition-transform duration-200 ease-out", isCollapsed && "-rotate-90")}
+          />
+        }
         variant="ghost"
-        size="icon"
-        aria-label={isCollapsed ? "Expand instance" : "Collapse instance"}
         onClick={handleChevronClick}
         onPointerDown={handleChevronPointerDown}
         onDoubleClick={(e) => e.stopPropagation()}
         className="shrink-0 w-auto h-auto p-0.5 opacity-70 hover:opacity-100 hover:bg-transparent text-current relative before:content-[''] before:absolute before:-inset-2"
-      >
-        <IconChevronDown
-          className={cn("size-3 transition-transform duration-200 ease-out", isCollapsed && "-rotate-90")}
-        />
-      </Button>
+      />
       <span className="font-semibold whitespace-nowrap">{group.label}</span>
       <span
         className="flex items-center gap-1 text-composer-text-muted tabular-nums whitespace-nowrap ml-auto"
@@ -210,7 +212,7 @@ const GroupBannerComponent: React.FC<GroupBannerProps> = ({
         onMouseLeave={handleBadgeMouseLeave}
       >
         <IconLink className="size-2.5" />
-        {instanceIdx + 1} of {totalInstances}
+        {ordinal} of {totalInstances}
         {isDragging && (
           <span className="ml-1 text-composer-text">
             {deltaSecondsLive >= 0 ? "+" : ""}

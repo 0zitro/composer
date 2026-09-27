@@ -69,6 +69,9 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
   const elementRef = useRef<BraccatoLyricsElement>(null);
   const lyrics = useMemo(() => TTMLParser.parse(ttmlString), [ttmlString]);
   const latestLyricsRef = useRef(lyrics);
+  const initializedElementRef = useRef<BraccatoLyricsElement | null>(null);
+  const appliedLyricsRef = useRef<Lyric[] | null>(null);
+  const rebuildScrollTopRef = useRef<number | null>(null);
   const appliedPlaybackRateRef = useRef(1);
   const [isAutoscrollPaused, setIsAutoscrollPaused] = useState(false);
   const resumeWakeRef = useRef<number | null>(null);
@@ -82,7 +85,11 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
 
   const handleScroll = useCallback(
     (e: Event) => {
-      (e.currentTarget as BraccatoLyricsElement).renderer?.noteUserScroll();
+      const el = e.currentTarget as BraccatoLyricsElement;
+      const fromRebuild = rebuildScrollTopRef.current === el.scrollTop;
+      rebuildScrollTopRef.current = null;
+      if (fromRebuild) return;
+      el.renderer?.noteUserScroll();
       clearResumeWake();
       resumeWakeRef.current = window.setTimeout(() => {
         resumeWakeRef.current = null;
@@ -116,14 +123,34 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
     decorateAlternateTracks(el, latestLyricsRef.current);
   }, []);
 
-  const setElement = useCallback((el: BraccatoLyricsElement | null) => {
-    elementRef.current = el;
-    if (!el) return;
-    el.theme = braccatoTheme;
-    el.host = { setResumeAffordanceVisible: setIsAutoscrollPaused };
-    el.lyrics = latestLyricsRef.current;
-    decorateAlternateTracks(el, latestLyricsRef.current);
+  const applyLyrics = useCallback((el: BraccatoLyricsElement, next: Lyric[]) => {
+    if (appliedLyricsRef.current === next) return;
+    const scrollTopBefore = el.scrollTop;
+    // Braccato's in-place lyrics swap keeps the old scroll geometry; a fresh renderer (writing host) positions from scratch.
+    if (appliedLyricsRef.current !== null) {
+      // Cleared first so the fresh renderer's own build of the old lyrics is an empty one.
+      el.lyrics = [];
+      el.host = { setResumeAffordanceVisible: setIsAutoscrollPaused };
+    }
+    appliedLyricsRef.current = next;
+    el.lyrics = next;
+    // A rebuild that moves the scroll position fires one scroll the reader never made.
+    rebuildScrollTopRef.current = el.scrollTop === scrollTopBefore ? null : el.scrollTop;
+    decorateAlternateTracks(el, next);
   }, []);
+
+  // Activity re-attaches this ref on every reveal; re-initializing the same element rebuilds its lines.
+  const setElement = useCallback(
+    (el: BraccatoLyricsElement | null) => {
+      elementRef.current = el;
+      if (!el || initializedElementRef.current === el) return;
+      initializedElementRef.current = el;
+      el.theme = braccatoTheme;
+      el.host = { setResumeAffordanceVisible: setIsAutoscrollPaused };
+      applyLyrics(el, latestLyricsRef.current);
+    },
+    [applyLyrics],
+  );
 
   useEffect(() => {
     const el = elementRef.current;
@@ -148,11 +175,8 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
   useEffect(() => {
     latestLyricsRef.current = lyrics;
     const element = elementRef.current;
-    if (element) {
-      element.lyrics = lyrics;
-      decorateAlternateTracks(element, lyrics);
-    }
-  }, [lyrics]);
+    if (element) applyLyrics(element, lyrics);
+  }, [lyrics, applyLyrics]);
 
   // Binding `source` would make braccato own the clock, and it only polls during
   // playback, freezing the preview whenever the timeline is scrubbed paused.

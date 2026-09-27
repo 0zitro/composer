@@ -1,10 +1,13 @@
 import type { Agent } from "@/domain/agent/model";
-import { hasMainLyrics } from "@/domain/line/predicates";
+import { hasMainLyrics, isWordSynced } from "@/domain/line/predicates";
 import type { LinkGroup } from "@/domain/group/template";
 import { effectiveBounds } from "@/domain/line/bounds";
 import type { LyricLine } from "@/domain/line/model";
+import { isLineTimed } from "@/domain/line/sync-progress";
+import { normalizeLanguageTag } from "@/domain/project/language";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { toComposerMeta } from "@/domain/project/metadata-ttml";
+import { timingGranularityOf } from "@/domain/project/timing-granularity";
 import { formatTime } from "@/utils/format-time";
 import { COMPOSER_NS } from "@/utils/lyrics-parsers/composer-namespace";
 import { stripSplitCharacter } from "@/utils/split-character";
@@ -24,25 +27,21 @@ interface TTMLOptions {
   agents: Agent[];
   lines: LyricLine[];
   groups?: LinkGroup[];
-  granularity: "line" | "word";
   minify?: boolean;
   duration?: number;
 }
 
-function generateTTML({ metadata, agents, lines, groups, granularity, minify = false, duration }: TTMLOptions): string {
+function generateTTML({ metadata, agents, lines, groups, minify = false, duration }: TTMLOptions): string {
   const nl = minify ? "" : "\n";
   const ind = (n: number) => (minify ? "" : "  ".repeat(n));
 
-  const effectiveGranularity = lines.some((l) => l.words?.length) ? "word" : "line";
-  const timingValue = effectiveGranularity === "word" ? "Word" : "Line";
+  const timingValue = timingGranularityOf(lines) === "word" ? "Word" : "Line";
 
   const parts: string[] = [];
-  const keyedLines = lines
-    .filter((line) => effectiveBounds(line) !== null)
-    .map((line, index) => ({ line, key: `L${index + 1}` }));
+  const keyedLines = lines.filter(isLineTimed).map((line, index) => ({ line, key: `L${index + 1}` }));
   const keyById = new Map(keyedLines.map(({ line, key }) => [line.id, key]));
 
-  const language = metadata.language?.trim();
+  const language = normalizeLanguageTag(metadata.language ?? "");
   const langAttr = language ? ` xml:lang="${escapeXmlAttribute(language)}"` : "";
 
   // Apple Music lyric dialect, not strict W3C TTML1. Absolute span times and the
@@ -146,7 +145,7 @@ function generateTTML({ metadata, agents, lines, groups, granularity, minify = f
       : "";
     let content = "";
 
-    if (granularity === "word" && line.words?.length) {
+    if (isWordSynced(line) && line.words) {
       const words = line.words;
       const wordCount = words.length;
       for (let i = 0; i < wordCount; i++) {

@@ -3,6 +3,7 @@ import { PageHead } from "@/seo/page-head";
 import { Button } from "@/ui/button";
 import { ClearRecoveryButton } from "@/ui/clear-recovery-button";
 import { ClientOnly } from "@/ui/client-only";
+import { pluralize } from "@/utils/pluralize";
 import { IconCheck, IconDownload, IconHome2, IconLifebuoy, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
@@ -41,6 +42,12 @@ type RecoveryState =
   | { phase: "downloaded"; result: RecoveryResult }
   | { phase: "empty" }
   | { phase: "failed"; message: string };
+
+const SavedWorkSummary: React.FC<{ result: RecoveryResult }> = ({ result }) => (
+  <p className="text-xs text-composer-text-muted select-text">
+    {pluralize(result.lineCount, "line")}, last edited {formatSavedAt(result.savedAt)}
+  </p>
+);
 
 const RecoverPanel: React.FC = () => {
   const [state, setState] = useState<RecoveryState>({ phase: "reading" });
@@ -112,18 +119,14 @@ const RecoverPanel: React.FC = () => {
                 {truncateMiddle(state.result.filename, 44)}
               </span>
             </p>
-            <p className="text-xs text-composer-text-muted select-text">
-              {state.result.lineCount} lines, last edited {formatSavedAt(state.result.savedAt)}
-            </p>
+            <SavedWorkSummary result={state.result} />
           </div>
         )}
 
         {state.phase === "ready" && (
           <div className="flex flex-col items-center gap-2 text-sm">
             <p className="text-composer-text">We found your last session.</p>
-            <p className="text-xs text-composer-text-muted select-text">
-              {state.result.lineCount} lines, last edited {formatSavedAt(state.result.savedAt)}
-            </p>
+            <SavedWorkSummary result={state.result} />
           </div>
         )}
 

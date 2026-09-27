@@ -1,3 +1,4 @@
+import type { ReadableLine } from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
 import { type BoundaryEdge, clampBoundaryTime, shouldRollNeighbour } from "@/domain/word/boundary";
 import { getSyllablePositions } from "@/domain/word/syllable-groups";
@@ -8,12 +9,12 @@ import type { WordTiming } from "@/domain/word/timing";
 type UpdateLineWithHistory = (
   id: string,
   updates: Partial<LyricLine>,
-  options?: { propagateToSiblings?: boolean },
+  options?: { deriveText?: boolean; propagateToSiblings?: boolean },
 ) => void;
 
 interface WordFieldConfig {
   getWords: (line: LyricLine) => WordTiming[] | undefined;
-  updateKey: "words" | "backgroundWords";
+  writeWords: (line: ReadableLine, words: WordTiming[]) => Partial<LyricLine>;
   // mutateWord deliberately writes raw: routing it here too would newly stamp background provenance in useSyncHandlers.
   buildBoundaryUpdate?: (words: WordTiming[]) => Partial<LyricLine>;
 }
@@ -27,7 +28,7 @@ interface NeighborContext {
 type WordMutator = (ctx: NeighborContext) => WordTiming;
 
 interface SetBoundaryInput {
-  lines: LyricLine[];
+  lines: readonly ReadableLine[];
   lineIdx: number;
   wordIdx: number;
   edge: BoundaryEdge;
@@ -42,12 +43,12 @@ interface SetBoundaryInput {
 // -- Factory ------------------------------------------------------------------
 
 function createWordTimingOps(config: WordFieldConfig) {
-  const { getWords, updateKey } = config;
-  const buildBoundaryUpdate =
-    config.buildBoundaryUpdate ?? ((words: WordTiming[]) => ({ [updateKey]: words }) as Partial<LyricLine>);
+  const { getWords, writeWords, buildBoundaryUpdate } = config;
+  const boundaryUpdate = (line: ReadableLine, words: WordTiming[]) =>
+    buildBoundaryUpdate ? buildBoundaryUpdate(words) : writeWords(line, words);
 
   function mutateWord(
-    lines: LyricLine[],
+    lines: readonly ReadableLine[],
     lineIdx: number,
     wordIdx: number,
     updateLineWithHistory: UpdateLineWithHistory,
@@ -62,7 +63,8 @@ function createWordTimingOps(config: WordFieldConfig) {
     const word = updatedWords[wordIdx];
     updatedWords[wordIdx] = mutator({ word, prevWord: updatedWords[wordIdx - 1], nextWord: updatedWords[wordIdx + 1] });
 
-    updateLineWithHistory(line.id, { [updateKey]: updatedWords } as Partial<LyricLine>, {
+    updateLineWithHistory(line.id, writeWords(line, updatedWords), {
+      deriveText: false,
       propagateToSiblings: false,
     });
   }
@@ -78,7 +80,7 @@ function createWordTimingOps(config: WordFieldConfig) {
   }
 
   function nudgeBegin(
-    lines: LyricLine[],
+    lines: readonly ReadableLine[],
     lineIdx: number,
     wordIdx: number,
     delta: number,
@@ -88,7 +90,7 @@ function createWordTimingOps(config: WordFieldConfig) {
   }
 
   function setBegin(
-    lines: LyricLine[],
+    lines: readonly ReadableLine[],
     lineIdx: number,
     wordIdx: number,
     newBegin: number,
@@ -98,7 +100,7 @@ function createWordTimingOps(config: WordFieldConfig) {
   }
 
   function nudgeEnd(
-    lines: LyricLine[],
+    lines: readonly ReadableLine[],
     lineIdx: number,
     wordIdx: number,
     delta: number,
@@ -108,7 +110,7 @@ function createWordTimingOps(config: WordFieldConfig) {
   }
 
   function setEnd(
-    lines: LyricLine[],
+    lines: readonly ReadableLine[],
     lineIdx: number,
     wordIdx: number,
     newEnd: number,
@@ -156,7 +158,10 @@ function createWordTimingOps(config: WordFieldConfig) {
       if (rollNeighbour && next) updatedWords[wordIdx + 1] = { ...next, begin: clamped };
     }
 
-    updateLineWithHistory(line.id, buildBoundaryUpdate(updatedWords), { propagateToSiblings: false });
+    updateLineWithHistory(line.id, boundaryUpdate(line, updatedWords), {
+      deriveText: false,
+      propagateToSiblings: false,
+    });
   }
 
   return { nudgeBegin, setBegin, nudgeEnd, setEnd, setBoundary };

@@ -1,9 +1,11 @@
 import { instanceBounds } from "@/domain/instance/bounds";
-import { instanceIndicesOf, linesOfInstance } from "@/domain/instance/enumerate";
+import { instanceCount, instanceIndicesOf, linesOfInstance } from "@/domain/instance/enumerate";
 import { isLinked } from "@/domain/instance/predicates";
 import { manualBackgroundWordEdit } from "@/domain/line/background";
 import { effectiveBounds } from "@/domain/line/bounds";
+import type { ReadableLine } from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
+import { trackField, trackWords } from "@/domain/line/tracks";
 import { contiguousSelectionRun } from "@/domain/selection/contiguous";
 import type { WordSelection } from "@/domain/selection/model";
 import { normalizeTimes, snapPointTimes } from "@/domain/snap-point/model";
@@ -37,6 +39,7 @@ import {
   shiftSelectionsTogether,
 } from "@/views/timeline/utils";
 import { findBoundaryTarget, findWordsAtTime, pickNextWordAtPlayhead } from "@/views/timeline/word-at-playhead";
+import { pluralize } from "@/utils/pluralize";
 import { type RefObject, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -69,7 +72,7 @@ function currentInstanceFromSelection(
 
 function useTimelineKeyboard(
   scrollContainerRef: RefObject<HTMLDivElement | null>,
-  lines: LyricLine[],
+  lines: ReadableLine[],
   duration: number,
   onOpenLyricsModal?: () => void,
 ) {
@@ -92,7 +95,7 @@ function useTimelineKeyboard(
       const line = lines[targetWord.lineIndex];
       if (!line) return;
 
-      const wordsArray = targetWord.type === "word" ? line.words : line.backgroundWords;
+      const wordsArray = trackWords(line, targetWord.type);
       if (!wordsArray) return;
 
       const wordIndex = targetWord.wordIndex;
@@ -361,14 +364,8 @@ function useTimelineKeyboard(
         case "timeline.insertLineAbove": {
           const { selectedWords: nSel } = useTimelineStore.getState();
           if (nSel.length === 0) break;
-          const lineIndex = nSel[0].lineIndex;
-          const agents = useProjectStore.getState().agents;
-          const defaultAgentId = agents?.[0]?.id ?? "v1";
-          const newLine = { id: crypto.randomUUID(), text: "", agentId: defaultAgentId };
-          const newLines = [...lines];
-          const insertIndex = matched === "timeline.insertLineAbove" ? lineIndex : lineIndex + 1;
-          newLines.splice(insertIndex, 0, newLine);
-          useProjectStore.getState().setLinesWithHistory(newLines);
+          const position = matched === "timeline.insertLineAbove" ? "above" : "below";
+          useProjectStore.getState().insertEmptyLineWithHistory(nSel[0].lineId, position);
           break;
         }
         case "timeline.editWord": {
@@ -404,8 +401,7 @@ function useTimelineKeyboard(
           const run = contiguousSelectionRun(mSel);
           if (!run) break;
           const mLine = lines.find((l) => l.id === run.lineId);
-          if (!mLine) break;
-          const mWords = run.type === "word" ? mLine.words : mLine.backgroundWords;
+          const mWords = mLine ? trackWords(mLine, run.type) : undefined;
           if (!mWords) break;
           e.preventDefault();
           const firstIdx = run.indices[0];
@@ -431,7 +427,7 @@ function useTimelineKeyboard(
           if (mSel.length === 0) break;
           const first = mSel[0];
           if (!mSel.every((w) => w.lineId === first.lineId && w.type === first.type)) break;
-          const field: "words" | "backgroundWords" = first.type === "word" ? "words" : "backgroundWords";
+          const field = trackField(first.type);
           e.preventDefault();
           useProjectStore.getState().mergeSyllableGroupIntoWord(
             first.lineId,
@@ -473,12 +469,8 @@ function useTimelineKeyboard(
           }
           projectState.addGroupWithLines(result.group, result.updatedLines);
           const totalCount = filled.expanded.size;
-          const noun = totalCount === 1 ? "line" : "lines";
-          toast.success(
-            filled.addedCount > 0
-              ? `Grouped ${totalCount} ${noun} (filled ${filled.addedCount} gap${filled.addedCount === 1 ? "" : "s"})`
-              : `Grouped ${totalCount} ${noun}`,
-          );
+          const grouped = `Grouped ${pluralize(totalCount, "line")}`;
+          toast.success(filled.addedCount > 0 ? `${grouped} (filled ${pluralize(filled.addedCount, "gap")})` : grouped);
           break;
         }
         case "timeline.duplicateAsLinked": {
@@ -604,8 +596,8 @@ function useTimelineKeyboard(
           const group = useProjectStore.getState().groups.find((g) => g.id === inst.groupId);
           if (!group) break;
           e.preventDefault();
-          const instanceCount = instanceIndicesOf(projectLines, inst.groupId).length;
-          void deleteGroupWithConfirm({ groupId: inst.groupId, groupLabel: group.label, instanceCount });
+          const count = instanceCount(projectLines, inst.groupId);
+          void deleteGroupWithConfirm({ groupId: inst.groupId, groupLabel: group.label, instanceCount: count });
           break;
         }
         case "timeline.pingSiblings": {

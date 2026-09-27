@@ -3,7 +3,6 @@ import { create } from "zustand";
 
 // -- Types ---------------------------------------------------------------------
 
-type TtmlEditState = { source: string; content: string } | null;
 type SettingsTarget = { setting: SettingId } | { section: SettingsSectionId };
 
 interface HelpLocation {
@@ -25,7 +24,6 @@ interface UIState {
   settingsReturnTo: HelpLocation | null;
   helpOpen: boolean;
   helpLocation: HelpLocation;
-  ttmlEditState: TtmlEditState;
 }
 
 interface UIActions {
@@ -36,7 +34,6 @@ interface UIActions {
   consumeSettingsTarget: () => void;
   openHelp: (section?: string) => void;
   closeHelp: () => void;
-  setTtmlEditState: (editState: TtmlEditState | ((current: TtmlEditState) => TtmlEditState)) => void;
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -51,7 +48,6 @@ const UI_INITIAL_STATE: UIState = {
   settingsReturnTo: null,
   helpOpen: false,
   helpLocation: { section: DEFAULT_HELP_SECTION, scrollTop: 0 },
-  ttmlEditState: null,
 };
 
 // -- Helpers -------------------------------------------------------------------
@@ -91,13 +87,9 @@ const useUIStore = create<UIState & UIActions>((set) => ({
   consumeSettingsTarget: () => set({ settingsTarget: null }),
   openHelp: (section = DEFAULT_HELP_SECTION) => set({ helpOpen: true, helpLocation: { section, scrollTop: 0 } }),
   closeHelp: () => set({ helpOpen: false }),
-  setTtmlEditState: (editState) =>
-    set((state) => ({
-      ttmlEditState: typeof editState === "function" ? editState(state.ttmlEditState) : editState,
-    })),
 }));
 
 // -- Exports -------------------------------------------------------------------
 
 export { UI_INITIAL_STATE, useUIStore };
-export type { HelpLocation, SettingsTarget, TtmlEditState };
+export type { HelpLocation, SettingsTarget };
