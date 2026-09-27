@@ -1,5 +1,6 @@
 import { useExportTtml } from "@/hooks/use-export-ttml";
 import { useProjectFileActions } from "@/hooks/useProjectFileActions";
+import { PROJECT_FILE_ACCEPT } from "@/lib/project-file";
 import { useProjectStore } from "@/stores/project";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
@@ -98,7 +99,7 @@ const ExportPanel: React.FC = () => {
       ref={fileInputRef}
       type="file"
       aria-label="Import project file"
-      accept=".json,.ttml-project.json"
+      accept={PROJECT_FILE_ACCEPT}
       onChange={handleImportProject}
       className="hidden"
     />

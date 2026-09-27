@@ -160,11 +160,11 @@ describe("projectFileFrom", () => {
     expect(file.audioSource).toEqual({ kind: "youtube", videoId: "dX3k_QDnzHE" });
   });
 
-  it("leaves out the fields that only make sense on this device", () => {
+  it("leaves out device-only fields but keeps primingStripped so a re-import never double-shifts LAME priming", () => {
     const file = projectFileFrom("p1", project);
     expect("currentStem" in file).toBe(false);
-    expect("primingStripped" in file).toBe(false);
     expect("hasUnexportedImport" in file).toBe(false);
+    expect(file.primingStripped).toBe(true);
   });
 
   describe("edge cases", () => {

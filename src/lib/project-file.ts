@@ -11,12 +11,13 @@ interface ProjectFile extends SavedProject {
 
 const PROJECT_FILE_SUFFIX = ".ttml-project.json";
 const PROJECT_FILE_ACCEPT = ".json,.ttml-project.json";
-const SUPPORTED_VERSIONS: readonly unknown[] = [1, 2, 3];
+const SUPPORTED_VERSIONS: readonly number[] = Array.from({ length: SAVED_PROJECT_VERSION }, (_, index) => index + 1);
 
 // -- Building -----------------------------------------------------------------
 
 function projectFileFrom(projectId: string | undefined, project: SavedProject): ProjectFile {
-  const { currentStem: _stem, primingStripped: _priming, hasUnexportedImport: _import, ...portable } = project;
+  // primingStripped ships with the file: re-importing it must never re-shift already-corrected LAME priming timings.
+  const { currentStem: _stem, hasUnexportedImport: _import, ...portable } = project;
   return projectId ? { ...portable, projectId } : portable;
 }
 
@@ -38,8 +39,16 @@ function downloadProjectFile(file: ProjectFile): void {
 
 // -- Reading ------------------------------------------------------------------
 
+function isProjectFilePayload(value: unknown): value is SavedProject & { projectId?: unknown } {
+  return (
+    typeof value === "object" && value !== null && !Array.isArray(value) && "lines" in value && "metadata" in value
+  );
+}
+
 async function readProjectFile(file: File): Promise<ProjectFile> {
-  const { projectId, ...project } = JSON.parse(await file.text()) as SavedProject & { projectId?: unknown };
+  const parsed: unknown = JSON.parse(await file.text());
+  if (!isProjectFilePayload(parsed)) throw new Error("Not a Composer project file");
+  const { projectId, ...project } = parsed;
   if (!SUPPORTED_VERSIONS.includes(project.version)) {
     throw new Error(`Unsupported project version: ${project.version}`);
   }
