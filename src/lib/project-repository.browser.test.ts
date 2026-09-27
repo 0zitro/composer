@@ -153,9 +153,9 @@ describe("project-repository", () => {
 
     it("prefers the most recently edited project when two share a video", async () => {
       const audioSource = { kind: "youtube" as const, videoId: "dX3k_QDnzHE" };
-      await saveProjectRecord("older", project({ audioSource, savedAt: 10 }));
-      await saveProjectRecord("newer", project({ audioSource, savedAt: 20 }));
-      expect((await findProjectByVideoId("dX3k_QDnzHE"))?.id).toBe("newer");
+      await saveProjectRecord("a-older", project({ audioSource, savedAt: 10 }));
+      await saveProjectRecord("b-newer", project({ audioSource, savedAt: 20 }));
+      expect((await findProjectByVideoId("dX3k_QDnzHE"))?.id).toBe("b-newer");
     });
   });
 
