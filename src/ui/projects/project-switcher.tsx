@@ -1,3 +1,4 @@
+import { displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { recentProjects } from "@/domain/project/recent-projects";
 import { useOpenProjectId } from "@/hooks/useOpenProjectId";
@@ -57,13 +58,23 @@ const SwitcherRow: React.FC<SwitcherRowProps> = ({ project, optionId, isActive, 
   >
     <ProjectArt src={project.thumbnailDataUrl} size="md" />
     <span className="min-w-0">
-      <span className="block truncate text-sm font-medium text-composer-text">{project.title || "Untitled"}</span>
-      <span className="block truncate text-[13px] text-composer-text-muted">
+      <span className="block truncate text-sm font-medium text-composer-text">{displayTitle(project.title)}</span>
+      <span
+        className={cn(
+          "block truncate text-[13px]",
+          isActive ? "text-composer-text-secondary" : "text-composer-text-muted",
+        )}
+      >
         {project.artists.join(", ") || "No artist"}
       </span>
     </span>
-    <ProjectProgress lineCount={project.lineCount} syncedLineCount={project.syncedLineCount} />
-    <span className="text-xs text-right whitespace-nowrap tabular-nums text-composer-text-muted">
+    <ProjectProgress lineCount={project.lineCount} syncedLineCount={project.syncedLineCount} isActive={isActive} />
+    <span
+      className={cn(
+        "text-xs text-right whitespace-nowrap tabular-nums",
+        isActive ? "text-composer-text-secondary" : "text-composer-text-muted",
+      )}
+    >
       {formatRelativeTime(project.updatedAt, now)}
     </span>
   </button>
@@ -78,12 +89,16 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [now] = useState(Date.now);
-  const { data: entries } = useQuery({
+  const { data: entries, error } = useQuery({
     queryKey: PROJECT_INDEX_QUERY_KEY,
     queryFn: listProjectIndex,
     staleTime: 0,
     gcTime: 0,
   });
+
+  useEffect(() => {
+    if (error) console.error(LOG_PREFIX, "could not load the project index", error);
+  }, [error]);
 
   useEffect(
     () => subscribeProjectsDeleted(() => queryClient.invalidateQueries({ queryKey: PROJECT_INDEX_QUERY_KEY })),
@@ -94,7 +109,8 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
     () => recentProjects(entries ?? [], { excludeId: openId, query, limit: SWITCHER_LIMIT }),
     [entries, openId, query],
   );
-  const activeProject = projects[activeIndex];
+  const safeActiveIndex = projects.length === 0 ? 0 : Math.min(activeIndex, projects.length - 1);
+  const activeProject = projects[safeActiveIndex];
   const optionId = (index: number) => `${listId}-option-${index}`;
 
   const choose = (id: string) => {
@@ -116,13 +132,18 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Escape") event.stopPropagation();
+    if (event.key === "Escape") {
+      onClose();
+      event.stopPropagation();
+      return;
+    }
+    event.stopPropagation();
     if (event.key === "ArrowDown" && projects.length > 0) {
       event.preventDefault();
-      moveActive(Math.min(activeIndex + 1, projects.length - 1));
+      moveActive(Math.min(safeActiveIndex + 1, projects.length - 1));
     } else if (event.key === "ArrowUp" && projects.length > 0) {
       event.preventDefault();
-      moveActive(Math.max(activeIndex - 1, 0));
+      moveActive(Math.max(safeActiveIndex - 1, 0));
     } else if (event.key === "Enter" && activeProject) {
       event.preventDefault();
       choose(activeProject.id);
@@ -138,10 +159,10 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
         <input
           type="text"
           role="combobox"
-          aria-expanded="true"
+          aria-expanded={projects.length > 0}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-activedescendant={activeProject ? optionId(activeIndex) : undefined}
+          aria-activedescendant={activeProject ? optionId(safeActiveIndex) : undefined}
           aria-label="Search projects"
           placeholder="Search projects"
           value={query}
@@ -152,35 +173,36 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onClose }) => {
           onKeyDown={handleKeyDown}
           className="flex-1 min-w-0 bg-transparent text-[15px] text-composer-text placeholder:text-composer-text-muted outline-none cursor-text select-text"
         />
-        <span
-          aria-hidden="true"
-          className="inline-flex items-center h-5 px-1.5 rounded-[5px] bg-composer-button text-xs font-medium text-composer-text-muted"
-        >
-          esc
-        </span>
+        <InlineKeyBadge text="esc" />
       </div>
       <Scroll className="max-h-90">
         <div className="p-1">
-          {projects.length > 0 && (
-            <div aria-hidden="true" className="px-2 pt-2 pb-1 text-xs font-medium text-composer-text-muted">
-              {query.trim() ? "Results" : "Recent"}
-            </div>
-          )}
-          <div id={listId} role="listbox" aria-label="Projects" className="flex flex-col gap-0.5">
-            {projects.map((project, index) => (
-              <SwitcherRow
-                key={project.id}
-                project={project}
-                optionId={optionId(index)}
-                isActive={index === activeIndex}
-                now={now}
-                onActivate={() => setActiveIndex(index)}
-                onChoose={() => choose(project.id)}
-              />
-            ))}
-          </div>
-          {entries && projects.length === 0 && (
-            <p className="px-3 py-7 text-sm text-center text-composer-text-muted select-text">{emptyMessage}</p>
+          {error ? (
+            <p className="px-3 py-7 text-sm text-center text-composer-text-muted select-text">Couldn't load projects</p>
+          ) : (
+            <>
+              {projects.length > 0 && (
+                <div aria-hidden="true" className="px-2 pt-2 pb-1 text-xs font-medium text-composer-text-muted">
+                  {query.trim() ? "Results" : "Recent"}
+                </div>
+              )}
+              <div id={listId} role="listbox" aria-label="Projects" className="flex flex-col gap-0.5">
+                {projects.map((project, index) => (
+                  <SwitcherRow
+                    key={project.id}
+                    project={project}
+                    optionId={optionId(index)}
+                    isActive={index === safeActiveIndex}
+                    now={now}
+                    onActivate={() => setActiveIndex(index)}
+                    onChoose={() => choose(project.id)}
+                  />
+                ))}
+              </div>
+              {entries && projects.length === 0 && (
+                <p className="px-3 py-7 text-sm text-center text-composer-text-muted select-text">{emptyMessage}</p>
+              )}
+            </>
           )}
         </div>
       </Scroll>

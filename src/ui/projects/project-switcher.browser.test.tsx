@@ -1,12 +1,16 @@
-import { PROJECT_CHANNEL_NAME } from "@/lib/project-channel";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { PROJECT_CHANNEL_NAME } from "@/lib/project-channel";
+import { DB_NAME, DB_VERSION, PROJECT_RECORD_STORE_NAME, deleteFromStore } from "@/lib/persistence-idb";
 import { removeProjectData } from "@/lib/project-repository";
 import { useProjectStore } from "@/stores/project";
+import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
-import { render } from "@/test/render";
+import { deleteDatabase } from "@/test/idb";
 import { seedStoredProject, songTitled } from "@/test/projects";
+import { render } from "@/test/render";
 import { ProjectSwitcher } from "@/ui/projects/project-switcher";
+import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -31,12 +35,26 @@ async function renderSwitcher(onClose: () => void = () => undefined) {
   return screen;
 }
 
+function openAndCloseAtVersion(name: string, version: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onupgradeneeded = () => {};
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // -- Tests --------------------------------------------------------------------
 
 describe("ProjectSwitcher", () => {
   it("lists the other projects, newest first, and leaves out the open one", async () => {
     await seedLibrary();
     const screen = await renderSwitcher();
+    const search = screen.getByRole("combobox", { name: "Search projects" });
+    await expect.element(search).toHaveAttribute("aria-expanded", "true");
     const names = screen
       .getByRole("option")
       .elements()
@@ -62,6 +80,7 @@ describe("ProjectSwitcher", () => {
     await expect.poll(() => screen.getByRole("option").elements().length).toBe(1);
     await search.fill("zzz");
     await expect.element(screen.getByText("No projects match “zzz”")).toBeInTheDocument();
+    await expect.element(search).toHaveAttribute("aria-expanded", "false");
   });
 
   it("opens a project on click and closes", async () => {
@@ -82,6 +101,16 @@ describe("ProjectSwitcher", () => {
     expect(closes).toBe(1);
     expect(openProjectIdSnapshot()).not.toBe("a");
     expect(useProjectStore.getState().metadata.title).toBe("");
+  });
+
+  it("shows an error toast when opening the chosen project fails", async () => {
+    allowConsole(/could not open the project/);
+    await seedLibrary();
+    await deleteFromStore(PROJECT_RECORD_STORE_NAME, "b");
+    const toaster = await render(<Toaster />);
+    const screen = await renderSwitcher();
+    await screen.getByRole("option", { name: /Bravo/ }).click();
+    await expect.element(toaster.getByText("Couldn't open that project")).toBeInTheDocument();
   });
 
   describe("keyboard", () => {
@@ -126,6 +155,20 @@ describe("ProjectSwitcher", () => {
       window.removeEventListener("keydown", count);
       expect(windowKeys).toBe(0);
     });
+
+    it("Escape closes the switcher itself and never reaches window shortcuts", async () => {
+      await seedLibrary();
+      let closes = 0;
+      const screen = await renderSwitcher(() => closes++);
+      let windowKeys = 0;
+      const count = () => windowKeys++;
+      window.addEventListener("keydown", count);
+      await screen.getByRole("combobox", { name: "Search projects" }).click();
+      await userEvent.keyboard("{Escape}");
+      window.removeEventListener("keydown", count);
+      expect(closes).toBe(1);
+      expect(windowKeys).toBe(0);
+    });
   });
 
   describe("edge cases", () => {
@@ -134,15 +177,20 @@ describe("ProjectSwitcher", () => {
       await restoreOpenProject();
       const screen = await render(<ProjectSwitcher onClose={() => undefined} />);
       await expect.element(screen.getByText("No other projects yet")).toBeInTheDocument();
+      await expect
+        .element(screen.getByRole("combobox", { name: "Search projects" }))
+        .toHaveAttribute("aria-expanded", "false");
     });
 
     it("Enter with no match does nothing", async () => {
       await seedLibrary();
-      const screen = await renderSwitcher();
+      let closes = 0;
+      const screen = await renderSwitcher(() => closes++);
       const search = screen.getByRole("combobox", { name: "Search projects" });
       await search.fill("zzz");
       await userEvent.keyboard("{Enter}");
-      expect(openProjectIdSnapshot()).toBe("a");
+      expect(closes).toBe(0);
+      await expect.poll(openProjectIdSnapshot).toBe("a");
     });
   });
 
@@ -157,6 +205,31 @@ describe("ProjectSwitcher", () => {
       otherTab.close();
       await expect.poll(() => screen.getByRole("option").elements().length).toBe(1);
       expect(screen.container.textContent).not.toContain("Charlie");
+    });
+
+    it("keeps the active row valid when a cross-tab delete shrinks the list past it", async () => {
+      await seedLibrary();
+      const screen = await renderSwitcher();
+      const search = screen.getByRole("combobox", { name: "Search projects" });
+      await search.click();
+      await userEvent.keyboard("{ArrowDown}");
+      await expect.element(screen.getByRole("option").nth(1)).toHaveAttribute("aria-selected", "true");
+      await removeProjectData("b");
+      const otherTab = new BroadcastChannel(PROJECT_CHANNEL_NAME);
+      otherTab.postMessage({ type: "projects-deleted", ids: ["b"], sender: "another-tab" });
+      otherTab.close();
+      await expect.poll(() => screen.getByRole("option").elements().length).toBe(1);
+      await expect.element(screen.getByRole("option").nth(0)).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: shows an error when the project index fails to load", async () => {
+      allowConsole(/could not load the project index/);
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      const screen = await render(<ProjectSwitcher onClose={() => undefined} />);
+      await expect.element(screen.getByText("Couldn't load projects")).toBeInTheDocument();
+      await deleteDatabase(DB_NAME);
     });
   });
 });
