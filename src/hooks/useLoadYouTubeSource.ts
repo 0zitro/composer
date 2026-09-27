@@ -94,12 +94,8 @@ async function revertToPreviousProject(previousId: string, newId: string): Promi
   }
 }
 
-async function loadVideoInNewProject(videoId: string): Promise<void> {
-  const previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
-  const previousTitle = useProjectStore.getState().metadata.title;
-  const newId = createProject();
+async function loadVideoWithRollback(videoId: string, newId: string, previousId: string): Promise<void> {
   useAudioStore.getState().setYouTubeSource(videoId);
-  useProjectStore.getState().setMetadata({ title: videoId });
   try {
     await waitForYouTubeLoad(videoId);
   } catch (error) {
@@ -112,6 +108,14 @@ async function loadVideoInNewProject(videoId: string): Promise<void> {
     }
     throw error;
   }
+}
+
+async function loadVideoInNewProject(videoId: string): Promise<void> {
+  const previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
+  const previousTitle = useProjectStore.getState().metadata.title;
+  const newId = createProject();
+  useProjectStore.getState().setMetadata({ title: videoId });
+  await loadVideoWithRollback(videoId, newId, previousId);
   showNewProjectToast(useProjectStore.getState().metadata.title, previousTitle, previousId, newId);
 }
 
@@ -143,4 +147,4 @@ function waitForYouTubeLoad(videoId: string): Promise<void> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { useLoadYouTubeSource };
+export { useLoadYouTubeSource, loadVideoWithRollback };

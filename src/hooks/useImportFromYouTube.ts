@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
+import { loadVideoWithRollback, useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { type VideoProjectOutcome, openProjectForVideo } from "@/lib/open-video-project";
 import { getPersistenceSettled, getQueryImportSettled, markLinkProjectSettled } from "@/lib/persistence-settled";
 import { useAudioStore } from "@/stores/audio";
@@ -27,6 +27,15 @@ function announceLinkedProject(outcome: CreatedVideoProject): void {
       outcome.id,
     );
   });
+}
+
+function loadCreatedProjectVideo(videoId: string, outcome: CreatedVideoProject): void {
+  if (!useProjectStore.getState().metadata.title) useProjectStore.getState().setMetadata({ title: videoId });
+  loadVideoWithRollback(videoId, outcome.id, outcome.previousId)
+    .then(() => announceLinkedProject(outcome))
+    .catch(() => {
+      // Rollback already ran inside loadVideoWithRollback; the tunnel/store surfaces the failure.
+    });
 }
 
 // -- Hook ---------------------------------------------------------------------
@@ -61,7 +70,10 @@ function useImportFromYouTube(): void {
         }
         const outcome = await openProjectForVideo(videoId);
         markLinkProjectSettled(outcome.kind);
-        if (outcome.kind === "created") announceLinkedProject(outcome);
+        if (outcome.kind === "created") {
+          loadCreatedProjectVideo(videoId, outcome);
+          return;
+        }
         if (hasLoadedYouTubeSourceFor(useAudioStore.getState().source, videoId)) return;
         loadRef.current(videoId).catch(() => {
           // The load error is surfaced through useAudioStore.youtubeLoadError and the tunnel toast.

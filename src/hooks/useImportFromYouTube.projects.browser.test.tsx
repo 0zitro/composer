@@ -4,6 +4,8 @@ import { usePersistence } from "@/hooks/usePersistence";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { getLinkProjectSettled, getPersistenceSettled, getQueryImportSettled } from "@/lib/persistence-settled";
 import { loadProjectRecord } from "@/lib/project-storage";
+import { isProjectDeleted } from "@/lib/project-tombstones";
+import { useAudioStore } from "@/stores/audio";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
 import { createAudioFile } from "@/test/audio-fixtures";
@@ -80,11 +82,26 @@ describe("useImportFromYouTube · projects", () => {
   it("shows the Better Lyrics toast with the link's title, and Switch back returns", async () => {
     await seedOpenAlpha();
     const { screen } = await bootWithLink(`?title=Blinding%20Lights&artist=The%20Weeknd&videoId=${LINKED_VIDEO_ID}`);
+    useAudioStore.getState().setYouTubeFile(createAudioFile(`${LINKED_VIDEO_ID}.opus`));
     await expect.element(screen.getByText("Opened “Blinding Lights” from Better Lyrics")).toBeInTheDocument();
     await expect.element(screen.getByText("New project. “Alpha” is still in Projects.")).toBeInTheDocument();
     await screen.getByRole("button", { name: "Switch back" }).click();
     await expect.poll(openProjectIdSnapshot).toBe("a");
     expect(useProjectStore.getState().metadata.title).toBe("Alpha");
+  });
+
+  it("rolls back the created project when the linked video fails to load", async () => {
+    await seedOpenAlpha();
+    const { screen } = await bootWithLink(`?title=Blinding%20Lights&videoId=${LINKED_VIDEO_ID}`);
+    const newId = openProjectIdSnapshot();
+    expect(newId).not.toBe("a");
+
+    useAudioStore.getState().failYouTubeLoad(null, "Could not load that video. Try again.");
+
+    await expect.poll(openProjectIdSnapshot).toBe("a");
+    expect(useProjectStore.getState().metadata.title).toBe("Alpha");
+    await expect.poll(() => isProjectDeleted(newId ?? "")).toBe(true);
+    await expect.element(screen.getByText("Opened “Blinding Lights” from Better Lyrics")).not.toBeInTheDocument();
   });
 
   it("a new project takes the link's metadata without the replace prompt", async () => {
