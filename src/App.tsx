@@ -13,6 +13,7 @@ import { useResolveYouTubeTunnel } from "@/hooks/useResolveYouTubeTunnel";
 import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
 import { appQueryClient } from "@/lib/app-query-client";
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
+import { commitAllPendingDeletions } from "@/lib/pending-deletions";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useUIStore } from "@/stores/ui";
@@ -66,6 +67,7 @@ const AppShell: React.FC = () => {
   startTourRef.current = startTour;
   const resumeTourRef = useRef(resumeOrStartTour);
   resumeTourRef.current = resumeOrStartTour;
+  if (!isEditor && tourRequested) setTourRequested(false);
 
   useEffect(() => {
     if (!isEditor || (!shouldShowTour && !tourRequested)) return;
@@ -83,8 +85,17 @@ const AppShell: React.FC = () => {
   useEffect(() => wireFrameLoop(), []);
 
   useEffect(() => {
-    if (!isEditor) useAudioStore.getState().setIsPlaying(false);
+    if (isEditor) return;
+    useAudioStore.getState().setIsPlaying(false);
+    useUIStore.getState().setProjectSwitcherOpen(false);
   }, [isEditor]);
+
+  useEffect(
+    () => () => {
+      void commitAllPendingDeletions();
+    },
+    [],
+  );
 
   usePersistence();
   useProjectChannel();
