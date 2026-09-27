@@ -2,6 +2,7 @@ import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { usePersistence } from "@/hooks/usePersistence";
 import { deleteProject, restoreOpenProject } from "@/lib/open-project";
 import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { isProjectDeleted } from "@/lib/project-tombstones";
@@ -10,11 +11,13 @@ import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { createLine } from "@/test/factories";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { renderHook } from "vitest-browser-react";
+import { isYouTubeSourceFor } from "@/utils/youtube-source";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -115,6 +118,24 @@ describe("useLoadYouTubeSource · projects", () => {
     await expect.element(screen.getByText("“Alpha” is still in Projects.")).toBeInTheDocument();
     await expect.poll(async () => (await loadProjectRecord(previousId))?.metadata.title).toBe("Alpha");
     expect((await loadProjectRecord(previousId))?.lines).toHaveLength(1);
+  });
+
+  describe("error paths", () => {
+    it("loads the video in place when the previous project cannot be resolved", async () => {
+      allowConsole(/could not resolve the previous project/);
+      useAudioStore.getState().setSource({ type: "file", file: createAudioFile("alpha.wav") });
+      useProjectStore.getState().setLines([createLine({ text: "Waiting in a car" })]);
+      useProjectStore.getState().setMetadata({ title: "Alpha" });
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      const load = await loader();
+      const loading = load(VIDEO_ID);
+      await expect.poll(() => isYouTubeSourceFor(useAudioStore.getState().source, VIDEO_ID)).toBe(true);
+      expect(openProjectIdSnapshot()).toBeUndefined();
+      expect(useProjectStore.getState().lines).toHaveLength(1);
+      useAudioStore.getState().setYouTubeFile(videoFile(VIDEO_ID));
+      await expect(loading).resolves.toBeUndefined();
+      await deleteDatabase(DB_NAME);
+    });
   });
 
   describe("edge cases", () => {

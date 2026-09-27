@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import { confirmClearImportedSongDetails } from "@/hooks/imported-song-details";
-import { createProject } from "@/lib/open-project";
-import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { startSongInNewProject } from "@/lib/open-project";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { audioTagsToMetadata } from "@/utils/audio-tags";
@@ -72,19 +71,15 @@ function loadFileInPlace(file: File, replacesDifferentSong: boolean, title: stri
 }
 
 async function startFileInNewProject(file: File, title: string): Promise<void> {
-  let previousId: string;
-  try {
-    previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
-  } catch (error) {
-    console.error(LOG_PREFIX, "could not resolve the previous project, loading in place instead", error);
+  const started = await startSongInNewProject(title, (song) => {
+    useAudioStore.getState().setSource({ type: "file", file });
+    return song;
+  });
+  if (!started) {
     loadFileInPlace(file, true, title);
     return;
   }
-  const previousTitle = useProjectStore.getState().metadata.title;
-  const newId = createProject();
-  useAudioStore.getState().setSource({ type: "file", file });
-  useProjectStore.getState().setMetadata({ title });
-  showNewProjectToast(title, previousTitle, previousId, newId);
+  showNewProjectToast(title, started.previousTitle, started.previousId, started.newId);
   readTagsInBackground(file);
 }
 

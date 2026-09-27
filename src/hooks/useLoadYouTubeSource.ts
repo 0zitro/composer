@@ -3,8 +3,8 @@ import { shallow } from "zustand/shallow";
 import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { confirmClearImportedSongDetails } from "@/hooks/imported-song-details";
-import { createProject, deleteProject, openProject } from "@/lib/open-project";
-import { ensureOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { deleteProject, openProject, startSongInNewProject } from "@/lib/open-project";
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { showNewProjectToast } from "@/utils/project-toast";
@@ -27,37 +27,41 @@ class YouTubeLoadSupersededError extends Error {
 
 function useLoadYouTubeSource(): (videoId: string) => Promise<void> {
   return useCallback((videoId: string) => {
-    const audio = useAudioStore.getState();
-    const previous = audio.source;
+    const previous = useAudioStore.getState().source;
     const prevVideoId = previous?.type === "youtube" ? previous.videoId : null;
     if (previous != null && prevVideoId !== videoId && hasLyricLines(useProjectStore.getState().lines)) {
-      return loadVideoInNewProject(videoId);
+      return loadVideoInNewProject(videoId, previous);
     }
-    audio.setYouTubeSource(videoId);
-
-    const project = useProjectStore.getState();
-    if (previous == null || prevVideoId === videoId) {
-      if (!project.metadata.title || prevVideoId !== videoId) project.setMetadata({ title: videoId });
-      project.clearUnexportedImport();
-      return waitForYouTubeLoad(videoId);
-    }
-
-    const loading = waitForYouTubeLoad(videoId);
-    let undoReset: (() => void) | null = null;
-    if (!project.hasUnexportedImport) {
-      undoReset = resetSongIdentityForVideo(videoId, previous);
-    } else {
-      void confirmClearImportedSongDetails().then((clear) => {
-        if (!isYouTubeSourceFor(useAudioStore.getState().source, videoId)) return;
-        if (clear) undoReset = resetSongIdentityForVideo(videoId, previous);
-        else useProjectStore.getState().clearUnexportedImport();
-      });
-    }
-    return loading.catch((error: unknown) => {
-      undoReset?.();
-      throw error;
-    });
+    return loadVideoInPlace(videoId, previous);
   }, []);
+}
+
+function loadVideoInPlace(videoId: string, previous: AudioSource): Promise<void> {
+  const prevVideoId = previous?.type === "youtube" ? previous.videoId : null;
+  useAudioStore.getState().setYouTubeSource(videoId);
+
+  const project = useProjectStore.getState();
+  if (previous == null || prevVideoId === videoId) {
+    if (!project.metadata.title || prevVideoId !== videoId) project.setMetadata({ title: videoId });
+    project.clearUnexportedImport();
+    return waitForYouTubeLoad(videoId);
+  }
+
+  const loading = waitForYouTubeLoad(videoId);
+  let undoReset: (() => void) | null = null;
+  if (!project.hasUnexportedImport) {
+    undoReset = resetSongIdentityForVideo(videoId, previous);
+  } else {
+    void confirmClearImportedSongDetails().then((clear) => {
+      if (!isYouTubeSourceFor(useAudioStore.getState().source, videoId)) return;
+      if (clear) undoReset = resetSongIdentityForVideo(videoId, previous);
+      else useProjectStore.getState().clearUnexportedImport();
+    });
+  }
+  return loading.catch((error: unknown) => {
+    undoReset?.();
+    throw error;
+  });
 }
 
 function resetSongIdentityForVideo(videoId: string, previous: AudioSource): () => void {
@@ -110,13 +114,17 @@ async function loadVideoWithRollback(videoId: string, newId: string, previousId:
   }
 }
 
-async function loadVideoInNewProject(videoId: string): Promise<void> {
-  const previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
-  const previousTitle = useProjectStore.getState().metadata.title;
-  const newId = createProject();
-  useProjectStore.getState().setMetadata({ title: videoId });
-  await loadVideoWithRollback(videoId, newId, previousId);
-  showNewProjectToast(useProjectStore.getState().metadata.title, previousTitle, previousId, newId);
+async function loadVideoInNewProject(videoId: string, previous: AudioSource): Promise<void> {
+  const started = await startSongInNewProject(videoId, (song) =>
+    loadVideoWithRollback(videoId, song.newId, song.previousId).then(() => song),
+  );
+  if (!started) return loadVideoInPlace(videoId, previous);
+  showNewProjectToast(
+    useProjectStore.getState().metadata.title,
+    started.previousTitle,
+    started.previousId,
+    started.newId,
+  );
 }
 
 function withoutThumbnailOf(metadata: ProjectMetadata, videoId: string): ProjectMetadata {

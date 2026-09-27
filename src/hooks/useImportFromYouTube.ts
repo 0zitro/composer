@@ -30,7 +30,6 @@ function announceLinkedProject(outcome: CreatedVideoProject): void {
 }
 
 function loadCreatedProjectVideo(videoId: string, outcome: CreatedVideoProject): void {
-  if (!useProjectStore.getState().metadata.title) useProjectStore.getState().setMetadata({ title: videoId });
   loadVideoWithRollback(videoId, outcome.id, outcome.previousId)
     .then(() => announceLinkedProject(outcome))
     .catch(() => {

@@ -130,7 +130,7 @@ describe("useLoadAudioFile · projects", () => {
     });
 
     it("falls back to an in-place load when the previous project id cannot be resolved", async () => {
-      allowConsole(/\[Composer\]/);
+      allowConsole(/could not resolve the previous project/);
       useAudioStore.getState().setSource({ type: "file", file: createAudioFile("alpha.wav") });
       useProjectStore.getState().setLines([createLine({ text: "Waiting in a car" })]);
       useProjectStore.getState().setMetadata({ title: "Alpha" });

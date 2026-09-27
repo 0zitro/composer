@@ -1,5 +1,6 @@
 import {
   adoptOpenProjectId,
+  ensureOpenProjectId,
   findOpenProjectId,
   forgetOpenProjectId,
   openProjectIdSnapshot,
@@ -26,6 +27,15 @@ import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
 import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
+import { useProjectStore } from "@/stores/project";
+
+// -- Types --------------------------------------------------------------------
+
+interface NewSongProject {
+  newId: string;
+  previousId: string;
+  previousTitle: string;
+}
 
 // -- Constants ----------------------------------------------------------------
 
@@ -111,6 +121,20 @@ function createProject(): string {
   return id;
 }
 
+async function startSongInNewProject<T>(title: string, begin: (song: NewSongProject) => T): Promise<Awaited<T> | null> {
+  let previousId: string;
+  try {
+    previousId = openProjectIdSnapshot() ?? (await ensureOpenProjectId());
+  } catch (error) {
+    console.error(LOG_PREFIX, "could not resolve the previous project, loading in place instead", error);
+    return null;
+  }
+  const previousTitle = useProjectStore.getState().metadata.title;
+  const newId = createProject();
+  useProjectStore.getState().setMetadata({ title });
+  return await begin({ newId, previousId, previousTitle });
+}
+
 // -- Removal ------------------------------------------------------------------
 
 function closeIfOpen(id: string): void {
@@ -146,4 +170,5 @@ async function forkOpenProject(): Promise<string> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { restoreOpenProject, openProject, createProject, deleteProject, forkOpenProject };
+export { restoreOpenProject, openProject, createProject, startSongInNewProject, deleteProject, forkOpenProject };
+export type { NewSongProject };
