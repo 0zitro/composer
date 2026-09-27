@@ -1,5 +1,6 @@
 import { listStemJobs, putStem, stemJobKey } from "@/audio/separation/stem-store";
 import { storageUsage } from "@/domain/storage/usage";
+import { openProject } from "@/lib/open-project";
 import { adoptOpenProjectId } from "@/lib/open-project-session";
 import { PROJECT_INDEX_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { loadProjectAudio } from "@/lib/project-audio";
@@ -86,6 +87,23 @@ describe("runSmartCleanup", () => {
       await seedStems("mine");
       await runSmartCleanup({ ...EVERYTHING, limitBytes: 0, openStemJobKey: stemJobKey("mine", "fp32") });
       expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([stemJobKey("mine", "fp32")]);
+    });
+
+    it("a project's audio if it starts opening between planning and removal", async () => {
+      await seedYouTube("opening", 1);
+      const opening = openProject("opening");
+      const result = await runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
+      expect(result.removedYouTubeAudio).toBe(0);
+      expect(await loadProjectAudio("opening")).toBeDefined();
+      await opening;
+    });
+
+    it("a project's audio if it becomes the open project during a run", async () => {
+      await seedYouTube("switching", 1);
+      const resultPromise = runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
+      adoptOpenProjectId("switching");
+      await resultPromise;
+      expect(await loadProjectAudio("switching")).toBeDefined();
     });
   });
 

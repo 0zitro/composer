@@ -54,6 +54,12 @@ describe("stem store", () => {
     expect(seen).toEqual(["media-removed"]);
   });
 
+  it("removes only the named jobs but never the kept job, checked inside the same transaction", async () => {
+    await separate("h1", 10, 20);
+    expect(await removeStemJobs([stemJobKey("h1", "fp32")], stemJobKey("h1", "fp32"))).toEqual({ jobs: 0, bytes: 0 });
+    expect(await listStemJobs()).toHaveLength(1);
+  });
+
   it("clears every job except the one kept", async () => {
     await separate("h1");
     await separate("h2");

@@ -115,9 +115,9 @@ async function deleteStemRecords(shouldDelete: (jobKey: string) => boolean): Pro
   return { jobs: removedJobs.size, bytes };
 }
 
-function removeStemJobs(jobKeys: readonly string[]): Promise<StemRemoval> {
+function removeStemJobs(jobKeys: readonly string[], keepJobKey: string | null = null): Promise<StemRemoval> {
   const doomed = new Set(jobKeys);
-  return deleteStemRecords((jobKey) => doomed.has(jobKey));
+  return deleteStemRecords((jobKey) => doomed.has(jobKey) && jobKey !== keepJobKey);
 }
 
 function clearStemCache(keepJobKey: string | null): Promise<StemRemoval> {

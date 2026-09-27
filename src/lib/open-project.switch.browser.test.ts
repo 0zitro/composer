@@ -1,4 +1,4 @@
-import { forkOpenProject, openProject, restoreOpenProject } from "@/lib/open-project";
+import { forkOpenProject, isProjectInUse, openProject, restoreOpenProject } from "@/lib/open-project";
 import { findOpenProjectId, openProjectIdSnapshot, subscribeOpenProjectId } from "@/lib/open-project-session";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectIndexEntry, removeProjectData, setProjectLastTab } from "@/lib/project-repository";
@@ -176,6 +176,36 @@ describe("openProject", () => {
       await switchingToB;
       expect(openProjectIdSnapshot()).toBe("b");
       expect(openTitle()).toBe("Bravo");
+    });
+  });
+
+  describe("isProjectInUse", () => {
+    it("is false before opening starts", async () => {
+      await seedTwoProjects();
+      expect(isProjectInUse("b")).toBe(false);
+    });
+
+    it("is true while a project loads and stays true once it is open", async () => {
+      await seedTwoProjects();
+      const opening = openProject("b");
+      expect(isProjectInUse("b")).toBe(true);
+      await opening;
+      expect(isProjectInUse("b")).toBe(true);
+    });
+
+    it("is false again after a failed open", async () => {
+      await expect(openProject("missing")).rejects.toThrow();
+      expect(isProjectInUse("missing")).toBe(false);
+    });
+
+    it("is false again once a superseded open settles", async () => {
+      await seedTwoProjects();
+      await seedStoredProject("c", { project: songTitled("Charlie") });
+      const first = openProject("b");
+      await openProject("c");
+      await first;
+      expect(isProjectInUse("b")).toBe(false);
+      expect(isProjectInUse("c")).toBe(true);
     });
   });
 

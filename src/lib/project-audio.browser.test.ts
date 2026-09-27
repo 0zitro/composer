@@ -78,6 +78,12 @@ describe("removeCachedYouTubeAudio", () => {
     it("frees nothing for an unknown project", async () => {
       expect(await removeCachedYouTubeAudio("nobody")).toBe(0);
     });
+
+    it("never removes audio the guard reports as in use, checked inside the same transaction", async () => {
+      await seedYouTube("guarded");
+      expect(await removeCachedYouTubeAudio("guarded", () => true)).toBe(0);
+      expect(await loadProjectAudio("guarded")).toBeDefined();
+    });
   });
 
   describe("regressions", () => {

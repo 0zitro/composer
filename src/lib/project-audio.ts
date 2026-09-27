@@ -86,14 +86,14 @@ async function unindexedAudioBytes(): Promise<number> {
 
 // -- Cache removal ------------------------------------------------------------
 
-async function removeCachedYouTubeAudio(id: string): Promise<number> {
+async function removeCachedYouTubeAudio(id: string, isInUse: (id: string) => boolean = () => false): Promise<number> {
   let freed = 0;
   await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
     const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
     const request = index.get(id);
     request.onsuccess = () => {
       const entry = request.result as ProjectIndexEntry | undefined;
-      if (!entry || !isCachedYouTubeAudio(entry)) return;
+      if (!entry || !isCachedYouTubeAudio(entry) || isInUse(id)) return;
       tx.objectStore(PROJECT_AUDIO_STORE_NAME).delete(id);
       index.put({ ...entry, storedAudioBytes: 0 }, id);
       freed = entry.storedAudioBytes;

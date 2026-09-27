@@ -46,6 +46,7 @@ const LOG_PREFIX = "[OpenProject]";
 let latestRequest = 0;
 let appliedRequest = 0;
 let openProjectChanges = 0;
+const openingIds = new Map<string, number>();
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -61,6 +62,22 @@ function claimRequest(): number {
 
 function markOpenProjectChanged(): void {
   openProjectChanges++;
+}
+
+function beginOpening(id: string): void {
+  openingIds.set(id, (openingIds.get(id) ?? 0) + 1);
+}
+
+function endOpening(id: string): void {
+  const count = openingIds.get(id) ?? 0;
+  if (count <= 1) openingIds.delete(id);
+  else openingIds.set(id, count - 1);
+}
+
+// -- Guards ---------------------------------------------------------------------
+
+function isProjectInUse(id: string): boolean {
+  return id === openProjectIdSnapshot() || openingIds.has(id);
 }
 
 // -- Boot ---------------------------------------------------------------------
@@ -88,26 +105,31 @@ async function openProject(id: string): Promise<void> {
   }
   flushPendingSaveQuietly();
   const request = ++latestRequest;
-  const payload = await loadProjectForRestore(id);
-  const openable = await isOpenable(id, payload);
-  if (request <= appliedRequest) return;
-  if (!openable) {
-    if (request !== latestRequest) return;
-    throw new Error(`Project ${id} is not stored in this browser`);
+  beginOpening(id);
+  try {
+    const payload = await loadProjectForRestore(id);
+    const openable = await isOpenable(id, payload);
+    if (request <= appliedRequest) return;
+    if (!openable) {
+      if (request !== latestRequest) return;
+      throw new Error(`Project ${id} is not stored in this browser`);
+    }
+    appliedRequest = request;
+    if (id === openProjectIdSnapshot()) return;
+    markOpenProjectChanged();
+    flushPendingSaveQuietly();
+    adoptOpenProjectId(id);
+    applyProjectToStores(payload);
+    await Promise.all([
+      setOpenProjectId(id).catch((error: unknown) => {
+        if (error instanceof ProjectDeletedError) closeIfOpen(id);
+        else logFailure("could not record the open project")(error);
+      }),
+      markProjectOpened(id, Date.now()).catch(logFailure("could not record when the project was opened")),
+    ]);
+  } finally {
+    endOpening(id);
   }
-  appliedRequest = request;
-  if (id === openProjectIdSnapshot()) return;
-  markOpenProjectChanged();
-  flushPendingSaveQuietly();
-  adoptOpenProjectId(id);
-  applyProjectToStores(payload);
-  await Promise.all([
-    setOpenProjectId(id).catch((error: unknown) => {
-      if (error instanceof ProjectDeletedError) closeIfOpen(id);
-      else logFailure("could not record the open project")(error);
-    }),
-    markProjectOpened(id, Date.now()).catch(logFailure("could not record when the project was opened")),
-  ]);
 }
 
 function createProject(): string {
@@ -192,5 +214,6 @@ export {
   reloadOpenProject,
   deleteProject,
   forkOpenProject,
+  isProjectInUse,
 };
 export type { NewSongProject };

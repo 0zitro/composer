@@ -3,6 +3,7 @@ import { planCleanup } from "@/domain/storage/cleanup-plan";
 import { bytesToFree } from "@/domain/storage/space";
 import { storageUsage } from "@/domain/storage/usage";
 import { readStorageEstimate } from "@/lib/browser-storage";
+import { isProjectInUse } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { removeCachedYouTubeAudio } from "@/lib/project-audio";
 import { listProjectIndex } from "@/lib/project-repository";
@@ -47,13 +48,13 @@ async function runSmartCleanup(context: CleanupContext): Promise<CleanupResult> 
   const result: CleanupResult = { ...NOTHING_CLEANED };
   const stemKeys = steps.flatMap((step) => (step.kind === "stems" ? [step.jobKey] : []));
   if (stemKeys.length > 0) {
-    const removed = await removeStemJobs(stemKeys);
+    const removed = await removeStemJobs(stemKeys, context.openStemJobKey);
     result.removedStemJobs = removed.jobs;
     result.freedBytes += removed.bytes;
   }
   for (const step of steps) {
-    if (step.kind !== "youtube-audio" || step.projectId === openProjectIdSnapshot()) continue;
-    const freed = await removeCachedYouTubeAudio(step.projectId);
+    if (step.kind !== "youtube-audio") continue;
+    const freed = await removeCachedYouTubeAudio(step.projectId, isProjectInUse);
     if (freed === 0) continue;
     result.removedYouTubeAudio += 1;
     result.freedBytes += freed;
