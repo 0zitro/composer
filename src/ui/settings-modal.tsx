@@ -1,10 +1,11 @@
-import { useUIStore } from "@/stores/ui";
+import { type SettingsHighlight, useUIStore } from "@/stores/ui";
 import { Modal } from "@/ui/modal";
 import { ModalNavLayout, type ModalNavSection } from "@/ui/modal-nav-layout";
 import { AdvancedSection } from "@/ui/settings/advanced-section";
 import { ConfirmationsSection } from "@/ui/settings/confirmations-section";
 import { GeneralSection } from "@/ui/settings/general-section";
 import { PlaybackSection } from "@/ui/settings/playback-section";
+import { ProjectsSection } from "@/ui/settings/projects-section";
 import { StorageSection } from "@/ui/settings/storage-section";
 import { SyncSection } from "@/ui/settings/sync-section";
 import { ThemeSection } from "@/ui/settings/theme-section";
@@ -15,6 +16,7 @@ import {
   IconClock,
   IconDeviceFloppy,
   IconKeyboard,
+  IconLayoutList,
   IconLayoutRows,
   IconPalette,
   IconPlayerPlay,
@@ -35,6 +37,7 @@ interface SettingsModalProps {
 
 const SECTIONS: ModalNavSection[] = [
   { id: "general", label: "General", icon: IconSettings },
+  { id: "projects", label: "Projects", icon: IconLayoutList },
   { id: "theme", label: "Theme", icon: IconPalette },
   { id: "playback", label: "Playback", icon: IconPlayerPlay },
   { id: "timeline", label: "Timeline", icon: IconLayoutRows },
@@ -56,15 +59,22 @@ const SECTION_CONTENT: Record<string, React.FC<{ onResetTour: () => void; onClos
   storage: StorageSection,
   advanced: AdvancedSection,
   general: GeneralSection,
+  projects: ProjectsSection,
   theme: ThemeSection,
+};
+
+const SECTION_FOR_HIGHLIGHT: Record<Exclude<SettingsHighlight, null>, string> = {
+  "bridge-section": "advanced",
+  "storage-section": "storage",
 };
 
 // -- Settings Modal -----------------------------------------------------------
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onResetTour }) => {
-  const [activeSection, setActiveSection] = useState(() =>
-    useUIStore.getState().settingsHighlight === "bridge-section" ? "advanced" : "general",
-  );
+  const [activeSection, setActiveSection] = useState(() => {
+    const highlight = useUIStore.getState().settingsHighlight;
+    return highlight ? SECTION_FOR_HIGHLIGHT[highlight] : "general";
+  });
 
   const Content = SECTION_CONTENT[activeSection];
 

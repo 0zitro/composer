@@ -1,5 +1,6 @@
 import { render } from "@/test/render";
 import { SegmentedControl } from "@/ui/segmented-control";
+import { IconLayoutGrid, IconList } from "@tabler/icons-react";
 import { useState } from "react";
 import { userEvent } from "vitest/browser";
 import { describe, expect, it } from "vitest";
@@ -72,6 +73,58 @@ describe("SegmentedControl", () => {
       await screen.getByRole("button", { name: "Word" }).click();
       const pressed = screen.container.querySelectorAll('button[aria-pressed="true"]');
       expect(pressed).toHaveLength(1);
+    });
+  });
+
+  describe("icons and counts", () => {
+    it("names an icon-only option by its label", async () => {
+      const screen = await render(
+        <SegmentedControl
+          aria-label="View"
+          value="list"
+          onChange={() => {}}
+          options={[
+            { value: "list", label: "List view", icon: IconList, iconOnly: true },
+            { value: "grid", label: "Grid view", icon: IconLayoutGrid, iconOnly: true },
+          ]}
+        />,
+      );
+      await expect.element(screen.getByRole("button", { name: "Grid view" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "List view" }).element().textContent).toBe("");
+    });
+
+    it("shows a count after the label and includes it in the name", async () => {
+      const screen = await render(
+        <SegmentedControl
+          aria-label="Filter by progress"
+          value="all"
+          onChange={() => {}}
+          options={[
+            { value: "all", label: "All", count: 24 },
+            { value: "synced", label: "Synced", count: 12 },
+          ]}
+        />,
+      );
+      await expect.element(screen.getByRole("button", { name: "Synced 12" })).toBeInTheDocument();
+      await expect.element(screen.getByText("12")).toBeInTheDocument();
+    });
+
+    it("changes the value from the keyboard", async () => {
+      const changes: string[] = [];
+      const screen = await render(
+        <SegmentedControl
+          aria-label="View"
+          value="list"
+          onChange={(value) => changes.push(value)}
+          options={[
+            { value: "list", label: "List view", icon: IconList, iconOnly: true },
+            { value: "grid", label: "Grid view", icon: IconLayoutGrid, iconOnly: true },
+          ]}
+        />,
+      );
+      await userEvent.keyboard("{Tab}{Tab}{Enter}");
+      expect(changes).toEqual(["grid"]);
+      expect(screen.getByRole("button", { name: "Grid view" }).element()).toBe(document.activeElement);
     });
   });
 });

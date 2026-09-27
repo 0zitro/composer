@@ -1,10 +1,14 @@
 import { cn } from "@/utils/cn";
+import type { Icon } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
 
 interface SegmentedOption<T extends string> {
   value: T;
   label: string;
+  icon?: Icon;
+  count?: number;
+  iconOnly?: boolean;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -13,6 +17,13 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   "aria-label": string;
   className?: string;
+}
+
+// -- Helpers ------------------------------------------------------------------
+
+function optionName<T extends string>(option: SegmentedOption<T>): string | undefined {
+  if (option.count !== undefined) return `${option.label} ${option.count}`;
+  return option.iconOnly ? option.label : undefined;
 }
 
 // -- Component ----------------------------------------------------------------
@@ -32,20 +43,35 @@ function SegmentedControl<T extends string>({
     >
       {options.map((option) => {
         const isSelected = option.value === value;
+        const OptionIcon = option.icon;
         return (
           <button
             key={option.value}
             type="button"
             aria-pressed={isSelected}
+            aria-label={optionName(option)}
+            title={option.iconOnly ? option.label : undefined}
             onClick={() => onChange(option.value)}
             className={cn(
-              "px-3 text-sm rounded-md transition-colors cursor-pointer",
+              "inline-flex items-center justify-center gap-1.5 px-3 text-sm rounded-md whitespace-nowrap transition-colors cursor-pointer",
+              option.iconOnly && "w-8 px-0",
               isSelected
                 ? "bg-composer-button text-composer-text"
                 : "text-composer-text-muted hover:text-composer-text",
             )}
           >
-            {option.label}
+            {OptionIcon && <OptionIcon aria-hidden="true" className="size-4 shrink-0" />}
+            {!option.iconOnly && option.label}
+            {option.count !== undefined && (
+              <span
+                className={cn(
+                  "text-xs tabular-nums",
+                  isSelected ? "text-composer-text-secondary" : "text-composer-text-muted",
+                )}
+              >
+                {option.count}
+              </span>
+            )}
           </button>
         );
       })}
@@ -56,3 +82,4 @@ function SegmentedControl<T extends string>({
 // -- Exports ------------------------------------------------------------------
 
 export { SegmentedControl };
+export type { SegmentedOption };

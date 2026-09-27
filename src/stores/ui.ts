@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 // -- Types --------------------------------------------------------------------
 
-type SettingsHighlight = "bridge-section" | null;
+type SettingsHighlight = "bridge-section" | "storage-section" | null;
 type TtmlEditState = { source: string; content: string } | null;
 
 interface UIState {
@@ -41,4 +41,4 @@ const useUIStore = create<UIState & UIActions>((set) => ({
 // -- Exports ------------------------------------------------------------------
 
 export { useUIStore };
-export type { TtmlEditState };
+export type { TtmlEditState, SettingsHighlight };
