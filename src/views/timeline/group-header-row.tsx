@@ -1,14 +1,9 @@
 import { useProjectStore } from "@/stores/project";
 import type { LinkGroup } from "@/domain/group/template";
+import { focusAndSelectOnMount } from "@/utils/focus-and-select-on-mount";
 import { GroupBanner } from "@/views/timeline/group-banner";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { memo, useCallback, useState } from "react";
-
-const focusAndSelectOnMount = (el: HTMLInputElement | null) => {
-  if (!el) return;
-  el.focus();
-  el.select();
-};
 
 const RenameInput: React.FC<{
   initialValue: string;
