@@ -12,8 +12,13 @@ import {
   setInStore,
 } from "@/lib/persistence-idb";
 import { OPEN_PROJECT_KEY } from "@/lib/project-storage";
+import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
 import { nanoid } from "nanoid";
+
+// -- Constants ----------------------------------------------------------------
+
+const PROJECT_DATA_STORES = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME];
 
 // -- Types --------------------------------------------------------------------
 
@@ -59,24 +64,26 @@ function clearOpenProjectId(): Promise<void> {
 // -- Records ------------------------------------------------------------------
 
 function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
-  const stores = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME];
+  const stores = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME, APP_STATE_STORE_NAME];
   return runTransaction(stores, "readwrite", (tx) => {
-    const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
-    tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-    const previous = index.get(id);
-    previous.onsuccess = () => {
-      const entry = previous.result as ProjectIndexEntry | undefined;
-      if (entry) {
-        index.put(indexEntryForProject(id, project, carriedIndexFields(entry)), id);
-        return;
-      }
-      const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
-      audio.onsuccess = () => {
-        const saved = audio.result as SavedAudioFile | undefined;
-        const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt };
-        index.put(indexEntryForProject(id, project, carried), id);
+    whenProjectWritable(tx, id, () => {
+      const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
+      tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
+      const previous = index.get(id);
+      previous.onsuccess = () => {
+        const entry = previous.result as ProjectIndexEntry | undefined;
+        if (entry) {
+          index.put(indexEntryForProject(id, project, carriedIndexFields(entry)), id);
+          return;
+        }
+        const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME).get(id);
+        audio.onsuccess = () => {
+          const saved = audio.result as SavedAudioFile | undefined;
+          const carried = { storedAudioBytes: saved?.data.byteLength ?? 0, openedAt: project.savedAt };
+          index.put(indexEntryForProject(id, project, carried), id);
+        };
       };
-    };
+    });
   });
 }
 
@@ -121,9 +128,12 @@ function setProjectLastTab(id: string, lastTab: ProjectTab): Promise<void> {
 async function saveProjectAudio(id: string, file: File): Promise<void> {
   const data = await file.arrayBuffer();
   const saved: SavedAudioFile = { name: file.name, type: file.type, data };
-  await runTransaction([PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME], "readwrite", (tx) => {
-    tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
-    patchIndexEntry(tx, id, { storedAudioBytes: data.byteLength });
+  const stores = [PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME, APP_STATE_STORE_NAME];
+  await runTransaction(stores, "readwrite", (tx) => {
+    whenProjectWritable(tx, id, () => {
+      tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
+      patchIndexEntry(tx, id, { storedAudioBytes: data.byteLength });
+    });
   });
 }
 
@@ -142,10 +152,15 @@ function deleteProjectAudio(id: string): Promise<void> {
 
 // -- Removal ------------------------------------------------------------------
 
-function deleteProject(id: string): Promise<void> {
-  const stores = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME];
-  return runTransaction(stores, "readwrite", (tx) => {
-    for (const name of stores) tx.objectStore(name).delete(id);
+function removeProjectData(id: string): Promise<void> {
+  return runTransaction([...PROJECT_DATA_STORES, APP_STATE_STORE_NAME], "readwrite", (tx) => {
+    writeTombstone(tx, id);
+    for (const name of PROJECT_DATA_STORES) tx.objectStore(name).delete(id);
+    const appState = tx.objectStore(APP_STATE_STORE_NAME);
+    const pointer = appState.get(OPEN_PROJECT_KEY);
+    pointer.onsuccess = () => {
+      if (pointer.result === id) appState.delete(OPEN_PROJECT_KEY);
+    };
   });
 }
 
@@ -165,6 +180,6 @@ export {
   saveProjectAudio,
   loadProjectAudio,
   deleteProjectAudio,
-  deleteProject,
+  removeProjectData,
 };
 export type { IndexCarriedFields };

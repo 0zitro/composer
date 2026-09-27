@@ -2,19 +2,20 @@ import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import {
   clearOpenProjectId,
   createProjectId,
-  deleteProject,
   deleteProjectAudio,
   findProjectByVideoId,
   listProjectIndex,
   loadProjectAudio,
   loadProjectIndexEntry,
   markProjectOpened,
+  removeProjectData,
   saveProjectAudio,
   saveProjectRecord,
   setOpenProjectId,
   setProjectLastTab,
 } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
+import { isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 import { createLine } from "@/test/factories";
 import { describe, expect, it } from "vitest";
@@ -93,10 +94,10 @@ describe("project-repository", () => {
     expect((await listProjectIndex())[0].storedAudioBytes).toBe(0);
   });
 
-  it("deleteProject removes the record, the index entry and the audio", async () => {
+  it("removeProjectData removes the record, the index entry and the audio", async () => {
     await saveProjectRecord("p1", project());
     await saveProjectAudio("p1", audioFile(8));
-    await deleteProject("p1");
+    await removeProjectData("p1");
     expect(await loadProjectRecord("p1")).toBeUndefined();
     expect(await loadProjectAudio("p1")).toBeUndefined();
     expect(await listProjectIndex()).toEqual([]);
@@ -159,6 +160,92 @@ describe("project-repository", () => {
     });
   });
 
+  describe("tombstones", () => {
+    it("a record save after removal writes nothing", async () => {
+      await saveProjectRecord("p1", project());
+      await removeProjectData("p1");
+      await saveProjectRecord("p1", project());
+      expect(await loadProjectRecord("p1")).toBeUndefined();
+      expect(await listProjectIndex()).toEqual([]);
+    });
+
+    it("an audio save after removal writes nothing", async () => {
+      await saveProjectRecord("p1", project());
+      await removeProjectData("p1");
+      await saveProjectAudio("p1", audioFile(64));
+      expect(await loadProjectAudio("p1")).toBeUndefined();
+    });
+
+    it("marks the id as deleted and leaves other projects writable", async () => {
+      await saveProjectRecord("p1", project());
+      await removeProjectData("p1");
+      expect(await isProjectDeleted("p1")).toBe(true);
+      expect(await isProjectDeleted("p2")).toBe(false);
+      await saveProjectRecord("p2", project());
+      expect((await listProjectIndex()).map((entry) => entry.id)).toEqual(["p2"]);
+    });
+
+    it("clears the open project pointer when it points at the removed project", async () => {
+      await saveProjectRecord("p1", project());
+      await setOpenProjectId("p1");
+      await removeProjectData("p1");
+      expect(await getOpenProjectId()).toBeUndefined();
+    });
+
+    it("keeps the open project pointer when another project is removed", async () => {
+      await saveProjectRecord("p1", project());
+      await saveProjectRecord("p2", project());
+      await setOpenProjectId("p1");
+      await removeProjectData("p2");
+      expect(await getOpenProjectId()).toBe("p1");
+    });
+  });
+
+  describe("concurrency", () => {
+    it("concurrent saves for two projects keep one entry each", async () => {
+      await Promise.all([
+        saveProjectRecord("p1", project({ savedAt: 1 })),
+        saveProjectRecord("p2", project({ savedAt: 2 })),
+        saveProjectAudio("p1", audioFile(32)),
+        saveProjectAudio("p2", audioFile(48)),
+      ]);
+      const entries = (await listProjectIndex()).toSorted((a, b) => a.id.localeCompare(b.id));
+      expect(entries.map((entry) => [entry.id, entry.storedAudioBytes])).toEqual([
+        ["p1", 32],
+        ["p2", 48],
+      ]);
+    });
+
+    it("removing one project while the other saves leaves the other intact", async () => {
+      await saveProjectRecord("p1", project());
+      await Promise.all([removeProjectData("p1"), saveProjectRecord("p2", project())]);
+      expect((await listProjectIndex()).map((entry) => entry.id)).toEqual(["p2"]);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: a concurrent record save and audio save both land in the same index entry", async () => {
+      await Promise.all([saveProjectRecord("p1", project()), saveProjectAudio("p1", audioFile(256))]);
+      expect((await listProjectIndex())[0].storedAudioBytes).toBe(256);
+    });
+
+    it("regression: a record save racing a removal never resurrects the project", async () => {
+      await saveProjectRecord("p1", project());
+      await Promise.all([removeProjectData("p1"), saveProjectRecord("p1", project())]);
+      expect(await loadProjectRecord("p1")).toBeUndefined();
+      expect(await listProjectIndex()).toEqual([]);
+    });
+
+    it("regression: an audio save still reading its file when the project is removed writes nothing", async () => {
+      await saveProjectRecord("p1", project());
+      const pending = saveProjectAudio("p1", audioFile(1_000_000));
+      await removeProjectData("p1");
+      await pending;
+      expect(await loadProjectAudio("p1")).toBeUndefined();
+      expect(await listProjectIndex()).toEqual([]);
+    });
+  });
+
   describe("edge cases", () => {
     it("audio saved before the first record still shows its size in the index", async () => {
       await saveProjectAudio("p1", audioFile(512));
@@ -187,13 +274,6 @@ describe("project-repository", () => {
     it("the index updatedAt follows the record's savedAt", async () => {
       await saveProjectRecord("p1", project({ savedAt: 42 }));
       expect((await listProjectIndex())[0].updatedAt).toBe(42);
-    });
-  });
-
-  describe("regressions", () => {
-    it("regression: a concurrent record save and audio save both land in the same index entry", async () => {
-      await Promise.all([saveProjectRecord("p1", project()), saveProjectAudio("p1", audioFile(256))]);
-      expect((await listProjectIndex())[0].storedAudioBytes).toBe(256);
     });
   });
 });

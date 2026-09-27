@@ -7,6 +7,7 @@ import {
   getFromStore,
   setInStore,
 } from "@/lib/persistence-idb";
+import { removeProjectData, saveProjectRecord } from "@/lib/project-repository";
 import {
   LEGACY_PROJECT_KEY,
   OPEN_PROJECT_KEY,
@@ -14,6 +15,7 @@ import {
   getOpenProjectId,
   loadProjectRecord,
 } from "@/lib/project-storage";
+import { isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 import { describe, expect, it } from "vitest";
 
@@ -52,6 +54,34 @@ describe("project-storage", () => {
     expect(await getFromStore(PROJECT_INDEX_STORE_NAME, "p1")).toBeUndefined();
     expect(await getOpenProjectId()).toBeUndefined();
     expect(await getFromStore(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY)).toBeUndefined();
+  });
+
+  describe("tombstones", () => {
+    it("clearAllProjects tombstones every project it removes and the pointer's project", async () => {
+      await saveProjectRecord("p1", project());
+      await saveProjectRecord("p2", project());
+      await setInStore(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY, "p3");
+      await clearAllProjects();
+      expect(await isProjectDeleted("p1")).toBe(true);
+      expect(await isProjectDeleted("p2")).toBe(true);
+      expect(await isProjectDeleted("p3")).toBe(true);
+    });
+
+    it("a save to a cleared project writes nothing, and a new project saves normally", async () => {
+      await saveProjectRecord("p1", project());
+      await clearAllProjects();
+      await saveProjectRecord("p1", project());
+      await saveProjectRecord("fresh", project());
+      expect(await loadProjectRecord("p1")).toBeUndefined();
+      expect((await loadProjectRecord("fresh"))?.metadata.title).toBe("Test");
+    });
+
+    it("clearAllProjects keeps the tombstones of projects removed earlier", async () => {
+      await saveProjectRecord("old", project());
+      await removeProjectData("old");
+      await clearAllProjects();
+      expect(await isProjectDeleted("old")).toBe(true);
+    });
   });
 
   describe("edge cases", () => {

@@ -7,6 +7,7 @@ import {
   getFromStore,
   runTransaction,
 } from "@/lib/persistence-idb";
+import { writeTombstone } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 
 // -- Constants ----------------------------------------------------------------
@@ -14,6 +15,7 @@ import type { SavedProject } from "@/lib/saved-project";
 const OPEN_PROJECT_KEY = "open-project-id";
 const LEGACY_PROJECT_KEY = "current";
 const LEGACY_AUDIO_KEY = "current-audio";
+const PROJECT_DATA_STORES = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME];
 
 // -- Reads --------------------------------------------------------------------
 
@@ -28,15 +30,18 @@ function loadProjectRecord(id: string): Promise<SavedProject | undefined> {
 // -- Removal ------------------------------------------------------------------
 
 function clearAllProjects(): Promise<void> {
-  const stores = [
-    PROJECT_STORE_NAME,
-    PROJECT_RECORD_STORE_NAME,
-    PROJECT_INDEX_STORE_NAME,
-    PROJECT_AUDIO_STORE_NAME,
-    APP_STATE_STORE_NAME,
-  ];
+  const stores = [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES, APP_STATE_STORE_NAME];
   return runTransaction(stores, "readwrite", (tx) => {
-    for (const name of stores) tx.objectStore(name).clear();
+    const keyRequests = PROJECT_DATA_STORES.map((name) => tx.objectStore(name).getAllKeys());
+    const appState = tx.objectStore(APP_STATE_STORE_NAME);
+    const pointer = appState.get(OPEN_PROJECT_KEY);
+    pointer.onsuccess = () => {
+      const ids = new Set(keyRequests.flatMap((request) => request.result.map(String)));
+      if (typeof pointer.result === "string") ids.add(pointer.result);
+      for (const id of ids) writeTombstone(tx, id);
+      for (const name of [PROJECT_STORE_NAME, ...PROJECT_DATA_STORES]) tx.objectStore(name).clear();
+      appState.delete(OPEN_PROJECT_KEY);
+    };
   });
 }
 

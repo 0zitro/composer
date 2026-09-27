@@ -9,9 +9,9 @@ import { migrateLegacyProject } from "@/lib/project-migration";
 import {
   clearOpenProjectId,
   createProjectId,
-  deleteProject,
   deleteProjectAudio,
   loadProjectAudio,
+  removeProjectData,
   saveProjectAudio,
   saveProjectRecord,
   setOpenProjectId,
@@ -111,7 +111,7 @@ async function replaceCurrentProject(project: SavedProject): Promise<void> {
 
 async function clearCurrentProject(): Promise<void> {
   const id = await findOpenProjectId();
-  if (id) await deleteProject(id);
+  if (id) await removeProjectData(id);
   await clearOpenProjectId();
   forgetOpenProjectId();
 }
