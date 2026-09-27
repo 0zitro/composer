@@ -2,7 +2,7 @@ import { useProjectChannel } from "@/hooks/useProjectChannel";
 import { createProject, openProject, restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { PROJECT_CHANNEL_NAME } from "@/lib/project-channel";
-import { listProjectIndex } from "@/lib/project-repository";
+import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useProjectStore } from "@/stores/project";
 import { seedStoredProject, songTitled } from "@/test/projects";
@@ -59,12 +59,15 @@ describe("useProjectChannel", () => {
   it("Keep as new project saves what is on screen under a new id", async () => {
     await openAlpha();
     const screen = await render(<ChannelHost />);
+    await removeProjectData("a");
     deleteInOtherTab(["a"]);
+    await expect.element(screen.getByText("This project was deleted in another tab")).toBeInTheDocument();
+    useProjectStore.getState().setMetadata({ title: "Alpha (edited)" });
     await screen.getByRole("button", { name: "Keep as new project" }).click();
     await expect.poll(openProjectIdSnapshot).not.toBe("a");
     const id = openProjectIdSnapshot() ?? "";
-    await expect.poll(async () => (await loadProjectRecord(id))?.metadata.title).toBe("Alpha");
-    expect(useProjectStore.getState().metadata.title).toBe("Alpha");
+    await expect.poll(async () => (await loadProjectRecord(id))?.metadata.title).toBe("Alpha (edited)");
+    expect(useProjectStore.getState().metadata.title).toBe("Alpha (edited)");
   });
 
   describe("edge cases", () => {
