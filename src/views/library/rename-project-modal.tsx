@@ -2,8 +2,7 @@ import { Button } from "@/ui/button";
 import { INPUT_STYLES } from "@/ui/input-styles";
 import { Modal } from "@/ui/modal";
 import { cn } from "@/utils/cn";
-import { focusAndSelectOnMount } from "@/utils/focus-and-select-on-mount";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 // -- Types --------------------------------------------------------------------
 
@@ -17,9 +16,10 @@ interface RenameProjectModalProps {
 
 const RenameProjectModal: React.FC<RenameProjectModalProps> = ({ title, onRename, onClose }) => {
   const [value, setValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Modal isOpen onClose={onClose} title="Rename project" className="max-w-md">
+    <Modal isOpen onClose={onClose} title="Rename project" className="max-w-md" initialFocusRef={inputRef}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -28,11 +28,12 @@ const RenameProjectModal: React.FC<RenameProjectModalProps> = ({ title, onRename
         className="flex flex-col gap-4"
       >
         <input
-          ref={focusAndSelectOnMount}
+          ref={inputRef}
           aria-label="Project title"
           value={value}
           placeholder="Untitled"
           onChange={(event) => setValue(event.target.value)}
+          onFocus={(event) => event.currentTarget.select()}
           onKeyDown={(event) => {
             if (event.key !== "Escape") event.stopPropagation();
           }}
