@@ -6,7 +6,7 @@ import { useConfirmStore } from "@/stores/confirm-store";
 import { useImportModalStore } from "@/stores/import-modal-store";
 import { useProjectStore } from "@/stores/project";
 import { normalizeIsrc } from "@/utils/isrc";
-import { SONG_QUERY_PARAM_NAMES } from "@/utils/incoming-link";
+import { SONG_QUERY_PARAM_NAMES, readTrimmed } from "@/utils/incoming-link";
 import { stripQueryParams } from "@/utils/url-params";
 import { readYouTubeParam } from "@/utils/youtube-link-params";
 import type { LyricsSearchQuery } from "@/utils/lyrics-search/types";
@@ -16,13 +16,6 @@ import type { LyricsSearchQuery } from "@/utils/lyrics-search/types";
 const LOG_PREFIX = "[Composer]";
 
 // -- Helpers ------------------------------------------------------------------
-
-function readTrimmed(params: URLSearchParams, name: string): string | null {
-  const raw = params.get(name);
-  if (raw === null) return null;
-  const value = raw.trim();
-  return value.length > 0 ? value : null;
-}
 
 function parseDurationSec(raw: string | null): number | undefined {
   if (raw === null) return undefined;

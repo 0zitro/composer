@@ -1,5 +1,18 @@
-import { IMPORT_HASH_PREFIX, SONG_QUERY_PARAM_NAMES, hasIncomingLink } from "@/utils/incoming-link";
+import { IMPORT_HASH_PREFIX, SONG_QUERY_PARAM_NAMES, hasIncomingLink, readTrimmed } from "@/utils/incoming-link";
 import { describe, expect, it } from "vitest";
+
+describe("readTrimmed", () => {
+  it("reads and trims a present param", () => {
+    expect(readTrimmed(new URLSearchParams("?title=%20Midnight%20City%20"), "title")).toBe("Midnight City");
+  });
+
+  describe("edge cases", () => {
+    it("treats a missing param and a whitespace-only param both as null", () => {
+      expect(readTrimmed(new URLSearchParams(""), "title")).toBeNull();
+      expect(readTrimmed(new URLSearchParams("?title=%20%20"), "title")).toBeNull();
+    });
+  });
+});
 
 describe("hasIncomingLink", () => {
   it("recognizes every Better Lyrics video param", () => {
