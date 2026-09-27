@@ -61,6 +61,19 @@ describe("SHORTCUT_DEFINITIONS", () => {
     }
   });
 
+  it("registers the project shortcuts with their exact default bindings in the global scope", () => {
+    const expectedBindings: Record<string, ShortcutBinding> = {
+      "global.openProjectSwitcher": { key: "o", mod: true },
+      "global.newProject": { key: "n", mod: true, alt: true },
+    };
+    for (const [id, binding] of Object.entries(expectedBindings)) {
+      const definition = SHORTCUT_DEFINITIONS.find((d) => d.id === id);
+      expect(definition, `missing definition for ${id}`).toBeDefined();
+      expect(definition?.scope).toBe("global");
+      expect(definition?.defaultBinding).toEqual(binding);
+    }
+  });
+
   describe("invariants", () => {
     it("has a unique id for every definition", () => {
       const ids = SHORTCUT_DEFINITIONS.map((d) => d.id);

@@ -88,6 +88,18 @@ const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultBinding: { key: "7", mod: true },
   },
   {
+    id: "global.openProjectSwitcher",
+    scope: "global",
+    description: "Switch project",
+    defaultBinding: { key: "o", mod: true },
+  },
+  {
+    id: "global.newProject",
+    scope: "global",
+    description: "New project",
+    defaultBinding: { key: "n", mod: true, alt: true },
+  },
+  {
     id: "sync.tap",
     scope: "sync",
     description: "Tap to sync",

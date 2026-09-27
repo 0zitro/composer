@@ -9,6 +9,7 @@ interface UIState {
   settingsOpen: boolean;
   settingsHighlight: SettingsHighlight;
   ttmlEditState: TtmlEditState;
+  projectSwitcherOpen: boolean;
 }
 
 interface UIActions {
@@ -16,6 +17,7 @@ interface UIActions {
   closeSettings: () => void;
   clearHighlight: () => void;
   setTtmlEditState: (editState: TtmlEditState | ((current: TtmlEditState) => TtmlEditState)) => void;
+  setProjectSwitcherOpen: (open: boolean) => void;
 }
 
 // -- Store --------------------------------------------------------------------
@@ -24,6 +26,7 @@ const useUIStore = create<UIState & UIActions>((set) => ({
   settingsOpen: false,
   settingsHighlight: null,
   ttmlEditState: null,
+  projectSwitcherOpen: false,
 
   openSettings: (highlight = null) => set({ settingsOpen: true, settingsHighlight: highlight }),
   closeSettings: () => set({ settingsOpen: false, settingsHighlight: null }),
@@ -32,6 +35,7 @@ const useUIStore = create<UIState & UIActions>((set) => ({
     set((state) => ({
       ttmlEditState: typeof editState === "function" ? editState(state.ttmlEditState) : editState,
     })),
+  setProjectSwitcherOpen: (projectSwitcherOpen) => set({ projectSwitcherOpen }),
 }));
 
 // -- Exports ------------------------------------------------------------------
