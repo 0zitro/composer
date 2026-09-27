@@ -9,6 +9,7 @@ import {
 import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import { saveProjectRecord } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
+import { sleep } from "@/test/async";
 import { allowConsole } from "@/test/console-guard";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { seedStoredProject, storedProject } from "@/test/projects";
@@ -112,6 +113,28 @@ describe("schedulePendingDeletion", () => {
       await expect(deletion.commit()).rejects.toThrow(/could not be deleted/);
       expect(hiddenProjectIdsSnapshot().has("a")).toBe(false);
       await deleteDatabase(DB_NAME);
+    });
+  });
+});
+
+describe("pagehide", () => {
+  it("commits every pending batch when the page is being unloaded", async () => {
+    await seedStoredProject("a");
+    schedulePendingDeletion(["a"]);
+    window.dispatchEvent(new PageTransitionEvent("pagehide"));
+    await expect.poll(() => loadProjectRecord("a")).toBeUndefined();
+  });
+
+  describe("edge cases", () => {
+    it("does not commit while the page is entering the back/forward cache, so a restored tab can still undo", async () => {
+      await seedStoredProject("a");
+      const deletion = schedulePendingDeletion(["a"]);
+      window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+      await sleep(0);
+      expect(await loadProjectRecord("a")).toBeDefined();
+      deletion.undo();
+      expect(hiddenProjectIdsSnapshot().has("a")).toBe(false);
+      expect(await loadProjectRecord("a")).toBeDefined();
     });
   });
 });

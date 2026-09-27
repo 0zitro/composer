@@ -77,13 +77,12 @@ function deletedMessage(titles: readonly string[]): string {
 
 function showDeletedProjectsToast(titles: readonly string[], deletion: PendingDeletion): void {
   const commit = () => {
-    deletion.commit().catch((error: unknown) => {
-      console.error(LOG_PREFIX, "could not finish deleting", error);
+    deletion.commit().catch(() => {
       toast.error(titles.length === 1 ? "Couldn't delete that project" : "Couldn't delete some projects");
     });
   };
   toast(deletedMessage(titles), {
-    icon: createElement(IconTrash, { "aria-hidden": true, className: "size-[18px] text-composer-text-muted" }),
+    icon: createElement(IconTrash, { "aria-hidden": true, className: "size-[18px] text-composer-text opacity-60" }),
     duration: DELETE_UNDO_DURATION_MS,
     closeButton: true,
     action: { label: "Undo", onClick: () => deletion.undo() },

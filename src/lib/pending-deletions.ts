@@ -102,7 +102,8 @@ function withdrawOpenedProject(): void {
 subscribeOpenProjectId(withdrawOpenedProject);
 
 if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", () => {
+  window.addEventListener("pagehide", (event) => {
+    if (event.persisted) return;
     void commitAllPendingDeletions();
   });
 }
