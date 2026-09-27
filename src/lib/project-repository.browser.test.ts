@@ -16,7 +16,7 @@ import {
   setProjectLastTab,
 } from "@/lib/project-repository";
 import { OPEN_PROJECT_KEY, getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
-import { isProjectDeleted } from "@/lib/project-tombstones";
+import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 import { createLine } from "@/test/factories";
 import { describe, expect, it } from "vitest";
@@ -32,6 +32,10 @@ function project(overrides: Partial<SavedProject> = {}): SavedProject {
     audioSource: { kind: "file", name: "espresso.flac" },
     ...overrides,
   };
+}
+
+function expectProjectDeleted(error: unknown): void {
+  expect(error).toBeInstanceOf(ProjectDeletedError);
 }
 
 function audioBytes(length: number): Uint8Array {
@@ -165,7 +169,7 @@ describe("project-repository", () => {
     it("a record save after removal writes nothing", async () => {
       await saveProjectRecord("p1", project());
       await removeProjectData("p1");
-      await saveProjectRecord("p1", project());
+      await expect(saveProjectRecord("p1", project())).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await loadProjectRecord("p1")).toBeUndefined();
       expect(await listProjectIndex()).toEqual([]);
     });
@@ -173,7 +177,7 @@ describe("project-repository", () => {
     it("an audio save after removal writes nothing", async () => {
       await saveProjectRecord("p1", project());
       await removeProjectData("p1");
-      await saveProjectAudio("p1", audioFile(64));
+      await expect(saveProjectAudio("p1", audioFile(64))).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await loadProjectAudio("p1")).toBeUndefined();
     });
 
@@ -205,7 +209,7 @@ describe("project-repository", () => {
       await saveProjectRecord("p1", project());
       await setOpenProjectId("p1");
       await removeProjectData("p2");
-      await setOpenProjectId("p2");
+      await expect(setOpenProjectId("p2")).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await getFromStore(APP_STATE_STORE_NAME, OPEN_PROJECT_KEY)).toBe("p1");
     });
   });
@@ -240,7 +244,7 @@ describe("project-repository", () => {
 
     it("regression: a record save racing a removal never resurrects the project", async () => {
       await saveProjectRecord("p1", project());
-      await Promise.all([removeProjectData("p1"), saveProjectRecord("p1", project())]);
+      await Promise.all([removeProjectData("p1"), saveProjectRecord("p1", project()).catch(expectProjectDeleted)]);
       expect(await loadProjectRecord("p1")).toBeUndefined();
       expect(await listProjectIndex()).toEqual([]);
     });
@@ -249,7 +253,7 @@ describe("project-repository", () => {
       await saveProjectRecord("p1", project());
       const pending = saveProjectAudio("p1", audioFile(1_000_000));
       await removeProjectData("p1");
-      await pending;
+      await pending.catch(expectProjectDeleted);
       expect(await loadProjectAudio("p1")).toBeUndefined();
       expect(await listProjectIndex()).toEqual([]);
     });

@@ -23,7 +23,7 @@ import {
   type RestorePayload,
 } from "@/lib/project-restore";
 import { buildSaveArgs, playableFile } from "@/lib/project-snapshot";
-import { isProjectDeleted } from "@/lib/project-tombstones";
+import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 
@@ -92,7 +92,10 @@ async function openProject(id: string): Promise<void> {
   adoptOpenProjectId(id);
   applyProjectToStores(payload);
   await Promise.all([
-    setOpenProjectId(id).catch(logFailure("could not record the open project")),
+    setOpenProjectId(id).catch((error: unknown) => {
+      if (error instanceof ProjectDeletedError) closeIfOpen(id);
+      else logFailure("could not record the open project")(error);
+    }),
     markProjectOpened(id, Date.now()).catch(logFailure("could not record when the project was opened")),
   ]);
 }

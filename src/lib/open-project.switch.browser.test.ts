@@ -1,7 +1,7 @@
 import { forkOpenProject, openProject, restoreOpenProject } from "@/lib/open-project";
-import { findOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-session";
+import { findOpenProjectId, openProjectIdSnapshot, subscribeOpenProjectId } from "@/lib/open-project-session";
 import { debouncedSave } from "@/lib/persistence-debounce";
-import { loadProjectIndexEntry, setProjectLastTab } from "@/lib/project-repository";
+import { loadProjectIndexEntry, removeProjectData, setProjectLastTab } from "@/lib/project-repository";
 import { buildSaveArgs } from "@/lib/project-snapshot";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { getSaveStatus } from "@/lib/save-status";
@@ -88,6 +88,18 @@ describe("openProject", () => {
       useProjectStore.getState().setMetadata({ title: "Unsaved change" });
       await openProject("a");
       expect(openTitle()).toBe("Unsaved change");
+    });
+
+    it("regression: a project deleted while the switch lands is closed instead of left open", async () => {
+      await seedTwoProjects();
+      const unsubscribe = subscribeOpenProjectId(() => {
+        if (openProjectIdSnapshot() === "b") void removeProjectData("b");
+      });
+      await openProject("b");
+      unsubscribe();
+      expect(openProjectIdSnapshot()).toBeUndefined();
+      expect(openTitle()).toBe("");
+      expect(await getOpenProjectId()).not.toBe("b");
     });
 
     it("an unknown id rejects and keeps the open project", async () => {

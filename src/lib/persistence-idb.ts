@@ -95,10 +95,12 @@ async function getAllFromStore<T>(storeName: string): Promise<T[]> {
   });
 }
 
+type AbortTransaction = (reason: unknown) => void;
+
 async function runTransaction(
   storeNames: string[],
   mode: IDBTransactionMode,
-  work: (tx: IDBTransaction) => void,
+  work: (tx: IDBTransaction, abort: AbortTransaction) => void,
 ): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -122,11 +124,14 @@ async function runTransaction(
       closeOnce();
       reject(workError ?? transaction.error ?? new Error("IndexedDB transaction aborted"));
     };
-    try {
-      work(transaction);
-    } catch (error) {
-      workError = error;
+    const abort: AbortTransaction = (reason) => {
+      workError = reason;
       transaction.abort();
+    };
+    try {
+      work(transaction, abort);
+    } catch (error) {
+      abort(error);
     }
   });
 }
@@ -149,3 +154,4 @@ export {
   deleteFromStore,
   runTransaction,
 };
+export type { AbortTransaction };

@@ -182,6 +182,18 @@ describe("persistence-idb · runTransaction", () => {
     expect(await getFromStore(PROJECT_RECORD_STORE_NAME, "p1")).toBeUndefined();
   });
 
+  it("rejects with the reason given to abort from a request callback and rolls back", async () => {
+    const reason = new Error("refused");
+    await expect(
+      runTransaction([PROJECT_RECORD_STORE_NAME], "readwrite", (tx, abort) => {
+        const store = tx.objectStore(PROJECT_RECORD_STORE_NAME);
+        store.put({ a: 1 }, "p1");
+        store.get("p1").onsuccess = () => abort(reason);
+      }),
+    ).rejects.toBe(reason);
+    expect(await getFromStore(PROJECT_RECORD_STORE_NAME, "p1")).toBeUndefined();
+  });
+
   it("getAllFromStore returns every value and an empty array for an empty store", async () => {
     expect(await getAllFromStore(PROJECT_INDEX_STORE_NAME)).toEqual([]);
     await setInStore(PROJECT_INDEX_STORE_NAME, "a", { id: "a" });

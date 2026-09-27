@@ -1,3 +1,6 @@
+import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { ProjectDeletedError } from "@/lib/project-tombstones";
+
 // -- Types --------------------------------------------------------------------
 
 type SaveKind = "project" | "audio" | "stem";
@@ -18,6 +21,12 @@ function publishStatus(): void {
   if (next === status) return;
   status = next;
   for (const listener of listeners) listener();
+}
+
+// -- Refusals -----------------------------------------------------------------
+
+function isRefusedForClosedProject(error: unknown): boolean {
+  return error instanceof ProjectDeletedError && error.projectId !== openProjectIdSnapshot();
 }
 
 // -- Public API ---------------------------------------------------------------
@@ -48,6 +57,7 @@ function trackSave(kind: SaveKind, write: Promise<void>): Promise<void> {
         failedKinds.delete(kind);
       },
       (error: unknown) => {
+        if (isRefusedForClosedProject(error)) return;
         failedKinds.add(kind);
         throw error;
       },

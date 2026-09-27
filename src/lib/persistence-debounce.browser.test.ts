@@ -2,7 +2,7 @@ import { adoptOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-se
 import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { cancelPendingSave, debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { DB_NAME, DB_VERSION, PROJECT_RECORD_STORE_NAME, getAllFromStore } from "@/lib/persistence-idb";
-import { listProjectIndex, loadProjectAudio } from "@/lib/project-repository";
+import { listProjectIndex, loadProjectAudio, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { clearRecoveryStorage } from "@/lib/recovery";
 import { getSaveStatus, subscribeSaveStatus } from "@/lib/save-status";
@@ -160,6 +160,26 @@ describe("persistence-debounce · save target", () => {
         await flushPendingSave();
         expect(getSaveStatus()).toBe("failed");
         await deleteDatabase(DB_NAME);
+      });
+
+      it("regression: edits to an open project deleted elsewhere are reported as not saved", async () => {
+        allowConsole(/Flush save failed/);
+        adoptOpenProjectId("d");
+        await removeProjectData("d");
+        debouncedSave(...saveArgsTitled("Lost edit"));
+        await flushPendingSave();
+        expect(getSaveStatus()).toBe("failed");
+        expect(await loadProjectRecord("d")).toBeUndefined();
+      });
+
+      it("regression: a refused save for a project that is no longer open stays quiet", async () => {
+        adoptOpenProjectId("abandoned");
+        debouncedSave(...saveArgsTitled("Abandoned"));
+        await removeProjectData("abandoned");
+        adoptOpenProjectId("kept");
+        await flushPendingSave();
+        expect(getSaveStatus()).toBe("saved");
+        expect(await loadProjectRecord("abandoned")).toBeUndefined();
       });
 
       it("regression: a failed status from a previous test never leaks into the next one", () => {

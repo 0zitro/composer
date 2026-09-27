@@ -50,8 +50,8 @@ function carriedIndexFields(entry: ProjectIndexEntry): IndexCarriedFields {
 // -- Open project pointer -----------------------------------------------------
 
 function setOpenProjectId(id: string): Promise<void> {
-  return runTransaction([APP_STATE_STORE_NAME], "readwrite", (tx) => {
-    whenProjectWritable(tx, id, () => tx.objectStore(APP_STATE_STORE_NAME).put(id, OPEN_PROJECT_KEY));
+  return runTransaction([APP_STATE_STORE_NAME], "readwrite", (tx, abort) => {
+    whenProjectWritable(tx, abort, id, () => tx.objectStore(APP_STATE_STORE_NAME).put(id, OPEN_PROJECT_KEY));
   });
 }
 
@@ -63,8 +63,8 @@ function clearOpenProjectId(): Promise<void> {
 
 function saveProjectRecord(id: string, project: SavedProject): Promise<void> {
   const stores = [PROJECT_RECORD_STORE_NAME, PROJECT_INDEX_STORE_NAME, PROJECT_AUDIO_STORE_NAME, APP_STATE_STORE_NAME];
-  return runTransaction(stores, "readwrite", (tx) => {
-    whenProjectWritable(tx, id, () => {
+  return runTransaction(stores, "readwrite", (tx, abort) => {
+    whenProjectWritable(tx, abort, id, () => {
       const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
       const previous = index.get(id);
@@ -127,8 +127,8 @@ async function saveProjectAudio(id: string, file: File): Promise<void> {
   const data = await file.arrayBuffer();
   const saved: SavedAudioFile = { name: file.name, type: file.type, data };
   const stores = [PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME, APP_STATE_STORE_NAME];
-  await runTransaction(stores, "readwrite", (tx) => {
-    whenProjectWritable(tx, id, () => {
+  await runTransaction(stores, "readwrite", (tx, abort) => {
+    whenProjectWritable(tx, abort, id, () => {
       tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
       patchIndexEntry(tx, id, { storedAudioBytes: data.byteLength });
     });

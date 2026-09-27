@@ -4,6 +4,7 @@ import { saveCurrentProject } from "@/lib/persistence";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { listProjectIndex } from "@/lib/project-repository";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
+import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
@@ -117,7 +118,7 @@ describe("deleteProject", () => {
       await seedOpenProject();
       const inFlight = saveCurrentProject(...saveArgsTitled("Alpha (late)"));
       await deleteProject("a");
-      await inFlight;
+      await expect(inFlight).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await loadProjectRecord("a")).toBeUndefined();
     });
 

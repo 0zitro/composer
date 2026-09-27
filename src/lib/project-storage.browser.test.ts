@@ -16,7 +16,7 @@ import {
   loadProjectRecord,
   onProjectsCleared,
 } from "@/lib/project-storage";
-import { isProjectDeleted } from "@/lib/project-tombstones";
+import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import type { SavedProject } from "@/lib/saved-project";
 import { allowConsole } from "@/test/console-guard";
 import { describe, expect, it } from "vitest";
@@ -72,7 +72,7 @@ describe("project-storage", () => {
     it("a save to a cleared project writes nothing, and a new project saves normally", async () => {
       await saveProjectRecord("p1", project());
       await clearAllProjects();
-      await saveProjectRecord("p1", project());
+      await expect(saveProjectRecord("p1", project())).rejects.toBeInstanceOf(ProjectDeletedError);
       await saveProjectRecord("fresh", project());
       expect(await loadProjectRecord("p1")).toBeUndefined();
       expect((await loadProjectRecord("fresh"))?.metadata.title).toBe("Test");
