@@ -6,7 +6,13 @@ import { hiddenProjectIdsSnapshot } from "@/lib/pending-deletions";
 import { flushPendingSave } from "@/lib/persistence-debounce";
 import type { ProjectFile } from "@/lib/project-file";
 import { type ProjectFileContents, readProjectFileContents, savedProjectFromFile } from "@/lib/project-file-read";
-import { createProjectId, listProjectIndex, saveProjectRecord, updateProjectRecord } from "@/lib/project-repository";
+import {
+  createProjectId,
+  listProjectIndex,
+  restoreDeletedProjectRecord,
+  saveProjectRecord,
+  updateProjectRecord,
+} from "@/lib/project-repository";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
 import { reportStorageWriteError } from "@/lib/storage-signals";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
@@ -97,10 +103,11 @@ async function restoreBundledProject(file: ProjectFile, pendingIds: ReadonlySet<
   if (file.projectId && !pendingIds.has(file.projectId)) {
     try {
       await saveProjectRecord(file.projectId, record);
-      return;
     } catch (error) {
       if (!(error instanceof ProjectDeletedError)) throw error;
+      await restoreDeletedProjectRecord(file.projectId, record);
     }
+    return;
   }
   await saveProjectRecord(createProjectId(), record);
 }

@@ -1,9 +1,11 @@
+import { deleteAllProjects } from "@/lib/delete-all-projects";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { buildProjectBundle } from "@/lib/project-bundle";
 import { type BundleRestore, importProjectFile, showBundleRestoreToast } from "@/lib/project-import";
-import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
+import { listProjectIndex, removeProjectData, saveProjectRecord } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
+import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
 import { allowConsole } from "@/test/console-guard";
 import { seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { render } from "@/test/render";
@@ -79,14 +81,53 @@ describe("importProjectFile · backups", () => {
   });
 
   describe("regressions", () => {
-    it("regression: a project deleted on this device comes back under a new id, never under the deleted one", async () => {
+    it("regression: a project deleted on this device comes back under its own id", async () => {
       await seedStoredProject("gone", { project: songTitled("Gone") });
       await removeProjectData("gone");
       await render(<Toaster />);
       await importProjectFile(backupOf(["gone", "Gone"]));
-      const entries = await listProjectIndex();
-      expect(entries.map((entry) => entry.title)).toEqual(["Gone"]);
-      expect(entries[0]?.id).not.toBe("gone");
+      expect((await listProjectIndex()).map((entry) => entry.id)).toEqual(["gone"]);
+    });
+
+    it("regression: restoring after Delete all keeps the original ids", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await seedStoredProject("b", { project: songTitled("Bravo") });
+      await deleteAllProjects();
+      await render(<Toaster />);
+      await importProjectFile(backupOf(["a", "Alpha"], ["b", "Bravo"]));
+      expect((await listProjectIndex()).map((entry) => entry.id).toSorted()).toEqual(["a", "b"]);
+    });
+
+    it("regression: importing the same backup twice after Delete all adds nothing the second time", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await seedStoredProject("b", { project: songTitled("Bravo") });
+      await deleteAllProjects();
+      const screen = await render(<Toaster />);
+      await importProjectFile(backupOf(["a", "Alpha"], ["b", "Bravo"]));
+      await importProjectFile(backupOf(["a", "Alpha"], ["b", "Bravo"]));
+      expect(await titles()).toEqual(["Alpha", "Bravo"]);
+      await expect
+        .element(screen.getByText("Every project in this backup is already in your library"))
+        .toBeInTheDocument();
+    });
+
+    it("regression: a project restored after Delete all takes normal saves", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await deleteAllProjects();
+      await render(<Toaster />);
+      await importProjectFile(backupOf(["a", "Alpha"]));
+      await saveProjectRecord("a", storedProject(songTitled("Alpha edited")));
+      expect(await titles()).toEqual(["Alpha edited"]);
+    });
+
+    it("regression: deleted projects that are not in the backup stay deleted", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await seedStoredProject("left-out", { project: songTitled("Left out") });
+      await deleteAllProjects();
+      await render(<Toaster />);
+      await importProjectFile(backupOf(["a", "Alpha"]));
+      expect(await isProjectDeleted("left-out")).toBe(true);
+      await expect(saveProjectRecord("left-out", storedProject())).rejects.toBeInstanceOf(ProjectDeletedError);
     });
 
     it("regression: a project waiting to be deleted is restored as a copy that survives the delete", async () => {

@@ -4,6 +4,7 @@ import type { ProjectTab } from "@/domain/project/tab";
 import { protectStorageForFirstProject } from "@/lib/browser-storage";
 import {
   APP_STATE_STORE_NAME,
+  type AbortTransaction,
   PROJECT_AUDIO_STORE_NAME,
   PROJECT_INDEX_STORE_NAME,
   PROJECT_RECORD_STORE_NAME,
@@ -15,7 +16,7 @@ import {
 import { announceProjectsDeleted } from "@/lib/project-channel";
 import { notifyProjectIndexChanged } from "@/lib/project-index-changes";
 import { OPEN_PROJECT_KEY, PROJECT_DATA_STORES } from "@/lib/project-storage";
-import { whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
+import { clearTombstone, whenProjectWritable, writeTombstone } from "@/lib/project-tombstones";
 import type { SavedAudioFile, SavedProject } from "@/lib/saved-project";
 import { notifyStorageSignal } from "@/lib/storage-signals";
 import { nanoid } from "nanoid";
@@ -106,10 +107,15 @@ function writeIndexEntry(tx: IDBTransaction, { id, project, lastTab, onFirstEntr
   };
 }
 
-function saveProjectRecord(id: string, project: SavedProject, lastTab?: ProjectTab): Promise<void> {
+function writeProjectRecord(
+  prepare: (tx: IDBTransaction, abort: AbortTransaction, write: () => void) => void,
+  id: string,
+  project: SavedProject,
+  lastTab?: ProjectTab,
+): Promise<void> {
   let createdFirstEntry = false;
   return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
-    whenProjectWritable(tx, abort, id, () => {
+    prepare(tx, abort, () => {
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
       writeIndexEntry(tx, {
         id,
@@ -124,6 +130,21 @@ function saveProjectRecord(id: string, project: SavedProject, lastTab?: ProjectT
     notifyProjectIndexChanged();
     if (createdFirstEntry) protectStorageForFirstProject();
   });
+}
+
+function saveProjectRecord(id: string, project: SavedProject, lastTab?: ProjectTab): Promise<void> {
+  return writeProjectRecord((tx, abort, write) => whenProjectWritable(tx, abort, id, write), id, project, lastTab);
+}
+
+function restoreDeletedProjectRecord(id: string, project: SavedProject): Promise<void> {
+  return writeProjectRecord(
+    (tx, _abort, write) => {
+      clearTombstone(tx, id);
+      write();
+    },
+    id,
+    project,
+  );
 }
 
 async function saveProjectRecordWithAudio(id: string, project: SavedProject, audio: File | undefined): Promise<void> {
@@ -245,6 +266,7 @@ export {
   setOpenProjectId,
   clearOpenProjectId,
   saveProjectRecord,
+  restoreDeletedProjectRecord,
   saveProjectRecordWithAudio,
   updateProjectRecord,
   listProjectIndex,

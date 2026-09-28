@@ -65,7 +65,7 @@ describe("restoreProjectBundle · per-project failures", () => {
       expect(result).toEqual({ restored: 1, alreadyInLibrary: 1, unreadable: 0, failed: 0 });
       const entries = await listProjectIndex();
       expect(entries.map((entry) => entry.title)).toEqual(["Gone A"]);
-      expect(entries[0]?.id).not.toBe("gone");
+      expect(entries[0]?.id).toBe("gone");
     });
   });
 });

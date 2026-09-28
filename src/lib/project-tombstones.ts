@@ -28,6 +28,10 @@ function writeTombstone(tx: IDBTransaction, id: string): void {
   tx.objectStore(APP_STATE_STORE_NAME).put(Date.now(), tombstoneKey(id));
 }
 
+function clearTombstone(tx: IDBTransaction, id: string): void {
+  tx.objectStore(APP_STATE_STORE_NAME).delete(tombstoneKey(id));
+}
+
 function whenProjectWritable(tx: IDBTransaction, abort: AbortTransaction, id: string, write: () => void): void {
   const request = tx.objectStore(APP_STATE_STORE_NAME).get(tombstoneKey(id));
   request.onsuccess = () => {
@@ -51,4 +55,4 @@ async function isProjectDeleted(id: string): Promise<boolean> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { ProjectDeletedError, writeTombstone, whenProjectWritable, isProjectDeleted };
+export { ProjectDeletedError, writeTombstone, clearTombstone, whenProjectWritable, isProjectDeleted };
