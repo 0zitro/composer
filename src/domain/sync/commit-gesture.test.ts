@@ -227,11 +227,21 @@ describe("tap-line", () => {
     expectMonotonic(apply(lines, commit));
   });
 
-  it("rule 2: after a jump, a tap before the previous line's end is clamped to that end", () => {
-    const lines = [createLine({ id: "l0", text: "first", begin: 1, end: 4 }), createLine({ id: "l1", text: "second" })];
-    const commit = run(lines, "tap-line", [1, 0], 3, true);
+  it("rule 2: after a jump, a tap before the previous line begins is clamped to that line's end", () => {
+    const lines = [createLine({ id: "l0", text: "first", begin: 2, end: 4 }), createLine({ id: "l1", text: "second" })];
+    const commit = run(lines, "tap-line", [1, 0], 1, true);
     expect(commit?.clampedTo).toBe(4);
     expect(commit?.lineUpdates).toEqual([{ id: "l1", updates: { begin: 4, end: 4 } }]);
+  });
+
+  it("after a jump, a tap inside the previous line trims that line's end", () => {
+    const lines = [createLine({ id: "l0", text: "first", begin: 1, end: 4 }), createLine({ id: "l1", text: "second" })];
+    const commit = run(lines, "tap-line", [1, 0], 3, true);
+    expect(commit?.clampedTo).toBeNull();
+    expect(apply(lines, commit).map((l) => [l.begin, l.end])).toEqual([
+      [1, 3],
+      [3, 3],
+    ]);
   });
 
   it("after a jump the previous line is untouched", () => {
@@ -258,10 +268,22 @@ describe("hold gestures", () => {
     expect(after[0].words?.[1].end).toBe(6.1);
   });
 
-  it("rule 3: a forward hold-start mid-line closes the previous word in the same line", () => {
+  it("a forward hold-start mid-line trims an overlapping previous word in the same line", () => {
     const lines = [createLine({ id: "l0", text: "a b", words: [word("a ", 1, 1.3)] })];
-    const commit = run(lines, "hold-start", [0, 1], 2);
-    expect(commit?.lineUpdates).toEqual([{ id: "l0", updates: { words: [word("a ", 1, 2), word("b", 2, 2)] } }]);
+    const commit = run(lines, "hold-start", [0, 1], 1.2);
+    expect(commit?.lineUpdates).toEqual([{ id: "l0", updates: { words: [word("a ", 1, 1.2), word("b", 1.2, 1.2)] } }]);
+  });
+
+  it("a forward hold-start closes a previous word that is still open", () => {
+    const lines = [createLine({ id: "l0", text: "a b", words: [word("a ", 1, 1)] })];
+    const after = apply(lines, run(lines, "hold-start", [0, 1], 2));
+    expect(after[0].words?.[0]).toEqual(word("a ", 1, 2));
+  });
+
+  it("a forward hold-start closes an open line-synced previous line", () => {
+    const lines = [createLine({ id: "l0", text: "a", begin: 1, end: 1 }), createLine({ id: "l1", text: "b" })];
+    const after = apply(lines, run(lines, "hold-start", [1, 0], 2));
+    expect(after[0].end).toBe(2);
   });
 
   it("hold-start keeps the jumped flag until the hold ends", () => {
@@ -433,5 +455,106 @@ describe("ported behaviour", () => {
     ];
     const after = apply(lines, run(lines, "hold-end", [0, 0], 6));
     expect(after[0].words?.[0]).toEqual({ text: "one", begin: 5, end: 6, explicit: true, syllableGroupId: "g1" });
+  });
+});
+
+describe("hold gestures · regressions", () => {
+  it("regression: hold-start keeps the gap a release left in the same line", () => {
+    const lines = [createLine({ id: "l0", text: "oh my", words: [word("oh ", 1, 2)] })];
+    const after = apply(lines, run(lines, "hold-start", [0, 1], 3));
+    expect(after[0].words).toEqual([word("oh ", 1, 2), word("my", 3, 3)]);
+  });
+
+  it("regression: hold-start keeps the gap a release left on the previous line", () => {
+    const lines = [
+      createLine({ id: "l0", text: "beau|ti", words: [word("beau", 1, 2), word("ti", 2, 3)] }),
+      createLine({ id: "l1", text: "x y" }),
+    ];
+    const after = apply(lines, run(lines, "hold-start", [1, 0], 4));
+    expect(after[0].words?.[1]).toEqual(word("ti", 2, 3));
+    expect(after[1].words?.[0]).toEqual(word("x ", 4, 4));
+  });
+
+  it("regression: hold-start keeps a tapped word's provisional end when it ends before the hold", () => {
+    const lines = [createLine({ id: "l0", text: "a b", words: [word("a ", 1, 1.3)] })];
+    const after = apply(lines, run(lines, "hold-start", [0, 1], 2));
+    expect(after[0].words?.[0]).toEqual(word("a ", 1, 1.3));
+  });
+
+  it("gapless holds stay monotonic across a release and a new hold", () => {
+    let lines = [createLine({ id: "l0", text: "beau|ti|ful day" })];
+    lines = apply(lines, run(lines, "hold-start", [0, 0], 5));
+    lines = apply(lines, run(lines, "hold-tap", [0, 0], 6));
+    lines = apply(lines, run(lines, "hold-tap", [0, 1], 7));
+    lines = apply(lines, run(lines, "hold-end", [0, 2], 8));
+    lines = apply(lines, run(lines, "hold-start", [0, 3], 9));
+    lines = apply(lines, run(lines, "hold-end", [0, 3], 10));
+    expect(lines[0].words?.map((w) => [w.begin, w.end])).toEqual([
+      [5, 6],
+      [6, 7],
+      [7, 8],
+      [9, 10],
+    ]);
+    expectMonotonic(lines);
+  });
+});
+
+describe("re-record after a jump · regressions", () => {
+  it("regression: moves a late tapped word earlier and trims the word before it", () => {
+    const lines = [createLine({ id: "l0", text: "a b c", words: [word("a ", 1, 2), word("b ", 2, 3), word("c", 3, 3.3)] })];
+    const commit = run(lines, "tap-word", [0, 1], 1.6, true);
+    expect(commit?.clampedTo).toBeNull();
+    expect(apply(lines, commit)[0].words).toEqual([word("a ", 1, 1.6), word("b ", 1.6, 1.6 + DUR), word("c", 3, 3.3)]);
+  });
+
+  it("regression: moves the first word of a line earlier into the previous line's last word", () => {
+    const lines = [
+      createLine({ id: "l0", text: "a b", words: [word("a ", 1, 2), word("b", 2, 3)] }),
+      createLine({ id: "l1", text: "c", words: [word("c", 3, 4)] }),
+    ];
+    const after = apply(lines, run(lines, "tap-word", [1, 0], 2.5, true));
+    expect(after[0].words?.[1]).toEqual(word("b", 2, 2.5));
+    expect(after[1].words?.[0].begin).toBe(2.5);
+  });
+
+  it("regression: a re-held word can start earlier too", () => {
+    const lines = [createLine({ id: "l0", text: "a b", words: [word("a ", 1, 2), word("b", 2, 3)] })];
+    const after = apply(lines, run(lines, "hold-start", [0, 1], 1.5, true));
+    expect(after[0].words).toEqual([word("a ", 1, 1.5), word("b", 1.5, 1.5)]);
+  });
+
+  it("a re-record tap at the previous word's begin is early and snaps to that word's end", () => {
+    const lines = [createLine({ id: "l0", text: "a b", words: [word("a ", 1, 2), word("b", 2, 3)] })];
+    const commit = run(lines, "tap-word", [0, 1], 1, true);
+    expect(commit?.clampedTo).toBe(2);
+    expect(apply(lines, commit)[0].words?.[0]).toEqual(word("a ", 1, 2));
+  });
+
+  it("regression: leaves a zero-length word on the previous line alone after a jump", () => {
+    const lines = [
+      createLine({ id: "l0", text: "a b", words: [word("a ", 10, 14), word("b", 14, 14)] }),
+      createLine({ id: "l1", text: "d", words: [word("d", 30, 31)] }),
+    ];
+    const commit = run(lines, "tap-word", [1, 0], 30, true);
+    expect(commit?.lineUpdates.map((u) => u.id)).toEqual(["l1"]);
+  });
+
+  it("regression: leaves a zero-length word in the same line alone after a jump", () => {
+    const lines = [createLine({ id: "l0", text: "a b c", words: [word("a ", 1, 1), word("b ", 1, 2), word("c", 2, 3)] })];
+    const after = apply(lines, run(lines, "tap-word", [0, 1], 1.5, true));
+    expect(after[0].words?.[0]).toEqual(word("a ", 1, 1));
+  });
+
+  it("regression: leaves an open previous line alone after a line-mode jump", () => {
+    const lines = [createLine({ id: "l0", text: "first", begin: 1, end: 1 }), createLine({ id: "l1", text: "second" })];
+    expect(run(lines, "tap-line", [1, 0], 3, true)?.lineUpdates.map((u) => u.id)).toEqual(["l1"]);
+  });
+
+  it("leaves the previous line out of the update when a re-record does not overlap it", () => {
+    const lines = [
+      createLine({ id: "l0", text: "a", words: [word("a", 1, 2)] }),
+      createLine({ id: "l1", text: "b", words: [word("b", 3, 4)] }),
+    ];
+    expect(run(lines, "tap-word", [1, 0], 2.5, true)?.lineUpdates.map((u) => u.id)).toEqual(["l1"]);
   });
 });
