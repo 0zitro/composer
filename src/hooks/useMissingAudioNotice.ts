@@ -24,6 +24,10 @@ function useMissingAudioNotice(): void {
   const noticed = useRef(new Set<string>());
 
   useEffect(() => {
+    if (hasSource || activeTab === "import") toast.dismiss(MISSING_AUDIO_TOAST_ID);
+  }, [hasSource, activeTab]);
+
+  useEffect(() => {
     if (!projectId || hasSource || expected?.kind !== "file" || activeTab === "import") return;
     if (noticed.current.has(projectId)) return;
     noticed.current.add(projectId);

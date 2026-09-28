@@ -1,14 +1,18 @@
 import { useMissingAudioNotice } from "@/hooks/useMissingAudioNotice";
 import { restoreOpenProject } from "@/lib/open-project";
 import { setProjectLastTab } from "@/lib/project-repository";
+import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { sleep } from "@/test/async";
+import { createAudioFile } from "@/test/audio-fixtures";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
+
+const DISMISSED_WELL_BEFORE_AUTO_CLOSE_MS = 1500;
 
 const NoticeHost: React.FC = () => {
   useMissingAudioNotice();
@@ -34,6 +38,26 @@ describe("useMissingAudioNotice", () => {
     await expect.element(screen.getByText("Drop “city.wav” on the Import tab to link it again.")).toBeInTheDocument();
     await screen.getByRole("button", { name: "Open Import" }).click();
     expect(useProjectStore.getState().activeTab).toBe("import");
+  });
+
+  it("takes the notice down once the audio arrives", async () => {
+    await openMissingFileOn("sync");
+    const screen = await render(<NoticeHost />);
+    await expect.element(screen.getByText("Audio isn't on this device")).toBeInTheDocument();
+    useAudioStore.getState().setSource({ type: "file", file: createAudioFile("city.wav") });
+    await expect
+      .element(screen.getByText("Audio isn't on this device"), { timeout: DISMISSED_WELL_BEFORE_AUTO_CLOSE_MS })
+      .not.toBeInTheDocument();
+  });
+
+  it("takes the notice down once the Import tab opens", async () => {
+    await openMissingFileOn("sync");
+    const screen = await render(<NoticeHost />);
+    await expect.element(screen.getByText("Audio isn't on this device")).toBeInTheDocument();
+    useProjectStore.getState().setActiveTab("import");
+    await expect
+      .element(screen.getByText("Audio isn't on this device"), { timeout: DISMISSED_WELL_BEFORE_AUTO_CLOSE_MS })
+      .not.toBeInTheDocument();
   });
 
   describe("edge cases", () => {
