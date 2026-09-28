@@ -66,6 +66,21 @@ const STORAGE_CATALOG_ENTRIES = {
     label: "Auto-save delay",
     description: "How long to wait after your last edit before auto-saving.",
     settingKey: "autoSaveDelay",
+    group: "Saving",
+  },
+  backUpAllProjects: {
+    section: "storage",
+    label: "Back up all projects",
+    description: "Download every project's lyrics and timings as one file. Audio is not included.",
+    keywords: ["backup", "export all", "download"],
+    group: "Saving",
+  },
+  deleteAllProjects: {
+    section: "storage",
+    label: "Delete all projects",
+    description: "Remove every project and all stored audio from this device. This can't be undone.",
+    keywords: ["delete all", "erase", "reset"],
+    group: "Saving",
   },
 } as const satisfies Record<string, SettingEntry>;
 

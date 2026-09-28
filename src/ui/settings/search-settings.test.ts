@@ -41,6 +41,10 @@ describe("searchSettings", () => {
     expect(search("stems").settings).toContain("projectAudioList");
   });
 
+  it("finds the delete all projects row by a keyword not in its copy", () => {
+    expect(search("erase").settings).toEqual(["deleteAllProjects"]);
+  });
+
   it("finds shortcuts by description", () => {
     expect(search("toggle snap").shortcuts.map((definition) => definition.id)).toContain("timeline.toggleSnap");
   });

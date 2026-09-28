@@ -7,6 +7,7 @@ import { DefaultPlaybackRateSetting } from "@/ui/settings/default-playback-rate-
 import { LibraryViewSetting } from "@/ui/settings/library-view-setting";
 import type { SelectOption, SliderAction } from "@/ui/settings/setting-controls";
 import { SplitCharacterSetting } from "@/ui/settings/split-character-setting";
+import { BackUpAllProjectsSetting, DeleteAllProjectsSetting } from "@/ui/settings/storage/backup-settings-setting";
 import { ProjectAudioListSetting } from "@/ui/settings/storage/project-audio-list-setting";
 import { KEEP_YOUTUBE_AUDIO_OPTIONS, STORAGE_LIMIT_OPTIONS } from "@/ui/settings/storage/storage-options";
 import { StorageProtectionSetting } from "@/ui/settings/storage/storage-protection-setting";
@@ -117,6 +118,8 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
   storageLimit: { kind: "select", options: STORAGE_LIMIT_OPTIONS },
   projectAudioList: { kind: "custom", Component: ProjectAudioListSetting },
   autoSaveDelay: { kind: "slider", min: 500, max: 10000, step: 500, format: (v) => `${(v / 1000).toFixed(1)}s` },
+  backUpAllProjects: { kind: "custom", Component: BackUpAllProjectsSetting },
+  deleteAllProjects: { kind: "custom", Component: DeleteAllProjectsSetting },
   previewRenderer: {
     kind: "select",
     options: [

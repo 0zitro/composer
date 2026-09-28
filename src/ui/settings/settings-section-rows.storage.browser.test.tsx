@@ -1,6 +1,11 @@
+import { listProjectIndex } from "@/lib/project-repository";
 import { useSettingsStore } from "@/stores/settings";
+import { captureDownloads } from "@/test/downloads";
+import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
+import { ConfirmModalHost } from "@/ui/confirm-modal";
 import { SettingsSectionRows } from "@/ui/settings/settings-section-rows";
+import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -9,6 +14,16 @@ import { userEvent } from "vitest/browser";
 function setRangeValue(input: HTMLInputElement, value: number): void {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, String(value));
   input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function renderStorage() {
+  return render(
+    <>
+      <SettingsSectionRows section="storage" />
+      <ConfirmModalHost />
+      <Toaster />
+    </>,
+  );
 }
 
 // -- Tests --------------------------------------------------------------------
@@ -26,6 +41,13 @@ describe("SettingsSectionRows (storage)", () => {
     await expect.poll(() => useSettingsStore.getState().autoSaveDelay).toBe(5000);
   });
 
+  it("shows the Usage, Audio and Saving groups", async () => {
+    const screen = await render(<SettingsSectionRows section="storage" />);
+    for (const title of ["Usage", "Audio", "Saving"]) {
+      await expect.element(screen.getByRole("region", { name: title })).toBeInTheDocument();
+    }
+  });
+
   it("wraps the usage panel and the protection notice in a Usage group", async () => {
     const screen = await render(<SettingsSectionRows section="storage" />);
     const usageGroup = screen.getByRole("region", { name: "Usage" });
@@ -33,10 +55,10 @@ describe("SettingsSectionRows (storage)", () => {
     await expect.element(usageGroup.getByText("used on this device")).toBeInTheDocument();
   });
 
-  it("leaves the auto-save delay row outside of any group", async () => {
+  it("wraps the auto-save delay row in the Saving group", async () => {
     const screen = await render(<SettingsSectionRows section="storage" />);
     const autoSaveRow = screen.container.querySelector('[data-setting-id="autoSaveDelay"]');
-    expect(autoSaveRow?.closest("section")).toBeNull();
+    expect(autoSaveRow?.closest("section")).toBe(screen.getByRole("region", { name: "Saving" }).element());
   });
 
   describe("Audio group", () => {
@@ -120,6 +142,67 @@ describe("SettingsSectionRows (storage)", () => {
         for (const label of ["1 GB", "2 GB", "5 GB", "No limit"]) {
           await expect.element(screen.getByRole("option", { name: label })).toBeInTheDocument();
         }
+      });
+    });
+  });
+
+  describe("Saving group", () => {
+    it("wraps the auto-save delay, backup and delete-all rows in a Saving group", async () => {
+      const screen = await renderStorage();
+      const savingGroup = screen.getByRole("region", { name: "Saving" });
+      await expect.element(savingGroup.getByRole("button", { name: "Export all" })).toBeInTheDocument();
+      await expect.element(savingGroup.getByRole("button", { name: "Delete all" })).toBeInTheDocument();
+    });
+
+    it("backs up every project as one file", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const screen = await renderStorage();
+      await expect
+        .element(screen.getByText("Download every project's lyrics and timings as one file. Audio is not included."))
+        .toBeInTheDocument();
+      const downloads = captureDownloads();
+      await screen.getByRole("button", { name: "Export all" }).click();
+      await expect.poll(() => downloads.names().length).toBe(1);
+      downloads.stop();
+    });
+
+    it("deletes every project after confirming", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      await seedStoredProject("b", { project: songTitled("Bravo") });
+      const screen = await renderStorage();
+      await expect
+        .element(screen.getByText("Remove every project and all stored audio from this device. This can't be undone."))
+        .toBeInTheDocument();
+      await screen.getByRole("button", { name: "Delete all" }).click();
+      await expect.element(screen.getByText("Delete all projects?")).toBeInTheDocument();
+      await expect
+        .element(
+          screen.getByText("This removes 2 projects and all stored audio from this device. This can't be undone."),
+        )
+        .toBeInTheDocument();
+      await screen.getByRole("dialog").getByRole("button", { name: "Delete all" }).click();
+      await expect.poll(listProjectIndex).toEqual([]);
+      await expect.element(screen.getByText("Deleted all projects")).toBeInTheDocument();
+    });
+
+    it("keeps everything when the confirm is cancelled from the keyboard", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const screen = await renderStorage();
+      await screen.getByRole("button", { name: "Delete all" }).click();
+      await expect
+        .element(
+          screen.getByText("This removes 1 project and all stored audio from this device. This can't be undone."),
+        )
+        .toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await expect.poll(async () => (await listProjectIndex()).length).toBe(1);
+    });
+
+    describe("edge cases", () => {
+      it("disables both actions with no projects", async () => {
+        const screen = await renderStorage();
+        await expect.element(screen.getByRole("button", { name: "Export all" })).toBeDisabled();
+        await expect.element(screen.getByRole("button", { name: "Delete all" })).toBeDisabled();
       });
     });
   });
