@@ -1,5 +1,6 @@
 import { FileDropZone } from "@/audio/file-drop-zone";
 import { YouTubeUrlInput } from "@/audio/youtube-url-input";
+import { youtubeSourceTitle } from "@/domain/project/display-title";
 import { useBridgeThumb } from "@/hooks/useBridgeThumb";
 import { useLoadAudioFile } from "@/hooks/useLoadAudioFile";
 import { useAudioStore } from "@/stores/audio";
@@ -130,9 +131,9 @@ const ImportPanel: React.FC = () => {
 
   if (source && source.type === "youtube") {
     const videoId = source.videoId;
-    const hasResolvedTitle = Boolean(projectTitle && projectTitle !== videoId);
+    const sourceTitle = youtubeSourceTitle(projectTitle, videoId);
     const downloading = isLoading && !source.file;
-    const titleLoading = downloading && !hasResolvedTitle;
+    const titleLoading = downloading && sourceTitle === videoId;
 
     return (
       <div data-tour="import-dropzone" className="flex flex-col-reverse flex-1 size-full">
@@ -152,9 +153,7 @@ const ImportPanel: React.FC = () => {
               {titleLoading ? (
                 <div className="h-4 w-40 rounded bg-composer-bg-elevated animate-pulse" />
               ) : (
-                <p className="text-sm font-medium truncate text-composer-text select-text">
-                  {hasResolvedTitle ? projectTitle : videoId}
-                </p>
+                <p className="text-sm font-medium truncate text-composer-text select-text">{sourceTitle}</p>
               )}
               <p className="text-xs text-composer-text-muted select-text">
                 {videoId} ・ {downloading ? "Downloading from YouTube" : "from YouTube"}

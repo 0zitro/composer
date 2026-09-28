@@ -1,6 +1,7 @@
 import { FileDropZone } from "@/audio/file-drop-zone";
 import { YouTubeUrlInput } from "@/audio/youtube-url-input";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
+import { youtubeSourceTitle } from "@/domain/project/display-title";
 import { relinkProjectAudioFile, relinkProjectVideo, retryProjectAudio } from "@/lib/relink-audio";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
@@ -86,7 +87,7 @@ const MissingAudioPanel: React.FC<MissingAudioPanelProps> = ({ expected }) => {
         <WarningSourceRow name={expected.name} detail="Not on this device. Your lyrics and timings are safe." />
       ) : (
         <WarningSourceRow
-          name={title && title !== expected.videoId ? title : expected.videoId}
+          name={youtubeSourceTitle(title, expected.videoId)}
           detail={
             bridgeUnreachable ? "Start Composer Bridge, then try again." : "Couldn't load the audio from YouTube."
           }

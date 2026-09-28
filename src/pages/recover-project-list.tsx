@@ -5,8 +5,7 @@ import {
   listRecoverableProjects,
 } from "@/lib/recovery";
 import { Button } from "@/ui/button";
-import { formatSavedAt } from "@/utils/format-saved-at";
-import { pluralize } from "@/utils/pluralize";
+import { formatSavedWorkSummary } from "@/utils/format-saved-at";
 import { formatProjectCount } from "@/utils/project-count";
 import { IconDownload } from "@tabler/icons-react";
 import { useEffect, useId, useState } from "react";
@@ -78,7 +77,7 @@ const RecoverProjectList: React.FC = () => {
             <div className="flex-1 min-w-0">
               <p className="text-sm text-composer-text truncate select-text">{project.title}</p>
               <p className="text-xs text-composer-text-muted select-text">
-                {pluralize(project.lineCount, "line")}, last edited {formatSavedAt(project.savedAt)}
+                {formatSavedWorkSummary(project.lineCount, project.savedAt)}
               </p>
             </div>
             <Button

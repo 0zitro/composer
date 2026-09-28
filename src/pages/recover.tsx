@@ -4,8 +4,7 @@ import { PageHead } from "@/seo/page-head";
 import { Button } from "@/ui/button";
 import { ClearRecoveryButton } from "@/ui/clear-recovery-button";
 import { ClientOnly } from "@/ui/client-only";
-import { formatSavedAt } from "@/utils/format-saved-at";
-import { pluralize } from "@/utils/pluralize";
+import { formatSavedWorkSummary } from "@/utils/format-saved-at";
 import { IconCheck, IconDownload, IconHome2, IconLifebuoy, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
@@ -38,7 +37,7 @@ type RecoveryState =
 
 const SavedWorkSummary: React.FC<{ result: RecoveryResult }> = ({ result }) => (
   <p className="text-xs text-composer-text-muted select-text">
-    {pluralize(result.lineCount, "line")}, last edited {formatSavedAt(result.savedAt)}
+    {formatSavedWorkSummary(result.lineCount, result.savedAt)}
   </p>
 );
 

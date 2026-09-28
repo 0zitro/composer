@@ -14,6 +14,7 @@ interface StorageProtectionState {
 
 const LOG_PREFIX = "[StorageProtection]";
 const STORAGE_PROTECTION_QUERY_KEY = ["storage-protection"] as const;
+const DECLINED_MESSAGE = "Your browser didn't allow it this time.";
 
 // -- Hook ---------------------------------------------------------------------
 
@@ -34,10 +35,10 @@ function useStorageProtection(): StorageProtectionState {
     try {
       const status = await requestStorageProtection();
       queryClient.setQueryData(STORAGE_PROTECTION_QUERY_KEY, status);
-      if (status === "unprotected") toast("Your browser didn't allow it this time.");
+      if (status === "unprotected") toast(DECLINED_MESSAGE);
     } catch (failure) {
       console.error(LOG_PREFIX, "could not ask for storage protection", failure);
-      toast.error("Your browser didn't allow it this time.");
+      toast.error(DECLINED_MESSAGE);
     }
   }, [queryClient]);
 

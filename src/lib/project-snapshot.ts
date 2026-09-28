@@ -71,4 +71,4 @@ function buildSaveInput(): ProjectSaveInput | null {
 
 // -- Exports ------------------------------------------------------------------
 
-export { storedAudioFile, hadStoredAudio, keepsYouTubeAudioNow, buildSaveInput, currentSaveInput };
+export { storedAudioFile, hadStoredAudio, buildSaveInput, currentSaveInput };

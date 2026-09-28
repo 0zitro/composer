@@ -1,4 +1,4 @@
-import { displayArtists, displayTitle, quotedTitle } from "@/domain/project/display-title";
+import { displayArtists, displayTitle, quotedTitle, youtubeSourceTitle } from "@/domain/project/display-title";
 import { describe, expect, it } from "vitest";
 
 describe("displayTitle", () => {
@@ -41,6 +41,19 @@ describe("displayArtists", () => {
   describe("edge cases", () => {
     it("falls back to No artist for an empty list", () => {
       expect(displayArtists([])).toBe("No artist");
+    });
+  });
+});
+
+describe("youtubeSourceTitle", () => {
+  it("uses the project title once it is known", () => {
+    expect(youtubeSourceTitle("Never Gonna Give You Up", "dQw4w9WgXcQ")).toBe("Never Gonna Give You Up");
+  });
+
+  describe("edge cases", () => {
+    it("falls back to the video id for an empty title or one that is still the video id", () => {
+      expect(youtubeSourceTitle("", "dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+      expect(youtubeSourceTitle("dQw4w9WgXcQ", "dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
     });
   });
 });

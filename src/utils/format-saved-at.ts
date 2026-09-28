@@ -1,3 +1,5 @@
+import { pluralize } from "@/utils/pluralize";
+
 // -- Formatting ---------------------------------------------------------------
 
 function formatSavedAt(savedAt: number | undefined): string {
@@ -9,6 +11,10 @@ function formatSavedAt(savedAt: number | undefined): string {
   }
 }
 
+function formatSavedWorkSummary(lineCount: number, savedAt: number | undefined): string {
+  return `${pluralize(lineCount, "line")}, last edited ${formatSavedAt(savedAt)}`;
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { formatSavedAt };
+export { formatSavedAt, formatSavedWorkSummary };
