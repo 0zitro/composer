@@ -1,8 +1,10 @@
 import { downloadRecoveryFile, readRecoveryMetadata, type RecoveryResult } from "@/lib/recovery";
+import { RecoverProjectList } from "@/pages/recover-project-list";
 import { PageHead } from "@/seo/page-head";
 import { Button } from "@/ui/button";
 import { ClearRecoveryButton } from "@/ui/clear-recovery-button";
 import { ClientOnly } from "@/ui/client-only";
+import { formatSavedAt } from "@/utils/format-saved-at";
 import { IconCheck, IconDownload, IconHome2, IconLifebuoy, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
@@ -12,15 +14,6 @@ const TITLE = "Recover Your Work ・ Composer";
 const DESCRIPTION = "Grab the backup Composer saved in this browser and pick up where you left off.";
 
 // -- Helpers -------------------------------------------------------------------
-
-function formatSavedAt(savedAt: number | undefined): string {
-  if (!savedAt) return "unknown";
-  try {
-    return new Date(savedAt).toLocaleString();
-  } catch {
-    return new Date(savedAt).toISOString();
-  }
-}
 
 // Middle-ellipsis truncation so the extension stays visible. End-truncation
 // (CSS text-overflow) would hide ".ttml-project.json" which is the most
@@ -159,6 +152,8 @@ const RecoverPanel: React.FC = () => {
             </Button>
           )}
         </div>
+
+        <RecoverProjectList />
 
         {state.phase === "downloaded" && (
           <ClearRecoveryButton
