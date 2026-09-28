@@ -1,12 +1,10 @@
 import { type StorageProtection, readStorageProtection, requestStorageProtection } from "@/lib/browser-storage";
-import { isChromium } from "@/utils/platform";
+import { BROWSER_KIND, type BrowserKind } from "@/utils/platform";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
-
-type BrowserKind = "chromium" | "other";
 
 interface StorageProtectionState {
   status: StorageProtection | undefined;
@@ -22,7 +20,7 @@ const CHROMIUM_DECLINED_MESSAGE = "Your browser said no for now. Try the steps a
 
 // -- Hook ---------------------------------------------------------------------
 
-function useStorageProtection(browser: BrowserKind = isChromium ? "chromium" : "other"): StorageProtectionState {
+function useStorageProtection(browser: BrowserKind = BROWSER_KIND): StorageProtectionState {
   const queryClient = useQueryClient();
   const { data, error } = useQuery({
     queryKey: STORAGE_PROTECTION_QUERY_KEY,

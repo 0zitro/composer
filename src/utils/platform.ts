@@ -16,8 +16,13 @@ function isChromiumBrands(brands: NavigatorUABrand[] | undefined): boolean {
   return brands?.some((entry) => entry.brand === "Chromium") ?? false;
 }
 
+type BrowserKind = "chromium" | "other";
+
 const isChromium =
   typeof navigator !== "undefined" &&
   isChromiumBrands((navigator as Navigator & { userAgentData?: NavigatorUserAgentData }).userAgentData?.brands);
 
-export { isMac, MOD_KEY, ALT_KEY, isChromium, isChromiumBrands };
+const BROWSER_KIND: BrowserKind = isChromium ? "chromium" : "other";
+
+export type { BrowserKind };
+export { isMac, MOD_KEY, ALT_KEY, isChromium, isChromiumBrands, BROWSER_KIND };

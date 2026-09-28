@@ -1,5 +1,6 @@
 import { useStorageProtection } from "@/hooks/useStorageProtection";
 import { render } from "@/test/render";
+import type { BrowserKind } from "@/utils/platform";
 import { Toaster } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 
@@ -14,7 +15,7 @@ function spyOnPersist() {
 
 let latest: ReturnType<typeof useStorageProtection>;
 
-const ProtectionProbe: React.FC<{ browser?: "chromium" | "other" }> = ({ browser }) => {
+const ProtectionProbe: React.FC<{ browser?: BrowserKind }> = ({ browser }) => {
   latest = useStorageProtection(browser);
   return <Toaster />;
 };

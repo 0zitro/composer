@@ -1,13 +1,14 @@
 import type { StorageProtection } from "@/lib/browser-storage";
 import { Button } from "@/ui/button";
 import { cn } from "@/utils/cn";
+import type { BrowserKind } from "@/utils/platform";
 import { IconShieldCheck, IconShieldExclamation } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
 
 interface StorageProtectionNoticeProps {
   status: StorageProtection | undefined;
-  browser: "chromium" | "other";
+  browser: BrowserKind;
   onProtect: () => void;
 }
 
