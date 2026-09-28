@@ -172,4 +172,4 @@ function waitForYouTubeLoad(videoId: string): Promise<void> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { useLoadYouTubeSource, loadVideoWithRollback, isYouTubeLoadError, isYouTubeLoadFailure };
+export { useLoadYouTubeSource, loadVideoWithRollback, isYouTubeLoadError, isYouTubeLoadFailure, waitForYouTubeLoad };

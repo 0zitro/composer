@@ -1,20 +1,22 @@
-import { IconBrandYoutube, IconLoader2 } from "@tabler/icons-react";
-import { useCallback, useState } from "react";
 import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { useAudioStore } from "@/stores/audio";
 import { Button } from "@/ui/button";
 import { INVALID_YOUTUBE_LINK_MESSAGE, extractVideoId } from "@/utils/youtube-url";
+import { IconBrandYoutube, IconLoader2 } from "@tabler/icons-react";
+import { useCallback, useState } from "react";
 
 // -- Component ----------------------------------------------------------------
 
 interface YouTubeUrlInputProps {
   placeholder?: string;
   className?: string;
+  onLoadVideo?: (videoId: string) => Promise<void>;
 }
 
 const YouTubeUrlInput: React.FC<YouTubeUrlInputProps> = ({
   placeholder = "Paste YouTube URL or video ID",
   className,
+  onLoadVideo,
 }) => {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,12 +32,12 @@ const YouTubeUrlInput: React.FC<YouTubeUrlInputProps> = ({
     }
     setError(null);
     try {
-      await loadYouTubeSource(videoId);
+      await (onLoadVideo ?? loadYouTubeSource)(videoId);
       setValue("");
     } catch {
       // Error is surfaced via the store's youtubeLoadError; keep the input populated for retry.
     }
-  }, [value, loadYouTubeSource]);
+  }, [value, loadYouTubeSource, onLoadVideo]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
