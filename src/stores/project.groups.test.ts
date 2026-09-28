@@ -449,6 +449,51 @@ describe("project store · shiftInstance", () => {
     expect(bg?.end).toBeCloseTo(33);
   });
 
+  it("regression: an instance shifted past zero stops there as a whole, keeping duration and background offset", () => {
+    useProjectStore.getState().addGroup(seedGroup("g1"));
+    useProjectStore.setState({
+      lines: [
+        {
+          id: "a",
+          text: "hi",
+          agentId: "v1",
+          groupId: "g1",
+          instanceIdx: 0,
+          templateLineIdx: 0,
+          begin: 10,
+          end: 11,
+          backgroundText: "yeah",
+          backgroundWords: [{ text: "yeah", begin: 10.25, end: 10.75 }],
+        },
+      ],
+    });
+
+    useProjectStore.getState().shiftInstance("g1", 0, -10.5);
+
+    expect(useProjectStore.getState().lines[0]).toMatchObject({
+      begin: 0,
+      end: 1,
+      backgroundWords: [{ text: "yeah", begin: 0.25, end: 0.75 }],
+    });
+  });
+
+  it("regression: a multi-line instance shifted past zero moves every line by the same amount", () => {
+    useProjectStore.getState().addGroup(seedGroup("g1"));
+    const member = { agentId: "v1", groupId: "g1", instanceIdx: 0 };
+    useProjectStore.setState({
+      lines: [
+        { ...member, id: "a", text: "one", templateLineIdx: 0, begin: 0.5, end: 2.5 },
+        { ...member, id: "b", text: "two", templateLineIdx: 1, begin: 3, end: 4 },
+      ],
+    });
+
+    useProjectStore.getState().shiftInstance("g1", 0, -2);
+
+    const [a, b] = useProjectStore.getState().lines;
+    expect(a).toMatchObject({ begin: 0, end: 2 });
+    expect(b).toMatchObject({ begin: 2.5, end: 3.5 });
+  });
+
   it("is undoable", () => {
     useProjectStore.getState().addGroup(seedGroup("g1"));
     useProjectStore.setState({

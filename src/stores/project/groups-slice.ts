@@ -1,7 +1,9 @@
+import { unlinkLines } from "@/domain/group/linking";
 import { type LinkGroup, offsetTemplateWords } from "@/domain/group/template";
 import { nextInstanceIdx } from "@/domain/instance/enumerate";
 import { belongsToInstance } from "@/domain/instance/predicates";
 import { type LyricLine, reconcileLine } from "@/domain/line/model";
+import { clampShiftDelta, shiftLineTiming } from "@/domain/line/shift";
 import { commitHistory } from "@/stores/project/history-helpers";
 import type { GroupActions, GroupsState, ProjectStore } from "@/stores/project/types";
 import { GROUP_COLORS, pickNextGroupColor } from "@/utils/group-colors";
@@ -84,17 +86,7 @@ const createGroupsSlice: StateCreator<ProjectStore, [], [], GroupsState & GroupA
     set((state) =>
       commitHistory(state, {
         groups: state.groups.filter((g) => g.id !== id),
-        lines: state.lines.map((line) =>
-          line.groupId === id
-            ? {
-                ...line,
-                groupId: undefined,
-                instanceIdx: undefined,
-                templateLineIdx: undefined,
-                detached: undefined,
-              }
-            : line,
-        ),
+        lines: unlinkLines(state.lines, (line) => line.groupId === id),
       }),
     ),
 
@@ -139,17 +131,7 @@ const createGroupsSlice: StateCreator<ProjectStore, [], [], GroupsState & GroupA
 
   removeInstance: (groupId, instanceIdx) =>
     set((state) => {
-      const detachedLines = state.lines.map((line) =>
-        belongsToInstance(line, groupId, instanceIdx)
-          ? {
-              ...line,
-              groupId: undefined,
-              instanceIdx: undefined,
-              templateLineIdx: undefined,
-              detached: undefined,
-            }
-          : line,
-      );
+      const detachedLines = unlinkLines(state.lines, (line) => belongsToInstance(line, groupId, instanceIdx));
 
       const remainingInGroup = detachedLines.some((l) => l.groupId === groupId);
       const nextGroups = remainingInGroup ? state.groups : state.groups.filter((g) => g.id !== groupId);
@@ -160,43 +142,20 @@ const createGroupsSlice: StateCreator<ProjectStore, [], [], GroupsState & GroupA
   detachLine: (lineId) =>
     set((state) =>
       commitHistory(state, {
-        lines: state.lines.map((line) =>
-          line.id === lineId
-            ? {
-                ...line,
-                groupId: undefined,
-                instanceIdx: undefined,
-                templateLineIdx: undefined,
-                detached: undefined,
-              }
-            : line,
-        ),
+        lines: unlinkLines(state.lines, (line) => line.id === lineId),
       }),
     ),
 
   shiftInstance: (groupId, instanceIdx, deltaSeconds) =>
-    set((state) =>
-      commitHistory(state, {
-        lines: state.lines.map((line) => {
-          if (line.groupId !== groupId || line.instanceIdx !== instanceIdx || line.detached) return line;
-          return reconcileLine({
-            ...line,
-            begin: line.begin !== undefined ? line.begin + deltaSeconds : undefined,
-            end: line.end !== undefined ? line.end + deltaSeconds : undefined,
-            words: line.words?.map((w) => ({
-              ...w,
-              begin: w.begin + deltaSeconds,
-              end: w.end + deltaSeconds,
-            })),
-            backgroundWords: line.backgroundWords?.map((w) => ({
-              ...w,
-              begin: w.begin + deltaSeconds,
-              end: w.end + deltaSeconds,
-            })),
-          });
-        }),
-      }),
-    ),
+    set((state) => {
+      const isMember = (line: LyricLine) => belongsToInstance(line, groupId, instanceIdx) && !line.detached;
+      const delta = clampShiftDelta(state.lines.filter(isMember), deltaSeconds);
+      return commitHistory(state, {
+        lines: state.lines.map((line) =>
+          isMember(line) ? reconcileLine({ ...line, ...shiftLineTiming(line, delta) }) : line,
+        ),
+      });
+    }),
 });
 
 // -- Exports ------------------------------------------------------------------

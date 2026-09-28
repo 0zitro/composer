@@ -7,9 +7,9 @@ import { listProjectIndex } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
-import { saveArgsTitled, seedStoredProject } from "@/test/projects";
 import { allowConsole } from "@/test/console-guard";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
+import { saveInputTitled, seedStoredProject } from "@/test/projects";
 import { render } from "@/test/render";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
@@ -53,7 +53,7 @@ describe("useProjectFileActions · clear", () => {
   describe("regressions", () => {
     it("regression: clearing before anything was saved discards a pending save instead of persisting it", async () => {
       useSettingsStore.setState({ confirmClearProject: false, autoSaveDelay: 60_000 });
-      debouncedSave(...saveArgsTitled("Unsaved"));
+      debouncedSave(saveInputTitled("Unsaved"));
       const { result } = await renderHook(() => useProjectFileActions());
       await result.current.handleClearProject();
       await flushPendingSave();

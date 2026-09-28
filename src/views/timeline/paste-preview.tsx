@@ -6,7 +6,7 @@ import { useProjectStore } from "@/stores/project";
 import type { LineTemplate } from "@/domain/group/template";
 import { effectiveTrackWords } from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
-import { instanceIndicesOf } from "@/domain/instance/enumerate";
+import { instanceCount } from "@/domain/instance/enumerate";
 import { boundsOverlap } from "@/domain/word/overlap";
 import { cn } from "@/utils/cn";
 import { applyPasteToLines, pasteOverlaps } from "@/views/timeline/apply-paste-to-lines";
@@ -17,6 +17,7 @@ import type { ClipboardData } from "@/views/timeline/selection-types";
 import { findMatchingTemplate } from "@/views/timeline/structural-match";
 import { GUTTER_WIDTH, useTimelineStore, WAVEFORM_HEIGHT } from "@/views/timeline/timeline-store";
 import { computeRowLayout, getLineIndexAtY, type RowLayout } from "@/views/timeline/utils";
+import { pluralize } from "@/utils/pluralize";
 import { type RefObject, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -101,9 +102,7 @@ const PastePreview: React.FC<PastePreviewProps> = ({ clipboard, scrollContainerR
           cursorTime,
         });
         if (decision.kind === "no-target") {
-          toast.error(
-            `Drop on ${template.length} empty line${template.length === 1 ? "" : "s"} to paste this instance`,
-          );
+          toast.error(`Drop on ${pluralize(template.length, "empty line")} to paste this instance`);
           return true;
         }
         if (decision.kind === "fill") {
@@ -114,7 +113,7 @@ const PastePreview: React.FC<PastePreviewProps> = ({ clipboard, scrollContainerR
           return true;
         }
         const ok = await confirm({
-          title: `Insert ${template.length} new row${template.length === 1 ? "" : "s"} here?`,
+          title: `Insert ${pluralize(template.length, "new row")} here?`,
           description: `There ${template.length === 1 ? "isn't an empty row" : `aren't ${template.length} empty rows`} at this position. Inserting will shift every row below down by ${template.length}.`,
           confirmLabel: "Insert and paste",
           cancelLabel: "Cancel",
@@ -143,10 +142,10 @@ const PastePreview: React.FC<PastePreviewProps> = ({ clipboard, scrollContainerR
         if (match) {
           const group = useProjectStore.getState().groups.find((g) => g.id === match.groupId);
           const groupLabel = group?.label ?? "group";
-          const instanceCount = instanceIndicesOf(lines, match.groupId).length;
+          const matchedInstances = instanceCount(lines, match.groupId);
           const ok = await confirm({
             title: `Link as another ${groupLabel}?`,
-            description: `These ${clipboard.candidateLines.length} lines look like a ${groupLabel} (matches ${instanceCount} instance${instanceCount === 1 ? "" : "s"}). Link as another instance, or paste as plain words?`,
+            description: `These ${clipboard.candidateLines.length} lines look like a ${groupLabel} (matches ${pluralize(matchedInstances, "instance")}). Link as another instance, or paste as plain words?`,
             confirmLabel: "Link as instance",
             cancelLabel: "Paste as words",
           });

@@ -4,6 +4,7 @@ import type { KeepYouTubeAudio } from "@/domain/storage/audio-retention";
 import type { StorageLimit } from "@/domain/storage/storage-limit";
 import { SETTINGS_PERSIST_VERSION, migrateSettings } from "@/stores/settings-migration";
 import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
+import { PREVIEW_SIDEBAR_WIDTH } from "@/utils/preview-sidebar-width";
 import { DEFAULT_MIN_WORD_DURATION } from "@/utils/word-spaces";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -45,6 +46,7 @@ interface SettingsState {
   followPlayhead: boolean;
   defaultRollingEdit: boolean;
   defaultPreviewSidebar: boolean;
+  previewSidebarWidth: number;
   timelineSnap: boolean;
   timelineSnapThreshold: number;
   vocalOnsetSnap: boolean;
@@ -122,6 +124,7 @@ const DEFAULTS: SettingsState = {
   followPlayhead: true,
   defaultRollingEdit: false,
   defaultPreviewSidebar: false,
+  previewSidebarWidth: PREVIEW_SIDEBAR_WIDTH.default,
   timelineSnap: true,
   timelineSnapThreshold: 12,
   vocalOnsetSnap: true,

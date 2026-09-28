@@ -1,12 +1,17 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { type ShortcutBinding, getShortcutById } from "@/stores/shortcut-registry";
+import {
+  type ShortcutBinding,
+  type ShortcutDefinition,
+  type ShortcutScope,
+  SHORTCUT_REGISTRY,
+  getShortcutById,
+} from "@/stores/shortcut-registry";
 
 // -- Types --------------------------------------------------------------------
 
 interface ShortcutBindingsState {
   overrides: Record<string, ShortcutBinding>;
-  setBinding: (id: string, binding: ShortcutBinding) => void;
   resetBinding: (id: string) => void;
   resetAllBindings: () => void;
 }
@@ -17,10 +22,6 @@ const useShortcutBindingsStore = create<ShortcutBindingsState>()(
   persist(
     (set) => ({
       overrides: {},
-      setBinding: (id, binding) =>
-        set((state) => ({
-          overrides: { ...state.overrides, [id]: binding },
-        })),
       resetBinding: (id) =>
         set((state) => {
           const { [id]: _, ...rest } = state.overrides;
@@ -34,6 +35,8 @@ const useShortcutBindingsStore = create<ShortcutBindingsState>()(
 
 // -- Helpers ------------------------------------------------------------------
 
+const UNBOUND: ShortcutBinding = { key: "" };
+
 function getEffectiveBinding(id: string): ShortcutBinding {
   const override = useShortcutBindingsStore.getState().overrides[id];
   if (override) return override;
@@ -42,8 +45,44 @@ function getEffectiveBinding(id: string): ShortcutBinding {
   return def.defaultBinding;
 }
 
-function getEffectiveKeysArray(id: string): string[] {
-  const binding = getEffectiveBinding(id);
+// -- Conflict Detection -------------------------------------------------------
+
+function bindingsEqual(a: ShortcutBinding, b: ShortcutBinding): boolean {
+  const aKey = a.key.length === 1 ? a.key.toLowerCase() : a.key;
+  const bKey = b.key.length === 1 ? b.key.toLowerCase() : b.key;
+  return (
+    aKey === bKey &&
+    !!a.shift === !!b.shift &&
+    !!a.alt === !!b.alt &&
+    !!a.ctrl === !!b.ctrl &&
+    !!a.meta === !!b.meta &&
+    !!a.mod === !!b.mod
+  );
+}
+
+function scopesConflict(a: ShortcutScope, b: ShortcutScope): boolean {
+  if (a === "global" || b === "global") return true;
+  return a === b;
+}
+
+function detectConflicts(id: string, newBinding: ShortcutBinding): ShortcutDefinition[] {
+  const source = SHORTCUT_REGISTRY.find((d) => d.id === id);
+  if (!source) return [];
+
+  return SHORTCUT_REGISTRY.filter((def) => {
+    if (def.id === id) return false;
+    if (!scopesConflict(source.scope, def.scope)) return false;
+    const effective = getEffectiveBinding(def.id);
+    return bindingsEqual(effective, newBinding);
+  });
+}
+
+function assignBinding(id: string, binding: ShortcutBinding): void {
+  const unbound = Object.fromEntries(detectConflicts(id, binding).map((conflict) => [conflict.id, UNBOUND]));
+  useShortcutBindingsStore.setState((state) => ({ overrides: { ...state.overrides, ...unbound, [id]: binding } }));
+}
+
+function bindingToKeys(binding: ShortcutBinding): string[] {
   if (binding.key === "") return [];
   const keys: string[] = [];
   if (binding.mod) keys.push("Mod");
@@ -57,10 +96,23 @@ function getEffectiveKeysArray(id: string): string[] {
   return keys;
 }
 
+function getEffectiveKeysArray(id: string): string[] {
+  return bindingToKeys(getEffectiveBinding(id));
+}
+
 function getShortcutDescription(id: string): string {
   return getShortcutById(id)?.description ?? id;
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { useShortcutBindingsStore, getEffectiveBinding, getEffectiveKeysArray, getShortcutDescription };
+export {
+  useShortcutBindingsStore,
+  assignBinding,
+  bindingsEqual,
+  bindingToKeys,
+  detectConflicts,
+  getEffectiveBinding,
+  getEffectiveKeysArray,
+  getShortcutDescription,
+};

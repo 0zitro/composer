@@ -8,15 +8,15 @@ import { importProjectFile, replaceProjectFromFile } from "@/lib/project-import"
 import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
-import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
 import { getSaveStatus } from "@/lib/save-status";
+import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
+import { saveInputTitled, seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { render } from "@/test/render";
-import { saveArgsTitled, seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { ImportConflictModalHost } from "@/ui/projects/import-conflict-modal";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
@@ -127,7 +127,7 @@ describe("replaceProjectFromFile", () => {
     });
     await restoreOpenProject();
     useSettingsStore.setState({ autoSaveDelay: 60_000 });
-    debouncedSave(...saveArgsTitled("StaleEdit"));
+    debouncedSave(saveInputTitled("StaleEdit"));
 
     await replaceProjectFromFile("a", fileWithLine("File line"));
 
@@ -141,7 +141,7 @@ describe("replaceProjectFromFile", () => {
       await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
       await restoreOpenProject();
       useSettingsStore.setState({ autoSaveDelay: 60_000 });
-      debouncedSave(...saveArgsTitled("StaleEdit"));
+      debouncedSave(saveInputTitled("StaleEdit"));
       await removeProjectData("a");
 
       await expect(replaceProjectFromFile("a", fileWithLine("File line"))).rejects.toBeInstanceOf(ProjectDeletedError);

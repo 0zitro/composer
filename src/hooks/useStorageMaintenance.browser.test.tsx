@@ -62,7 +62,7 @@ describe("useStorageMaintenance", () => {
     const screen = await render(<MaintenanceHost />);
     notifyStorageSignal("storage-full");
     await screen.getByRole("button", { name: "Manage storage" }).click();
-    expect(useUIStore.getState()).toMatchObject({ settingsOpen: true, settingsHighlight: "storage-section" });
+    expect(useUIStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: "storage" });
   });
 
   describe("edge cases", () => {

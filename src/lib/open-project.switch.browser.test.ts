@@ -7,7 +7,7 @@ import {
 } from "@/lib/open-project-session";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectIndexEntry, removeProjectData, setProjectLastTab } from "@/lib/project-repository";
-import { buildSaveArgs } from "@/lib/project-snapshot";
+import { buildSaveInput } from "@/lib/project-snapshot";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { getSaveStatus } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
@@ -34,9 +34,9 @@ async function seedTwoProjects(): Promise<void> {
 }
 
 function scheduleSaveOfStores(): void {
-  const args = buildSaveArgs();
+  const args = buildSaveInput();
   if (!args) throw new Error("expected something to save");
-  debouncedSave(...args);
+  debouncedSave(args);
 }
 
 function openTitle(): string {

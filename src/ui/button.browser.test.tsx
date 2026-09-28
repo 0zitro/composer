@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { Button, buttonClassName } from "@/ui/button";
 import { render } from "@/test/render";
+import { Button } from "@/ui/button";
+import { buttonClassName } from "@/ui/button-class-name";
+import { describe, expect, it } from "vitest";
 
 // -- Render -------------------------------------------------------------------
 

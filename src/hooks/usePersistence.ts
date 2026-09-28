@@ -6,7 +6,7 @@ import { cancelPendingSave, debouncedSave, flushPendingSaveQuietly } from "@/lib
 import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { setProjectLastTab } from "@/lib/project-repository";
 import { isRestoringProject } from "@/lib/project-restore";
-import { buildSaveArgs, hadStoredAudio, storedAudioFile } from "@/lib/project-snapshot";
+import { buildSaveInput, hadStoredAudio, storedAudioFile } from "@/lib/project-snapshot";
 import { trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
@@ -21,16 +21,16 @@ const LOG_PREFIX = "[Persistence]";
 // -- Helpers ------------------------------------------------------------------
 
 function commitProjectSave(): void {
-  const args = buildSaveArgs();
-  if (!args) return;
-  debouncedSave(...args);
+  const input = buildSaveInput();
+  if (!input) return;
+  debouncedSave(input);
 }
 
 function commitProjectSaveNow(): void {
-  const args = buildSaveArgs();
-  if (!args) return;
+  const input = buildSaveInput();
+  if (!input) return;
   cancelPendingSave();
-  trackSave("stem", saveCurrentProject(args, useProjectStore.getState().activeTab)).catch((err) =>
+  trackSave("stem", saveCurrentProject(input, useProjectStore.getState().activeTab)).catch((err) =>
     console.error(LOG_PREFIX, "Immediate save failed:", err),
   );
 }

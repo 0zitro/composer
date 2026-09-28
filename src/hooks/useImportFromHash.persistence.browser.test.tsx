@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Agent } from "@/domain/agent/model";
 import { useImportFromHash } from "@/hooks/useImportFromHash";
 import { usePersistence } from "@/hooks/usePersistence";
 import { getHashImportSettled, getPersistenceSettled } from "@/lib/persistence-settled";
@@ -6,6 +6,7 @@ import { useProjectStore } from "@/stores/project";
 import { allowConsole } from "@/test/console-guard";
 import { seedProject } from "@/test/idb";
 import { render } from "@/test/render";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -155,6 +156,18 @@ describe("usePersistence + useImportFromHash: hash overrides persistence", () =>
     await waitForBootSettled();
 
     expect(useProjectStore.getState().granularity).toBe("word");
+  });
+
+  it("regression: keeps an imported agent the replaced project also had", async () => {
+    const savedDuet: Agent = { id: "v2", type: "person", name: "Saved Duet" };
+    const importedDuet: Agent = { id: "v2", type: "person", name: "Imported Duet" };
+    await seedProject({ ...savedSnapshot(), agents: [SAVED_AGENT, savedDuet] });
+    setHash(encodeHashPayload({ ...importedPayload(), agents: [IMPORTED_AGENT, importedDuet] }));
+
+    await render(<HookHost />);
+    await waitForBootSettled();
+
+    expect(useProjectStore.getState().agents.map((agent) => agent.name)).toEqual(["Imported Lead", "Imported Duet"]);
   });
 
   it("regression: a payload with null metadata is rejected and the saved project survives", async () => {

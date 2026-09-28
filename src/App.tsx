@@ -19,13 +19,14 @@ import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useUIStore } from "@/stores/ui";
 import { GuideCard } from "@/tour/guide-card";
-import { TOUR_RESUME_KEY, TOUR_SEEN_KEY, useTour } from "@/tour/use-tour";
+import { resetTour, useTour } from "@/tour/use-tour";
 import "@/tour/tour-theme.css";
 import { AppHeader } from "@/ui/app-header";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
 import { DivergenceModalHost } from "@/ui/divergence-modal";
 import { HelpModal } from "@/ui/help-modal";
 import { ImportConflictModalHost } from "@/ui/projects/import-conflict-modal";
+import { APP_SETTING_LINK_HOST, SettingLinkContext } from "@/ui/setting-link-context";
 import { SettingsModal } from "@/ui/settings-modal";
 import { EDITOR_PATH, screenForPath } from "@/utils/app-routes";
 import { EditorScreen } from "@/views/editor-screen";
@@ -50,16 +51,14 @@ const AppShell: React.FC = () => {
   const isEditor = screen === "editor";
   const setActiveTab = useProjectStore((s) => s.setActiveTab);
   const source = useAudioStore((s) => s.source);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [helpSection, setHelpSection] = useState<string | undefined>(undefined);
+  const helpOpen = useUIStore((s) => s.helpOpen);
+  const helpLocation = useUIStore((s) => s.helpLocation);
+  const openHelp = useUIStore((s) => s.openHelp);
+  const closeHelp = useUIStore((s) => s.closeHelp);
   const [tourRequested, setTourRequested] = useState(false);
   const settingsOpen = useUIStore((s) => s.settingsOpen);
   const openSettings = useUIStore((s) => s.openSettings);
   const closeSettings = useUIStore((s) => s.closeSettings);
-  const openHelp = useCallback((section?: string) => {
-    setHelpSection(section);
-    setHelpOpen(true);
-  }, []);
   const openBestPractices = useCallback(() => openHelp("best-practices"), [openHelp]);
   const { startTour, resumeOrStartTour, shouldShowTour, guideCard, skipGuideCard } = useTour({
     onOpenBestPractices: openBestPractices,
@@ -111,13 +110,7 @@ const AppShell: React.FC = () => {
   useDocumentTitle(screen);
   useVocalOnsetSnapPoints();
 
-  const setHelpOpenCb = useCallback(
-    (open: boolean) => {
-      if (open) openHelp();
-      else setHelpOpen(false);
-    },
-    [openHelp],
-  );
+  const setHelpOpenCb = useCallback((open: boolean) => (open ? openHelp() : closeHelp()), [openHelp, closeHelp]);
   const setSettingsOpenCb = useCallback(
     (open: boolean) => (open ? openSettings() : closeSettings()),
     [openSettings, closeSettings],
@@ -148,19 +141,22 @@ const AppShell: React.FC = () => {
         onTourStart={startTourFromHeader}
       />
       <HelpModal
-        key={helpOpen ? `help-${helpSection ?? "default"}` : "help-closed"}
+        key={
+          helpOpen
+            ? `help-${helpLocation.section}-${helpLocation.scrollTop}-${helpLocation.query ?? ""}`
+            : "help-closed"
+        }
         isOpen={helpOpen}
-        initialSection={helpSection}
-        onClose={() => setHelpOpen(false)}
+        initialSection={helpLocation.section}
+        initialScrollTop={helpLocation.scrollTop}
+        initialQuery={helpLocation.query}
+        onClose={closeHelp}
       />
       <SettingsModal
         key={settingsOpen ? "settings-open" : "settings-closed"}
         isOpen={settingsOpen}
         onClose={closeSettings}
-        onResetTour={() => {
-          localStorage.removeItem(TOUR_SEEN_KEY);
-          localStorage.removeItem(TOUR_RESUME_KEY);
-        }}
+        onResetTour={resetTour}
       />
       <Activity mode={isEditor ? "hidden" : "visible"}>
         <LibraryScreen />
@@ -180,22 +176,24 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={appQueryClient}>
       <LazyMotion features={domAnimation} strict>
-        <AppShell />
-        <ConfirmModalHost />
-        <DivergenceModalHost />
-        <LyricsImportModalHost />
-        <ImportConflictModalHost />
-        <Toaster
-          theme="dark"
-          position="bottom-center"
-          toastOptions={{
-            style: {
-              background: "var(--color-composer-bg-elevated)",
-              border: "1px solid var(--color-composer-border)",
-              color: "var(--color-composer-text)",
-            },
-          }}
-        />
+        <SettingLinkContext value={APP_SETTING_LINK_HOST}>
+          <AppShell />
+          <ConfirmModalHost />
+          <DivergenceModalHost />
+          <LyricsImportModalHost />
+          <ImportConflictModalHost />
+          <Toaster
+            theme="dark"
+            position="bottom-center"
+            toastOptions={{
+              style: {
+                background: "var(--color-composer-bg-elevated)",
+                border: "1px solid var(--color-composer-border)",
+                color: "var(--color-composer-text)",
+              },
+            }}
+          />
+        </SettingLinkContext>
       </LazyMotion>
     </QueryClientProvider>
   );

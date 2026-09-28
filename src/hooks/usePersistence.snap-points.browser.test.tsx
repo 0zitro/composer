@@ -1,16 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { renderHook } from "vitest-browser-react";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { usePersistence } from "@/hooks/usePersistence";
 import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
 import { saveAudioFile, saveCurrentProject } from "@/lib/persistence";
-import type { SavedProject } from "@/lib/saved-project";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
+import type { SavedProject } from "@/lib/saved-project";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createMp3File } from "@/test/audio-fixtures";
-import { snapPoints } from "@/test/factories";
+import { createProjectSaveInput, snapPoints } from "@/test/factories";
 import { render } from "@/test/render";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { renderHook } from "vitest-browser-react";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -51,20 +51,12 @@ describe("usePersistence · customSnapPoints hydration", () => {
 
   it("regression: usePersistence hydrates saved customSnapPoints into the project store", async () => {
     await saveAudioFile(createMp3File());
-    await saveCurrentProject([
-      { title: "with-markers", artists: [], album: "", duration: 0 },
-      DEFAULT_AGENTS,
-      [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
-      [],
-      "word",
-      { applyToAll: false, caseInsensitive: false },
-      { kind: "file", name: "silence.mp3" },
-      [],
-      [],
-      "original",
-      false,
-      snapPoints([4, 9]),
-    ]);
+    await saveCurrentProject(
+      createProjectSaveInput({
+        metadata: { title: "with-markers", artists: [], album: "", duration: 0 },
+        customSnapPoints: snapPoints([4, 9]),
+      }),
+    );
 
     await renderHook(() => usePersistence());
     await waitForProjectHydration();
@@ -104,20 +96,12 @@ describe("usePersistence · customSnapPoints hydration", () => {
 
   it("regression: a saved project's markers survive the audio-source clear fired during load", async () => {
     await saveAudioFile(createMp3File());
-    await saveCurrentProject([
-      { title: "survives-load", artists: [], album: "", duration: 0 },
-      DEFAULT_AGENTS,
-      [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
-      [],
-      "word",
-      { applyToAll: false, caseInsensitive: false },
-      { kind: "file", name: "silence.mp3" },
-      [],
-      [],
-      "original",
-      false,
-      snapPoints([5, 12]),
-    ]);
+    await saveCurrentProject(
+      createProjectSaveInput({
+        metadata: { title: "survives-load", artists: [], album: "", duration: 0 },
+        customSnapPoints: snapPoints([5, 12]),
+      }),
+    );
 
     useProjectStore.setState({ customSnapPoints: [] });
 

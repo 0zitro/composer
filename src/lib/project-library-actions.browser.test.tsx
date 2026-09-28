@@ -3,13 +3,13 @@ import { restoreOpenProject } from "@/lib/open-project";
 import { hiddenProjectIdsSnapshot } from "@/lib/pending-deletions";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
+import { loadProjectAudio } from "@/lib/project-audio";
 import {
   deleteProjectsWithUndo,
   duplicateProject,
   exportProjectFiles,
   renameProject,
 } from "@/lib/project-library-actions";
-import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectIndexEntry, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
@@ -17,7 +17,7 @@ import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
-import { saveArgsTitled, seedStoredProject, songTitled } from "@/test/projects";
+import { saveInputTitled, seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
@@ -113,7 +113,7 @@ describe("duplicateProject", () => {
       useSettingsStore.setState({ autoSaveDelay: 60_000 });
       await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
       await restoreOpenProject();
-      debouncedSave(...saveArgsTitled("Edited"));
+      debouncedSave(saveInputTitled("Edited"));
       const copyId = await duplicateProject("a");
       expect((await loadProjectRecord(copyId))?.metadata.title).toBe("Edited copy");
       await flushPendingSave();
@@ -152,7 +152,7 @@ describe("exportProjectFiles", () => {
       useSettingsStore.setState({ autoSaveDelay: 60_000 });
       await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
       await restoreOpenProject();
-      debouncedSave(...saveArgsTitled("Edited"));
+      debouncedSave(saveInputTitled("Edited"));
       const downloads = watchDownloads();
       await exportProjectFiles(["a"]);
       await expect.poll(() => downloads.names().length).toBe(1);

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { ErrorFallback } from "@/pages/error-fallback";
+import { createMemoryRouter, RouterProvider, useRouteError } from "react-router-dom";
+import { ErrorFallbackPanel } from "@/pages/error-fallback";
+import { describeError } from "@/pages/error-presentation";
 import { render } from "@/test/render";
 import { allowConsole } from "@/test/console-guard";
 import { seedProject } from "@/test/idb";
@@ -9,12 +10,45 @@ const ThrowingRoute: React.FC = () => {
   throw new Error("Boom for test");
 };
 
+const RoutedErrorPanel: React.FC = () => <ErrorFallbackPanel details={describeError(useRouteError())} />;
+
 function renderFallback() {
-  const router = createMemoryRouter([{ path: "/", element: <ThrowingRoute />, errorElement: <ErrorFallback /> }], {
+  const router = createMemoryRouter([{ path: "/", element: <ThrowingRoute />, errorElement: <RoutedErrorPanel /> }], {
     initialEntries: ["/"],
   });
   return render(<RouterProvider router={router} />);
 }
+
+function renderMissingPage() {
+  const router = createMemoryRouter([{ path: "/", element: <div />, errorElement: <RoutedErrorPanel /> }], {
+    initialEntries: ["/no-such-page"],
+  });
+  return render(<RouterProvider router={router} />);
+}
+
+describe("ErrorFallbackPanel", () => {
+  it("renders the presentation it is handed instead of describing the error again", async () => {
+    const screen = await render(<ErrorFallbackPanel details={describeError(new TypeError("Kaboom"))} />);
+    await expect.element(screen.getByRole("heading", { name: "Something broke" })).toBeInTheDocument();
+    await expect.element(screen.getByText("TypeError")).toBeInTheDocument();
+    await expect.element(screen.getByText("Kaboom")).toBeInTheDocument();
+  });
+});
+
+describe("ErrorFallback on a missing page", () => {
+  beforeEach(() => {
+    allowConsole(/route error|No routes? match/);
+  });
+
+  it("says Page not found and offers Go home as the primary action", async () => {
+    const screen = await renderMissingPage();
+    await expect.element(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+    const buttons = [...screen.container.querySelectorAll("button")];
+    expect(buttons[0]?.textContent).toContain("Go home");
+    await expect.element(screen.getByRole("button", { name: /Go home/ })).toHaveClass("bg-composer-accent-dark");
+    await expect.element(screen.getByRole("button", { name: /Reload/ })).not.toHaveClass("bg-composer-accent-dark");
+  });
+});
 
 describe("ErrorFallback", () => {
   beforeEach(() => {
@@ -25,6 +59,14 @@ describe("ErrorFallback", () => {
     const screen = await renderFallback();
     await expect.element(screen.getByRole("button", { name: /Reload/ })).toBeInTheDocument();
     await expect.element(screen.getByRole("button", { name: /Go home/ })).toBeInTheDocument();
+  });
+
+  it("keeps Reload as the primary action for a thrown error", async () => {
+    const screen = await renderFallback();
+    await expect.element(screen.getByRole("heading", { name: "Something broke" })).toBeInTheDocument();
+    const buttons = [...screen.container.querySelectorAll("button")];
+    expect(buttons[0]?.textContent).toContain("Reload");
+    await expect.element(screen.getByRole("button", { name: /Reload/ })).toHaveClass("bg-composer-accent-dark");
   });
 
   it("renders a Download my work button", async () => {

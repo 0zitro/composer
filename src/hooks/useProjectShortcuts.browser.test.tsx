@@ -3,7 +3,7 @@ import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { useModalStackStore } from "@/stores/modal-stack";
 import { useProjectStore } from "@/stores/project";
-import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
+import { assignBinding } from "@/stores/shortcut-bindings";
 import { useUIStore } from "@/stores/ui";
 import { seedStoredProject } from "@/test/projects";
 import { isMac } from "@/utils/platform";
@@ -62,7 +62,7 @@ describe("useProjectShortcuts", () => {
     });
 
     it("follows a remapped binding", async () => {
-      useShortcutBindingsStore.getState().setBinding("global.openProjectSwitcher", { key: "p", mod: true });
+      assignBinding("global.openProjectSwitcher", { key: "p", mod: true });
       await renderHook(() => useProjectShortcuts());
       pressWithMod("o", "KeyO");
       expect(useUIStore.getState().projectSwitcherOpen).toBe(false);

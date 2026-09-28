@@ -1,6 +1,8 @@
 import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
 import { Popover } from "@/ui/popover";
 import { cn } from "@/utils/cn";
+import { pluralize } from "@/utils/pluralize";
 import { IconCheck, IconChevronDown, IconRefresh } from "@tabler/icons-react";
 import { useState } from "react";
 
@@ -87,7 +89,7 @@ const RegenerateSelectionMenu: React.FC<RegenerateSelectionMenuProps> = ({
           }
         >
           <IconRefresh className="size-4" />
-          Regenerate {selectedCount} {selectedCount === 1 ? "track" : "tracks"}
+          Regenerate {pluralize(selectedCount, "track")}
         </Button>
       </div>
     </div>
@@ -109,15 +111,13 @@ const RegenerateLanguageControl: React.FC<RegenerateLanguageControlProps> = ({
     <Popover
       placement="bottom-end"
       trigger={
-        <Button
-          size="icon"
+        <IconButton
+          label="Choose what to regenerate"
+          icon={<IconChevronDown className="size-4" />}
           variant="primary"
           disabled={isGenerating}
-          aria-label="Choose what to regenerate"
           className="rounded-l-none border-l border-composer-on-accent/20"
-        >
-          <IconChevronDown className="size-4" />
-        </Button>
+        />
       }
     >
       {(close) => (

@@ -18,7 +18,7 @@ import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { allowConsole } from "@/test/console-guard";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
-import { saveArgsTitled, seedStoredProject, songTitled } from "@/test/projects";
+import { saveInputTitled, seedStoredProject, songTitled } from "@/test/projects";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // -- Tests --------------------------------------------------------------------
@@ -30,7 +30,7 @@ describe("persistence-debounce · save target", () => {
 
   it("a debounced save lands in the project it was scheduled for after another is adopted", async () => {
     adoptOpenProjectId("project-a");
-    debouncedSave(...saveArgsTitled("Alpha"));
+    debouncedSave(saveInputTitled("Alpha"));
     adoptOpenProjectId("project-b");
     await flushPendingSave();
     expect((await loadProjectRecord("project-a"))?.metadata.title).toBe("Alpha");
@@ -40,7 +40,7 @@ describe("persistence-debounce · save target", () => {
   it("the timer writes into the project it was scheduled for", async () => {
     useSettingsStore.setState({ autoSaveDelay: 10 });
     adoptOpenProjectId("project-a");
-    debouncedSave(...saveArgsTitled("Alpha"));
+    debouncedSave(saveInputTitled("Alpha"));
     adoptOpenProjectId("project-b");
     await expect.poll(async () => (await loadProjectRecord("project-a"))?.metadata.title).toBe("Alpha");
     expect(await loadProjectRecord("project-b")).toBeUndefined();
@@ -57,8 +57,8 @@ describe("persistence-debounce · save target", () => {
 
   it("the latest schedule wins and writes once", async () => {
     adoptOpenProjectId("project-a");
-    debouncedSave(...saveArgsTitled("First"));
-    debouncedSave(...saveArgsTitled("Second"));
+    debouncedSave(saveInputTitled("First"));
+    debouncedSave(saveInputTitled("Second"));
     await flushPendingSave();
     expect((await loadProjectRecord("project-a"))?.metadata.title).toBe("Second");
   });
@@ -71,14 +71,14 @@ describe("persistence-debounce · save target", () => {
 
     it("cancelPendingSave drops the pending save", async () => {
       adoptOpenProjectId("project-a");
-      debouncedSave(...saveArgsTitled("Dropped"));
+      debouncedSave(saveInputTitled("Dropped"));
       cancelPendingSave();
       await flushPendingSave();
       expect(await loadProjectRecord("project-a")).toBeUndefined();
     });
 
     it("a first debounced save on a fresh install creates the open project", async () => {
-      debouncedSave(...saveArgsTitled("Fresh"));
+      debouncedSave(saveInputTitled("Fresh"));
       await flushPendingSave();
       const id = openProjectIdSnapshot();
       expect(id).toBeDefined();
@@ -88,8 +88,8 @@ describe("persistence-debounce · save target", () => {
 
   describe("regressions", () => {
     it("regression: the unload flush after a recovery clear writes no orphan record", async () => {
-      await saveCurrentProject(saveArgsTitled("Before clear"));
-      debouncedSave(...saveArgsTitled("After clear"));
+      await saveCurrentProject(saveInputTitled("Before clear"));
+      debouncedSave(saveInputTitled("After clear"));
       await clearRecoveryStorage();
       await flushPendingSave();
       expect(await listProjectIndex()).toEqual([]);
@@ -97,10 +97,10 @@ describe("persistence-debounce · save target", () => {
     });
 
     it("regression: the first save after a recovery clear starts a fresh project", async () => {
-      await saveCurrentProject(saveArgsTitled("Before clear"));
+      await saveCurrentProject(saveInputTitled("Before clear"));
       const cleared = openProjectIdSnapshot();
       await clearRecoveryStorage();
-      await saveCurrentProject(saveArgsTitled("After clear"));
+      await saveCurrentProject(saveInputTitled("After clear"));
       const fresh = openProjectIdSnapshot();
       expect(fresh).toBeDefined();
       expect(fresh).not.toBe(cleared);
@@ -108,7 +108,7 @@ describe("persistence-debounce · save target", () => {
     });
 
     it("regression: a save bound during creation never lands in a project adopted before the flush", async () => {
-      debouncedSave(...saveArgsTitled("Fresh session"));
+      debouncedSave(saveInputTitled("Fresh session"));
       adoptOpenProjectId("x");
       await flushPendingSave();
       expect(await loadProjectRecord("x")).toBeUndefined();
@@ -121,7 +121,7 @@ describe("persistence-debounce · save target", () => {
   describe("save status", () => {
     it("reads saving while a save waits and saved once it is written", async () => {
       adoptOpenProjectId("project-a");
-      debouncedSave(...saveArgsTitled("Alpha"));
+      debouncedSave(saveInputTitled("Alpha"));
       expect(getSaveStatus()).toBe("saving");
       await flushPendingSave();
       expect(getSaveStatus()).toBe("saved");
@@ -129,14 +129,14 @@ describe("persistence-debounce · save target", () => {
 
     it("reads saved again after the pending save is cancelled", () => {
       adoptOpenProjectId("project-a");
-      debouncedSave(...saveArgsTitled("Alpha"));
+      debouncedSave(saveInputTitled("Alpha"));
       cancelPendingSave();
       expect(getSaveStatus()).toBe("saved");
     });
 
     it("never notifies saved while flushing a pending save", async () => {
       adoptOpenProjectId("project-a");
-      debouncedSave(...saveArgsTitled("Alpha"));
+      debouncedSave(saveInputTitled("Alpha"));
       const statuses: string[] = [];
       const unsubscribe = subscribeSaveStatus(() => statuses.push(getSaveStatus()));
       const flushed = flushPendingSave();
@@ -150,7 +150,7 @@ describe("persistence-debounce · save target", () => {
       it("regression: a rejected debounced write is reported as failed", async () => {
         await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
         adoptOpenProjectId("project-a");
-        debouncedSave(...saveArgsTitled("Alpha"));
+        debouncedSave(saveInputTitled("Alpha"));
         await expect(flushPendingSave()).rejects.toThrow();
         expect(getSaveStatus()).toBe("failed");
         await deleteDatabase(DB_NAME);
@@ -159,7 +159,7 @@ describe("persistence-debounce · save target", () => {
       it("regression: edits to an open project deleted elsewhere are reported as not saved", async () => {
         adoptOpenProjectId("d");
         await removeProjectData("d");
-        debouncedSave(...saveArgsTitled("Lost edit"));
+        debouncedSave(saveInputTitled("Lost edit"));
         await expect(flushPendingSave()).rejects.toThrow();
         expect(getSaveStatus()).toBe("failed");
         expect(await loadProjectRecord("d")).toBeUndefined();
@@ -167,7 +167,7 @@ describe("persistence-debounce · save target", () => {
 
       it("regression: a refused save for a project that is no longer open stays quiet", async () => {
         adoptOpenProjectId("abandoned");
-        debouncedSave(...saveArgsTitled("Abandoned"));
+        debouncedSave(saveInputTitled("Abandoned"));
         await removeProjectData("abandoned");
         adoptOpenProjectId("kept");
         await flushPendingSave();
@@ -210,7 +210,7 @@ describe("persistence-debounce · save target", () => {
         resolveOther = resolve;
       });
       trackSave("audio", other);
-      debouncedSave(...saveArgsTitled("Alpha"));
+      debouncedSave(saveInputTitled("Alpha"));
       let flushed = false;
       const flushing = flushPendingSave().then(() => {
         flushed = true;
@@ -226,7 +226,7 @@ describe("persistence-debounce · save target", () => {
   describe("flushPendingSaveQuietly", () => {
     it("writes a pending save without returning a promise the caller must handle", async () => {
       adoptOpenProjectId("project-a");
-      debouncedSave(...saveArgsTitled("Alpha"));
+      debouncedSave(saveInputTitled("Alpha"));
       flushPendingSaveQuietly();
       await expect.poll(async () => (await loadProjectRecord("project-a"))?.metadata.title).toBe("Alpha");
     });
@@ -236,7 +236,7 @@ describe("persistence-debounce · save target", () => {
         allowConsole(/Flush save failed/);
         await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
         adoptOpenProjectId("project-a");
-        debouncedSave(...saveArgsTitled("Alpha"));
+        debouncedSave(saveInputTitled("Alpha"));
         expect(() => flushPendingSaveQuietly()).not.toThrow();
         await expect.poll(() => getSaveStatus()).toBe("failed");
         await deleteDatabase(DB_NAME);

@@ -4,7 +4,7 @@ import { forgetOpenProjectId, openProjectIdSnapshot } from "@/lib/open-project-s
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { PROJECT_CHANNEL_NAME, subscribeProjectsDeleted } from "@/lib/project-channel";
 import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
-import { buildSaveArgs } from "@/lib/project-snapshot";
+import { buildSaveInput } from "@/lib/project-snapshot";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { getSaveStatus } from "@/lib/save-status";
 import { useProjectStore } from "@/stores/project";
@@ -99,9 +99,9 @@ describe("useProjectChannel", () => {
     useSettingsStore.setState({ autoSaveDelay: 60_000 });
     const screen = await render(<ChannelHost />);
     useProjectStore.getState().setMetadata({ title: "Unsaved edit" });
-    const args = buildSaveArgs();
+    const args = buildSaveInput();
     if (!args) throw new Error("expected something to save");
-    debouncedSave(...args);
+    debouncedSave(args);
     deleteInOtherTab(["a"]);
     await expect.element(screen.getByText("This project was deleted in another tab")).toBeInTheDocument();
     await flushPendingSave();

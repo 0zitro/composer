@@ -1,7 +1,9 @@
+import { pluralize } from "@/utils/pluralize";
+
 // -- Formatting ---------------------------------------------------------------
 
 function formatProjectCount(count: number): string {
-  return count === 1 ? "1 project" : `${count} projects`;
+  return pluralize(count, "project");
 }
 
 // -- Exports ------------------------------------------------------------------

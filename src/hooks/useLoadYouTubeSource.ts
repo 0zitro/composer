@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-import { shallow } from "zustand/shallow";
 import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import type { ProjectMetadata } from "@/domain/project/metadata";
 import { confirmClearImportedSongDetails } from "@/hooks/imported-song-details";
@@ -9,6 +7,8 @@ import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { showNewProjectToast } from "@/utils/project-toast";
 import { hasLoadedYouTubeSourceFor, isYouTubeSourceFor } from "@/utils/youtube-source";
+import { useCallback } from "react";
+import { shallow } from "zustand/shallow";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -81,7 +81,7 @@ function loadVideoInPlace(videoId: string, previous: AudioSource): Promise<void>
 
 function resetSongIdentityForVideo(videoId: string, previous: AudioSource): () => void {
   const project = useProjectStore.getState();
-  const { metadata, agents, hasUnexportedImport } = project;
+  const { metadata, agents, hasUnexportedImport, importedMetadataKeys } = project;
   project.resetSongIdentity(videoId);
   const resetState = useProjectStore.getState();
   return () => {
@@ -91,7 +91,7 @@ function resetSongIdentityForVideo(videoId: string, previous: AudioSource): () =
       current.agents === resetState.agents &&
       shallow(withoutThumbnailOf(current.metadata, videoId), resetState.metadata);
     if (loadFellBackToPrevious && untouchedSinceReset) {
-      current.restoreSongIdentity({ metadata, agents, hasUnexportedImport });
+      current.restoreSongIdentity({ metadata, agents, hasUnexportedImport, importedMetadataKeys });
     }
   };
 }

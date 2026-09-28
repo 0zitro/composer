@@ -2,6 +2,7 @@ import { alternateMatchesMainText } from "@/domain/language/alternate-visibility
 import { useRendererAudioSync } from "@/hooks/use-renderer-audio-sync";
 import { wake } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
+import { LYRICS_ELEMENT_CLASS, type LyricsLayout } from "@/views/preview/lyrics-layout";
 import type { AmLyrics as AmLyricsElement } from "@uimaxbai/am-lyrics";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 interface AmLyricsRendererProps {
   ttmlString: string;
   durationSeconds: number;
+  layout?: LyricsLayout;
 }
 
 // -- Element registration -----------------------------------------------------
@@ -66,11 +68,30 @@ function removeMatchingAlternatesAfterUpdate(el: AmLyricsElement): void {
   void el.updateComplete.then(() => el.updateComplete).then(() => markMatchingAlternateElements(el));
 }
 
+function createAmLyricsElement(ttml: string, songDurationMs: number): AmLyricsElement {
+  const el = document.createElement("am-lyrics") as AmLyricsElement;
+  // am-lyrics parses our iTunes sidecars, but keeps both alternate tracks
+  // behind controls in its built-in header. Composer hides that header, so
+  // enable the tracks directly before the TTML is parsed.
+  Reflect.set(el, "showRomanization", true);
+  Reflect.set(el, "showTranslation", true);
+  // am-lyrics 1.7.1 has no public opt-out for automatic Google generation.
+  // Disable its processing hook on this instance: Composer owns generation,
+  // and the preview must only render the alternate text already in our TTML.
+  Reflect.set(el, "autoProcessLyrics", async () => undefined);
+  el.ttml = ttml;
+  removeMatchingAlternatesAfterUpdate(el);
+  el.songDurationMs = songDurationMs;
+  el.style.setProperty("--am-lyrics-highlight-color", "var(--color-composer-text)");
+  return el;
+}
+
 // -- Component ----------------------------------------------------------------
 
-const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, durationSeconds }) => {
+const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, durationSeconds, layout = "page" }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const elementRef = useRef<AmLyricsElement | null>(null);
+  const createdElementRef = useRef<AmLyricsElement | null>(null);
   const latestTtmlRef = useRef(ttmlString);
   const latestDurationMsRef = useRef(durationSeconds * 1000);
   latestTtmlRef.current = ttmlString;
@@ -93,22 +114,11 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
     const container = containerRef.current;
     if (!container) return;
 
-    const el = document.createElement("am-lyrics") as AmLyricsElement;
+    // Activity re-runs this effect on every reveal; the element is kept so its rendered lines survive.
+    const el = createdElementRef.current ?? createAmLyricsElement(latestTtmlRef.current, latestDurationMsRef.current);
+    createdElementRef.current = el;
+    el.className = LYRICS_ELEMENT_CLASS[layout];
     const matchingAlternateObserver = new MutationObserver(() => markMatchingAlternateElements(el));
-    // am-lyrics parses our iTunes sidecars, but keeps both alternate tracks
-    // behind controls in its built-in header. Composer hides that header, so
-    // enable the tracks directly before the TTML is parsed.
-    Reflect.set(el, "showRomanization", true);
-    Reflect.set(el, "showTranslation", true);
-    // am-lyrics 1.7.1 has no public opt-out for automatic Google generation.
-    // Disable its processing hook on this instance: Composer owns generation,
-    // and the preview must only render the alternate text already in our TTML.
-    Reflect.set(el, "autoProcessLyrics", async () => undefined);
-    el.ttml = latestTtmlRef.current;
-    removeMatchingAlternatesAfterUpdate(el);
-    el.songDurationMs = latestDurationMsRef.current;
-    el.className = "block flex-1 mx-auto w-full max-w-3xl px-6";
-    el.style.setProperty("--am-lyrics-highlight-color", "var(--color-composer-text)");
 
     const handleLineClick = (event: Event) => {
       const detail = (event as CustomEvent<{ timestamp: number }>).detail;
@@ -119,7 +129,7 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
     };
     el.addEventListener("line-click", handleLineClick);
 
-    container.appendChild(el);
+    if (el.parentElement !== container) container.appendChild(el);
     if (el.shadowRoot) matchingAlternateObserver.observe(el.shadowRoot, { childList: true, subtree: true });
     elementRef.current = el;
     // The element arrives once the registration import resolves, long after the
@@ -143,10 +153,9 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
     return () => {
       matchingAlternateObserver.disconnect();
       el.removeEventListener("line-click", handleLineClick);
-      el.remove();
       elementRef.current = null;
     };
-  }, [isRegistered]);
+  }, [isRegistered, layout]);
 
   useEffect(() => {
     const el = elementRef.current;
@@ -172,7 +181,7 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
     "am-lyrics-renderer",
   );
 
-  return <div ref={containerRef} className="flex flex-col flex-1 min-h-0" />;
+  return <div ref={containerRef} data-lyrics-layout={layout} className="flex flex-col flex-1 min-h-0" />;
 };
 
 // -- Exports ------------------------------------------------------------------

@@ -7,25 +7,19 @@ import { listProjectIndex } from "@/lib/project-repository";
 import { loadProjectForRestore } from "@/lib/project-restore";
 import { getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION } from "@/lib/saved-project";
+import { createProjectSaveInput } from "@/test/factories";
 import { deleteDatabase, openAndCloseAtVersion, seedAudioFile, seedProject } from "@/test/idb";
+import { loadOpenProjectAudio, loadOpenProjectRecord } from "@/test/projects";
 import { describe, expect, it } from "vitest";
-import { loadOpenProjectRecord, loadOpenProjectAudio } from "@/test/projects";
 
 function save(title: string): Promise<void> {
-  return saveCurrentProject([
-    { title, artists: [], album: "", duration: 0 },
-    DEFAULT_AGENTS,
-    [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
-    [],
-    "word",
-    { applyToAll: false, caseInsensitive: false },
-    { kind: "file", name: "a.mp3" },
-    [],
-    [],
-    "original",
-    false,
-    [],
-  ]);
+  return saveCurrentProject(
+    createProjectSaveInput({
+      metadata: { title, artists: [], album: "", duration: 0 },
+      lines: [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
+      audioSource: { kind: "file", name: "a.mp3" },
+    }),
+  );
 }
 
 describe("persistence · open project", () => {

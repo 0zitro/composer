@@ -1,8 +1,13 @@
+import { downloadText, sanitizeFileName } from "@/lib/download-file";
+import type { ConversionResult } from "@/pages/converters/convert-via-parser";
 import { Button } from "@/ui/button";
-import { cn } from "@/utils/cn";
+import { LinkButton } from "@/ui/link-button";
+import { StatusChip } from "@/ui/status-chip";
 import { EDITOR_PATH, LIBRARY_PATH } from "@/utils/app-routes";
+import { cn } from "@/utils/cn";
 import { IMPORT_HASH_PREFIX } from "@/utils/incoming-link";
-import { IconCopy, IconDownload, IconExternalLink } from "@tabler/icons-react";
+import { skippedLinesMessage } from "@/utils/lyrics-parsers/shared";
+import { IconAlertTriangle, IconCopy, IconDownload, IconExternalLink } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,9 +21,11 @@ interface ConverterViewProps {
   inputLabel: string;
   inputPlaceholder: string;
   sampleInput: string;
-  convert: (args: ConvertArgs) => { ttml: string; projectPayload: string } | { error: string };
+  convert: (args: ConvertArgs) => ConversionResult;
   downloadFilename: string;
 }
+
+const TTML_EXTENSION = /\.ttml$/i;
 
 const ConverterView: React.FC<ConverterViewProps> = ({
   title,
@@ -31,30 +38,22 @@ const ConverterView: React.FC<ConverterViewProps> = ({
   const [input, setInput] = useState("");
   const [filename, setFilename] = useState(() => downloadFilename);
 
-  const { ttml, error } = useMemo(() => {
-    if (!input.trim()) return { ttml: "", error: null };
+  const { ttml, error, projectPayload, skippedLines } = useMemo(() => {
+    if (!input.trim()) return { ttml: "", error: null, projectPayload: "", skippedLines: 0 };
     const result = convert({ input, filename });
-    if ("error" in result) return { ttml: "", error: result.error };
-    return { ttml: result.ttml, error: null };
+    if ("error" in result) return { ttml: "", error: result.error, projectPayload: "", skippedLines: 0 };
+    return {
+      ttml: result.ttml,
+      error: null,
+      projectPayload: result.projectPayload,
+      skippedLines: result.skippedLines,
+    };
   }, [input, filename, convert]);
-
-  const projectPayload = useMemo(() => {
-    if (!input.trim() || error) return "";
-    const result = convert({ input, filename });
-    return "error" in result ? "" : result.projectPayload;
-  }, [input, filename, convert, error]);
 
   const downloadTtml = () => {
     if (!ttml) return;
-    const blob = new Blob([ttml], { type: "application/ttml+xml" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = downloadFilename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+    const name = sanitizeFileName(filename, downloadFilename);
+    downloadText(ttml, TTML_EXTENSION.test(name) ? name : `${name}.ttml`, "application/ttml+xml");
   };
 
   const copyTtml = async () => {
@@ -133,20 +132,32 @@ const ConverterView: React.FC<ConverterViewProps> = ({
             className={cn(
               "flex-1 min-h-[280px] md:min-h-[420px] overflow-auto font-mono text-xs rounded-lg p-3 border",
               error
-                ? "bg-composer-error/10 border-composer-error/40 text-composer-error-text"
+                ? "bg-composer-error/10 border-composer-error/40 text-composer-error-text select-text whitespace-pre-wrap break-words"
                 : "bg-composer-bg-dark border-composer-border text-composer-text select-text",
             )}
           >
             {error || ttml || "Paste input to see TTML output"}
           </pre>
+          <div role="status">
+            {skippedLines > 0 && (
+              <StatusChip tone="warning" icon={IconAlertTriangle} className="mt-3">
+                {skippedLinesMessage(skippedLines)}
+              </StatusChip>
+            )}
+          </div>
           <div className="mt-3 flex items-center justify-between gap-2">
             <span className="text-xs text-composer-text-muted">Need to fine-tune timing against a waveform?</span>
-            <a href={openInComposerHref} className={cn(!projectPayload && "pointer-events-none opacity-50")}>
-              <Button variant="primary" size="sm" disabled={!projectPayload} hasIcon>
-                Open in Composer
-                <IconExternalLink size={12} />
-              </Button>
-            </a>
+            <LinkButton
+              href={openInComposerHref}
+              variant="primary"
+              size="sm"
+              disabled={!projectPayload}
+              hasIcon
+              className={cn(!projectPayload && "opacity-25")}
+            >
+              Open in Composer
+              <IconExternalLink size={12} />
+            </LinkButton>
           </div>
         </div>
       </div>

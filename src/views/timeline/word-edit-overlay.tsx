@@ -2,7 +2,8 @@ import { cancelNextFrame, nextFrame } from "@/lib/frame-loop";
 import { useProjectStore } from "@/stores/project";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { manualBackgroundWordEdit } from "@/domain/line/background";
-import { getEffectiveLines } from "@/domain/line/effective-words";
+import { effectiveWordTextEdit, getEffectiveLines } from "@/domain/line/effective-words";
+import { trackWords } from "@/domain/line/tracks";
 import { FloatingPortal } from "@floating-ui/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -25,7 +26,7 @@ const WordEditOverlay: React.FC<WordEditOverlayProps> = ({ lineId, wordIndex, ty
 
   const effectiveLines = useMemo(() => getEffectiveLines(rawLines), [rawLines]);
   const line = effectiveLines.find((l) => l.id === lineId);
-  const wordsArray = type === "word" ? line?.words : line?.backgroundWords;
+  const wordsArray = line ? trackWords(line, type) : undefined;
   const word = wordsArray?.[wordIndex];
 
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -76,7 +77,7 @@ const WordEditOverlay: React.FC<WordEditOverlayProps> = ({ lineId, wordIndex, ty
         updatedWords[wordIndex] = { ...word, text: hadTrailingSpace ? `${trimmed} ` : trimmed };
         updateLineWithHistory(
           lineId,
-          type === "word" ? { words: updatedWords } : manualBackgroundWordEdit(updatedWords),
+          type === "word" ? effectiveWordTextEdit(line, updatedWords) : manualBackgroundWordEdit(updatedWords),
         );
       }
       clearEditingWord();
@@ -114,7 +115,7 @@ const WordEditOverlay: React.FC<WordEditOverlayProps> = ({ lineId, wordIndex, ty
         defaultValue={word.text.trimEnd()}
         onKeyDown={handleKeyDown}
         onBlur={commitWordEdit}
-        className="fixed z-100 px-2 py-1.5 text-sm text-composer-text bg-composer-bg border border-composer-border rounded-lg cursor-text focus:outline-none focus:border-composer-accent"
+        className="fixed layer-floating px-2 py-1.5 text-sm text-composer-text bg-composer-bg border border-composer-border rounded-lg cursor-text focus:outline-none focus:border-composer-accent"
         style={{ top: pos.top, left: pos.left, width: pos.width }}
       />
     </FloatingPortal>

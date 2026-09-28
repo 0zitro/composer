@@ -1,26 +1,27 @@
+import { instancePositionsByLineId } from "@/domain/instance/enumerate";
 import { isLinked } from "@/domain/instance/predicates";
 import { getLanguageDisplayLine } from "@/domain/language/display";
 import { effectiveBounds } from "@/domain/line/bounds";
+import { isSyncComplete, syncProgress } from "@/domain/line/sync-progress";
+import { previousSlot, slotBounds } from "@/domain/sync/cursor";
 import { useFrameLoop } from "@/hooks/use-frame-loop";
 import { useSyncHandlers } from "@/hooks/useSyncHandlers";
 import { useAudioStore } from "@/stores/audio";
 import { isAnyModalOpen } from "@/stores/modal-stack";
 import { useProjectStore } from "@/stores/project";
+import { useSettingsStore } from "@/stores/settings";
 import { EmptyState } from "@/ui/empty-state";
 import { shimmerTransition, shimmerVariants } from "@/utils/animationVariants";
 import { findMatchingShortcut } from "@/utils/shortcut-matcher";
 import {
   type SyncState,
   convertLineToWord,
-  createBgWordsFromLine,
   getNudgeAmount,
-  getSyncedLineCount,
-  getSyncedWordCount,
-  getTotalWords,
   hasLineTiming,
+  withSeededBackgroundWords,
 } from "@/utils/sync-helpers";
 import { readToken } from "@/utils/theme/read-token";
-import { ScrollableLine } from "@/views/sync/scrollable-line";
+import { ScrollableLine, type ScrollableLineLinkInfo } from "@/views/sync/scrollable-line";
 import { type RippleTarget, SyncCarousel } from "@/views/sync/sync-carousel";
 import { SyncFooter, SyncGestureControls } from "@/views/sync/sync-footer";
 import { SyncHeader } from "@/views/sync/sync-header";
@@ -31,7 +32,8 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } fro
 // -- Components ---------------------------------------------------------------
 
 const SyncPanel: React.FC = () => {
-  const lines = useProjectStore((s) => s.lines);
+  const storeLines = useProjectStore((s) => s.lines);
+  const lines = useMemo(() => storeLines.map(withSeededBackgroundWords), [storeLines]);
   const groups = useProjectStore((s) => s.groups);
   const setLinesWithHistory = useProjectStore((s) => s.setLinesWithHistory);
   const undo = useProjectStore((s) => s.undo);
@@ -43,6 +45,8 @@ const SyncPanel: React.FC = () => {
   const currentTime = useAudioStore((s) => s.currentTime);
   const isPlaying = useAudioStore((s) => s.isPlaying);
   const setIsPlaying = useAudioStore((s) => s.setIsPlaying);
+  const audioElement = useAudioStore((s) => s.audioElement);
+  const seekTo = useAudioStore((s) => s.seekTo);
   const textVariant = useTimelineStore((s) => s.textVariant);
   const toggleTextVariant = useTimelineStore((s) => s.toggleTextVariant);
   const hasTransliteration = useMemo(
@@ -54,22 +58,24 @@ const SyncPanel: React.FC = () => {
     [lines, textVariant],
   );
 
-  const instanceCountByGroup = useMemo(() => {
-    const indices = new Map<string, Set<number>>();
-    for (const l of lines) {
-      if (isLinked(l)) {
-        let set = indices.get(l.groupId);
-        if (!set) {
-          set = new Set();
-          indices.set(l.groupId, set);
-        }
-        set.add(l.instanceIdx);
-      }
+  const linkInfoByLineId = useMemo(() => {
+    const groupsById = new Map(groups.map((g) => [g.id, g]));
+    const positions = instancePositionsByLineId(lines);
+    const out = new Map<string, ScrollableLineLinkInfo>();
+    for (const line of lines) {
+      if (!isLinked(line)) continue;
+      const group = groupsById.get(line.groupId);
+      const position = positions.get(line.id);
+      if (!group || !position) continue;
+      out.set(line.id, {
+        color: group.color,
+        label: group.label,
+        ordinal: position.ordinal,
+        totalInstances: position.count,
+      });
     }
-    const counts = new Map<string, number>();
-    for (const [k, v] of indices) counts.set(k, v.size);
-    return counts;
-  }, [lines]);
+    return out;
+  }, [lines, groups]);
 
   const [syncState, setSyncState] = useState<SyncState>({
     position: { lineIndex: 0, wordIndex: 0 },
@@ -82,24 +88,6 @@ const SyncPanel: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const heldKeyCodeRef = useRef<string | null>(null);
   const holdPointerIdRef = useRef<number | null>(null);
-
-  const linesRef = useRef(lines);
-  linesRef.current = lines;
-  const syncStateRef = useRef(syncState);
-  syncStateRef.current = syncState;
-
-  const triggerRippleAtCurrentPosition = useCallback(() => {
-    const { lineIndex: committedLineIndex, wordIndex: committedWordIndex } = syncStateRef.current.position;
-    const lineId = linesRef.current[committedLineIndex]?.id;
-    if (!lineId) return;
-    setRippleTarget((prev) => ({
-      lineId,
-      wordIndex: committedWordIndex,
-      nonce: (prev?.nonce ?? 0) + 1,
-    }));
-  }, []);
-
-  const clearRippleTarget = useCallback(() => setRippleTarget(null), []);
 
   const {
     handleTap,
@@ -123,6 +111,7 @@ const SyncPanel: React.FC = () => {
     handleSetBgWordTime,
     handleNudgeBgWordEnd,
     handleSetBgWordEndTime,
+    cursor,
     isComplete,
     currentWord,
   } = useSyncHandlers({
@@ -136,23 +125,38 @@ const SyncPanel: React.FC = () => {
     setIsPlaying,
   });
 
+  const stopSessionAtSongEnd = useEffectEvent(() => {
+    setSyncState((prev) => ({ ...prev, isActive: false }));
+    const slot = previousSlot(lines, cursor, granularity);
+    const bounds = slot ? slotBounds(lines, slot) : null;
+    if (bounds) seekTo(Math.max(0, bounds.begin - useSettingsStore.getState().redoPreroll));
+  });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Effect Events always read current state and must not be dependencies.
+  useEffect(() => {
+    if (!audioElement) return;
+    const handleEnded = () => stopSessionAtSongEnd();
+    audioElement.addEventListener("ended", handleEnded);
+    return () => audioElement.removeEventListener("ended", handleEnded);
+  }, [audioElement]);
+
+  const triggerRippleAtCurrentPosition = useCallback(() => {
+    const { lineIndex: committedLineIndex, wordIndex: committedWordIndex } = cursor;
+    const lineId = lines[committedLineIndex]?.id;
+    if (!lineId) return;
+    setRippleTarget((prev) => ({
+      lineId,
+      wordIndex: committedWordIndex,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
+  }, [cursor, lines]);
+
+  const clearRippleTarget = useCallback(() => setRippleTarget(null), []);
+
   const handleHoldEnd = useCallback(() => {
     triggerRippleAtCurrentPosition();
     handleHoldEndRaw();
   }, [handleHoldEndRaw, triggerRippleAtCurrentPosition]);
-
-  const updateLine = useProjectStore((s) => s.updateLine);
-
-  useEffect(() => {
-    for (const line of lines) {
-      if (line.backgroundText && !line.backgroundWords?.length) {
-        const bgWords = createBgWordsFromLine(line);
-        if (bgWords) {
-          updateLine(line.id, { backgroundWords: bgWords }, { deriveText: false });
-        }
-      }
-    }
-  }, [lines, updateLine]);
 
   // Smooth word progress updates (reads audioElement.currentTime directly)
   useFrameLoop(
@@ -187,11 +191,9 @@ const SyncPanel: React.FC = () => {
     editMode,
   );
 
-  const totalWords = useMemo(() => getTotalWords(lines), [lines]);
-  const syncedWords = useMemo(() => getSyncedWordCount(lines), [lines]);
-  const syncedLines = useMemo(() => getSyncedLineCount(lines), [lines]);
-
-  const progressText = granularity === "word" ? `${syncedWords}/${totalWords}` : `${syncedLines}/${lines.length}`;
+  const progress = useMemo(() => syncProgress(lines, granularity), [lines, granularity]);
+  const progressText = `${progress.done}/${progress.total}`;
+  const syncComplete = useMemo(() => isSyncComplete(lines), [lines]);
 
   const handleGranularityChange = useCallback(
     (newGranularity: "line" | "word") => {
@@ -235,23 +237,12 @@ const SyncPanel: React.FC = () => {
     return -1;
   }, [lines, currentTime]);
 
-  const { lineIndex, wordIndex } = syncState.position;
-  const currentLine = lines[lineIndex];
-  const prevLine = lines[lineIndex - 1];
+  const { lineIndex, wordIndex } = cursor;
 
   const lastSyncedTime = useMemo(() => {
-    if (granularity === "line") {
-      if (prevLine?.begin !== undefined) return prevLine.begin;
-      return undefined;
-    }
-    if (!currentLine?.words?.length) {
-      if (prevLine?.words?.length) {
-        return prevLine.words[prevLine.words.length - 1]?.begin;
-      }
-      return undefined;
-    }
-    return currentLine.words[currentLine.words.length - 1]?.begin;
-  }, [granularity, currentLine?.words, prevLine?.words, prevLine?.begin]);
+    const slot = previousSlot(lines, cursor, granularity);
+    return slot ? slotBounds(lines, slot)?.begin : undefined;
+  }, [lines, cursor, granularity]);
 
   const performTap = useCallback(() => {
     if (editMode) return;
@@ -343,8 +334,6 @@ const SyncPanel: React.FC = () => {
         }
         return;
       }
-
-      if (e.repeat) return;
 
       const matched = findMatchingShortcut(e, "sync");
       if (!matched) return;
@@ -448,17 +437,6 @@ const SyncPanel: React.FC = () => {
             {lines.map((line, index) => {
               const displayLine = displayLines[index];
               const timing = effectiveBounds(line);
-              const linkedGroup = line.groupId ? groups.find((g) => g.id === line.groupId) : undefined;
-              const totalInstances = linkedGroup ? (instanceCountByGroup.get(linkedGroup.id) ?? 0) : 0;
-              const linkInfo =
-                linkedGroup && line.instanceIdx !== undefined
-                  ? {
-                      color: linkedGroup.color,
-                      label: linkedGroup.label,
-                      instanceIdx: line.instanceIdx,
-                      totalInstances,
-                    }
-                  : undefined;
               return (
                 <ScrollableLine
                   key={line.id}
@@ -479,7 +457,7 @@ const SyncPanel: React.FC = () => {
                   granularity={granularity}
                   currentTime={currentTime}
                   editMode={editMode}
-                  linkInfo={linkInfo}
+                  linkInfo={linkInfoByLineId.get(line.id)}
                   onClick={() => handleJumpToLine(index)}
                   onClickWord={(wordIdx) => handleJumpToWord(index, wordIdx)}
                   onClickBgWord={(wordIdx) => handleJumpToBgWord(index, wordIdx)}
@@ -502,26 +480,33 @@ const SyncPanel: React.FC = () => {
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 px-8 py-12">
           {isComplete ? (
-            <div className="text-center">
-              {/* react-doctor-disable-next-line react-doctor/no-gradient-text */}
-              <m.div
-                className="mb-2 text-2xl font-medium"
-                variants={shimmerVariants}
-                initial="initial"
-                animate="animate"
-                transition={shimmerTransition}
-                style={{
-                  background: completeGradient,
-                  backgroundSize: "200% 100%",
-                  backgroundClip: "text",
-                  WebkitBackgroundClip: "text",
-                  color: "transparent",
-                }}
-              >
-                Sync complete!
-              </m.div>
-              <div className="text-composer-text-muted">Proceed to Preview to review your work</div>
-            </div>
+            syncComplete ? (
+              <div className="text-center">
+                {/* react-doctor-disable-next-line react-doctor/no-gradient-text */}
+                <m.div
+                  className="mb-2 text-2xl font-medium"
+                  variants={shimmerVariants}
+                  initial="initial"
+                  animate="animate"
+                  transition={shimmerTransition}
+                  style={{
+                    background: completeGradient,
+                    backgroundSize: "200% 100%",
+                    backgroundClip: "text",
+                    WebkitBackgroundClip: "text",
+                    color: "transparent",
+                  }}
+                >
+                  Sync complete!
+                </m.div>
+                <div className="text-composer-text-muted">Proceed to Preview to review your work</div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="mb-2 text-2xl font-medium text-composer-text">End of lyrics</div>
+                <div className="text-composer-text-muted">Some lines still need timing. Click one to sync it.</div>
+              </div>
+            )
           ) : (
             <SyncCarousel
               lines={displayLines}

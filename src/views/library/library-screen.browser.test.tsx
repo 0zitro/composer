@@ -4,8 +4,8 @@ import { useUIStore } from "@/stores/ui";
 import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
 import { LocationProbe } from "@/test/location-probe";
-import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
+import { render } from "@/test/render";
 import { isMac } from "@/utils/platform";
 import { LibraryScreen } from "@/views/library/library-screen";
 import { Toaster } from "sonner";
@@ -122,7 +122,7 @@ describe("LibraryScreen", () => {
     await seedLibrary();
     const screen = await renderLibrary();
     await screen.getByRole("button", { name: "Manage storage" }).click();
-    expect(useUIStore.getState()).toMatchObject({ settingsOpen: true, settingsHighlight: "storage-section" });
+    expect(useUIStore.getState()).toMatchObject({ settingsOpen: true, settingsSection: "storage" });
   });
 
   describe("edge cases", () => {

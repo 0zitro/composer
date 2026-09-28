@@ -60,7 +60,7 @@ function useLibraryActions(): LibraryActions {
         exportProjectFiles(ids).catch(reportFailure("could not export projects", message));
       },
       remove: deleteProjectsWithUndo,
-      manageStorage: () => useUIStore.getState().openSettings("storage-section"),
+      manageStorage: () => useUIStore.getState().openSettings({ target: { section: "storage" } }),
     }),
     [navigate],
   );

@@ -1,5 +1,6 @@
 import { cn } from "@/utils/cn";
 import { useCallback, useId, useRef, useState } from "react";
+import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
 
@@ -25,6 +26,12 @@ const ACCEPTED_AUDIO_TYPES = [
   "audio/flac",
 ];
 
+const ACCEPTED_AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "ogg", "flac"];
+
+const ACCEPTED_AUDIO_EXTENSION_REGEX = new RegExp(String.raw`\.(${ACCEPTED_AUDIO_EXTENSIONS.join("|")})$`, "i");
+
+const UNSUPPORTED_AUDIO_FILE_MESSAGE = `Unsupported file type. Use ${ACCEPTED_AUDIO_EXTENSIONS.map((ext) => `.${ext}`).join(" ")}`;
+
 // -- Component ----------------------------------------------------------------
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, children, className }) => {
@@ -34,9 +41,11 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, childre
 
   const handleFile = useCallback(
     (file: File) => {
-      if (ACCEPTED_AUDIO_TYPES.includes(file.type) || file.name.match(/\.(mp3|wav|m4a|ogg|flac)$/i)) {
+      if (ACCEPTED_AUDIO_TYPES.includes(file.type) || ACCEPTED_AUDIO_EXTENSION_REGEX.test(file.name)) {
         onFileDrop(file);
+        return;
       }
+      toast.error(UNSUPPORTED_AUDIO_FILE_MESSAGE);
     },
     [onFileDrop],
   );
@@ -82,6 +91,7 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, childre
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
+      e.target.value = "";
       if (file) {
         handleFile(file);
       }

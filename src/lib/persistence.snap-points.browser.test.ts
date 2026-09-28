@@ -1,29 +1,22 @@
-import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import { saveCurrentProject } from "@/lib/persistence";
-import type { SavedProject } from "@/lib/saved-project";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
-import { snapPoints } from "@/test/factories";
+import type { SavedProject } from "@/lib/saved-project";
+import { createProjectSaveInput, snapPoints } from "@/test/factories";
 import { loadOpenProjectRecord } from "@/test/projects";
+import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
 function saveWithSnapPoints(customSnapPoints: SnapPoint[]): Promise<void> {
-  return saveCurrentProject([
-    { title: "snap", artists: [], album: "", duration: 0 },
-    DEFAULT_AGENTS,
-    [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
-    [],
-    "word",
-    { applyToAll: false, caseInsensitive: false },
-    { kind: "file", name: "silence.mp3" },
-    [],
-    [],
-    "original",
-    false,
-    customSnapPoints,
-  ]);
+  return saveCurrentProject(
+    createProjectSaveInput({
+      metadata: { title: "snap", artists: [], album: "", duration: 0 },
+      lines: [{ id: "L1", text: "hello", agentId: DEFAULT_AGENTS[0].id }],
+      customSnapPoints,
+    }),
+  );
 }
 
 // -- Tests --------------------------------------------------------------------

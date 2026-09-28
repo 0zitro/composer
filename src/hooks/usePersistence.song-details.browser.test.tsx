@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { usePersistence } from "@/hooks/usePersistence";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { seedProject } from "@/test/idb";
-import { render } from "@/test/render";
 import { loadOpenProjectRecord } from "@/test/projects";
+import { render } from "@/test/render";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -58,7 +58,41 @@ describe("usePersistence · unexported imported song details", () => {
     await expect.poll(async () => (await loadOpenProjectRecord())?.hasUnexportedImport, { timeout: 2000 }).toBe(true);
   });
 
+  it("restores which song details the last lyrics import brought", async () => {
+    await seedProject(savedProject({ importedMetadataKeys: ["title"] }));
+
+    await render(<PersistenceHost />);
+    await getPersistenceSettled();
+
+    expect(useProjectStore.getState().importedMetadataKeys).toEqual(["title"]);
+  });
+
+  it("saves which song details the last lyrics import brought", async () => {
+    await render(<PersistenceHost />);
+    await getPersistenceSettled();
+
+    useProjectStore.getState().replaceLyricsWithHistory({
+      lines: [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
+      groups: [],
+      agents: undefined,
+      metadata: { title: "Imported" },
+    });
+
+    await expect
+      .poll(async () => (await loadOpenProjectRecord())?.importedMetadataKeys, { timeout: 2000 })
+      .toEqual(["title"]);
+  });
+
   describe("edge cases", () => {
+    it("keeps every song detail of a project saved before the record existed", async () => {
+      await seedProject(savedProject());
+
+      await render(<PersistenceHost />);
+      await getPersistenceSettled();
+
+      expect(useProjectStore.getState().importedMetadataKeys).toEqual([]);
+    });
+
     it("treats a project saved before the flag existed as exported", async () => {
       await seedProject(savedProject());
 

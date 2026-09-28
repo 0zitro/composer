@@ -1,6 +1,5 @@
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { useUIStore } from "@/stores/ui";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { createLine, createWord } from "@/test/factories";
 import { render } from "@/test/render";
@@ -32,12 +31,11 @@ describe("PreviewPanel", () => {
       agents: project.agents,
       lines: project.lines,
       groups: project.groups,
-      granularity: project.granularity,
       duration: useAudioStore.getState().duration,
     });
     const edited = generated.replace(">Hi</span>", ">Edited in Export</span>");
     expect(edited).not.toBe(generated);
-    useUIStore.getState().setTtmlEditState({ source: generated, content: edited });
+    useProjectStore.getState().setTtmlEditState({ source: generated, content: edited });
 
     const screen = await render(<PreviewPanel />);
 

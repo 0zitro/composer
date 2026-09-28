@@ -19,7 +19,7 @@ describe("SettingsModal · Projects", () => {
   });
 
   it("opens on Save & Storage when asked for the storage section", async () => {
-    useUIStore.getState().openSettings("storage-section");
+    useUIStore.getState().openSettings({ target: { section: "storage" } });
     const screen = await render(<SettingsModal isOpen onClose={() => {}} onResetTour={() => {}} />);
     await expect.element(screen.getByText("Auto-save delay")).toBeInTheDocument();
   });

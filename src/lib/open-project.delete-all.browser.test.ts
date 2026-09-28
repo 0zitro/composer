@@ -3,7 +3,7 @@ import { deleteAllProjects, restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { listProjectIndex } from "@/lib/project-repository";
-import { currentSaveArgs } from "@/lib/project-snapshot";
+import { currentSaveInput } from "@/lib/project-snapshot";
 import { isProjectDeleted } from "@/lib/project-tombstones";
 import { useProjectStore } from "@/stores/project";
 import { createAudioFile } from "@/test/audio-fixtures";
@@ -31,7 +31,7 @@ describe("deleteAllProjects", () => {
       await restoreOpenProject();
       await deleteAllProjects();
       useProjectStore.getState().setLines([createLine({ text: "Fresh start" })]);
-      debouncedSave(...currentSaveArgs());
+      debouncedSave(currentSaveInput());
       await flushPendingSave();
       const entries = await listProjectIndex();
       expect(entries).toHaveLength(1);

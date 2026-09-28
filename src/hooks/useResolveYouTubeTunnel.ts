@@ -1,9 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { useEnsureAuth } from "@/hooks/useEnsureAuth";
 import { flushPendingSaveQuietly } from "@/lib/persistence-debounce";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
-import { useEnsureAuth } from "@/hooks/useEnsureAuth";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import {
@@ -13,8 +10,10 @@ import {
   useSettingsStore,
 } from "@/stores/settings";
 import { useUIStore } from "@/stores/ui";
+import { SettingHint } from "@/ui/setting-hint";
 import { shouldShowBridgeCta } from "@/utils/bridge-cta";
-import { CobaltApiError, formatCobaltErrorForToast, getAudio, getAudioFromStandardCobalt } from "@/utils/cobalt-api";
+import { CobaltApiError, getAudio, getAudioFromStandardCobalt } from "@/utils/cobalt-api";
+import { formatCobaltErrorForToast } from "@/utils/cobalt-error-toast";
 import {
   BridgeError,
   buildBridgeAudioFile,
@@ -24,6 +23,9 @@ import {
 } from "@/utils/composer-bridge-api";
 import { normalizeIsrc } from "@/utils/isrc";
 import { isYouTubeSourceFor } from "@/utils/youtube-source";
+import { useQuery } from "@tanstack/react-query";
+import { createElement, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -209,19 +211,21 @@ function useResolveYouTubeTunnel(): void {
     const instanceId = tunnelErr?.instanceId ?? getActiveCobaltInstance().id;
     const instanceLabel = tunnelErr?.instanceLabel ?? getActiveCobaltInstance().label;
     const wasDefault = tunnelErr?.wasDefault ?? isUsingDefaultCobaltInstance();
-    const message =
+    const { message, hint } =
       cause instanceof BridgeError
-        ? formatBridgeErrorForToast(cause)
+        ? { message: formatBridgeErrorForToast(cause), hint: undefined }
         : formatCobaltErrorForToast(cause, { isDefault: wasDefault, instanceLabel });
+    const description = hint ? createElement(SettingHint, { hint }) : undefined;
     if (shouldShowBridgeCta(cause)) {
       toast.error(message, {
+        description,
         action: {
           label: "Try Bridge",
-          onClick: () => useUIStore.getState().openSettings("bridge-section"),
+          onClick: () => useUIStore.getState().openSettings({ target: { setting: "youtubeBridge" } }),
         },
       });
     } else {
-      toast.error(message);
+      toast.error(message, { description });
     }
     if (instanceId !== BRIDGE_INSTANCE_ID && !wasDefault && instanceId !== DEFAULT_COBALT_INSTANCE_ID) {
       useSettingsStore.getState().recordCobaltInstanceResult(instanceId, "error", message);

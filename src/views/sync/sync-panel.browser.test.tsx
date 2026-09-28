@@ -325,3 +325,37 @@ describe("SyncPanel · touch sync", () => {
     });
   });
 });
+
+describe("progress counter", () => {
+  it("regression U2: line mode counts only syncable lines", async () => {
+    useAudioStore.setState({ source: { type: "file", file: createAudioFile() }, duration: 60, isPlaying: false });
+    useProjectStore.setState({
+      activeTab: "sync",
+      granularity: "line",
+      lines: [
+        createLine({ id: "l0", text: "a", begin: 1, end: 2 }),
+        createLine({ id: "blank", text: "" }),
+        createLine({ id: "l2", text: "b" }),
+      ],
+    });
+    const screen = await render(<SyncPanel />);
+    expect(screen.container.querySelector("h2 + span")?.textContent).toBe("1/2");
+  });
+});
+
+describe("bg-init derivation", () => {
+  it("regression: undo on the Sync tab can step past a line whose background words were never seeded", async () => {
+    useAudioStore.setState({ source: { type: "file", file: createAudioFile() }, duration: 60, isPlaying: false });
+    useProjectStore.setState({ activeTab: "sync", granularity: "word", lines: [createLine({ id: "l0", text: "a" })] });
+    const store = useProjectStore.getState();
+    store.updateLineWithHistory("l0", { text: "a b" });
+    store.updateLineWithHistory("l0", { begin: 1, end: 2, backgroundText: "oh" }, { deriveText: false });
+    await render(<SyncPanel />);
+    await new Promise((r) => setTimeout(r, 30));
+    useProjectStore.getState().undo();
+    await new Promise((r) => setTimeout(r, 30));
+    useProjectStore.getState().undo();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(useProjectStore.getState().lines[0].text).toBe("a");
+  });
+});

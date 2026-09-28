@@ -1,4 +1,5 @@
-import { type ProjectFile, downloadJsonFile, projectFileFrom } from "@/lib/project-file";
+import { downloadJson, localDateStamp } from "@/lib/download-file";
+import { type ProjectFile, projectFileFrom } from "@/lib/project-file";
 import type { SavedProject } from "@/lib/saved-project";
 
 // -- Constants ----------------------------------------------------------------
@@ -33,11 +34,11 @@ function buildProjectBundle(sources: readonly BundleSource[], exportedAt: number
 }
 
 function projectBundleFileName(date: Date): string {
-  return `composer-backup-${date.toISOString().slice(0, 10)}${PROJECT_BUNDLE_SUFFIX}`;
+  return `composer-backup-${localDateStamp(date)}${PROJECT_BUNDLE_SUFFIX}`;
 }
 
 function downloadProjectBundle(bundle: ProjectBundle): void {
-  downloadJsonFile(bundle, projectBundleFileName(new Date(bundle.exportedAt)));
+  downloadJson(bundle, projectBundleFileName(new Date(bundle.exportedAt)));
 }
 
 // -- Exports ------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { instanceIndicesOf } from "@/domain/instance/enumerate";
 import { getEffectiveLines } from "@/domain/line/effective-words";
+import { trackField, trackWords } from "@/domain/line/tracks";
 import { contiguousSelectionRun } from "@/domain/selection/contiguous";
 import { hasIntraGroupGap } from "@/domain/word/syllable-groups";
 import { useProjectStore } from "@/stores/project";
@@ -39,8 +40,8 @@ function useContextMenuTargets() {
     const { lineId, wordIndex, type } = contextMenu.target;
     const line = rawLines.find((l) => l.id === lineId);
     if (!line) return null;
-    const field: "words" | "backgroundWords" = type === "word" ? "words" : "backgroundWords";
-    const wordsArray = line[field];
+    const field = trackField(type);
+    const wordsArray = trackWords(line, type);
     if (!wordsArray || wordsArray.length === 0) return null;
 
     const selectedWords = useTimelineStore.getState().selectedWords;
@@ -104,7 +105,7 @@ function useContextMenuTargets() {
 
     const line = lines.find((l) => l.id === run.lineId);
     if (!line) return null;
-    const wordsArray = run.type === "word" ? line.words : line.backgroundWords;
+    const wordsArray = trackWords(line, run.type);
     if (!wordsArray) return null;
 
     return { indices: run.indices, lineId: run.lineId, type: run.type };
@@ -115,8 +116,8 @@ function useContextMenuTargets() {
     const { lineId, wordIndex, type } = contextMenu.target;
     const line = rawLines.find((l) => l.id === lineId);
     if (!line) return null;
-    const field: "words" | "backgroundWords" = type === "word" ? "words" : "backgroundWords";
-    const word = line[field]?.[wordIndex];
+    const field = trackField(type);
+    const word = trackWords(line, type)?.[wordIndex];
     if (!word || word.syllableGroupId === undefined) return null;
     return { lineId, field, wordIndex };
   }, [contextMenu, rawLines]);
@@ -159,6 +160,9 @@ function useContextMenuTargets() {
   };
 }
 
+type ContextMenuTargets = ReturnType<typeof useContextMenuTargets>;
+
 // -- Exports ------------------------------------------------------------------
 
 export { useContextMenuTargets };
+export type { ContextMenuTargets };

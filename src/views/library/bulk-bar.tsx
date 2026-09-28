@@ -1,5 +1,6 @@
 import { useModalStackStore } from "@/stores/modal-stack";
 import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
 import { IconDownload, IconTrash, IconX } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
@@ -49,9 +50,13 @@ const BulkBar: React.FC<BulkBarProps> = ({ selectedCount, visibleCount, onSelect
           Delete
         </Button>
         <Divider />
-        <Button variant="quiet" size="icon" aria-label="Clear selection" onClick={onClear} className="size-7">
-          <IconX aria-hidden="true" className="size-4" />
-        </Button>
+        <IconButton
+          variant="quiet"
+          label="Clear selection"
+          icon={<IconX aria-hidden="true" className="size-4" />}
+          onClick={onClear}
+          className="size-7"
+        />
       </div>
     </div>
   );

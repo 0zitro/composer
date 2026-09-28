@@ -1,45 +1,43 @@
 import { useSettingsStore } from "@/stores/settings";
-import type { SettingsState } from "@/stores/settings";
+import { type SettingId, settingEntry, settingKeyOf } from "@/stores/settings-catalog";
 import { Select } from "@/ui/select";
+import { SettingText } from "@/ui/settings/setting-text";
 import { cn } from "@/utils/cn";
 
-// -- Setting Controls ---------------------------------------------------------
+// -- Types ---------------------------------------------------------------------
 
-const SettingRow: React.FC<{ label: string; description: string; children: React.ReactNode }> = ({
-  label,
-  description,
-  children,
-}) => (
-  <div className="flex items-center justify-between gap-6 py-3">
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-sm font-medium text-composer-text">{label}</span>
-      <span className="text-xs text-composer-text-muted">{description}</span>
-    </div>
-    {children}
-  </div>
-);
-
-const SliderSetting: React.FC<{
+interface SliderAction {
   label: string;
-  description: string;
-  settingKey: keyof SettingsState;
+  onClick: () => void;
+}
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface SliderSettingProps {
+  id: SettingId;
   min: number;
   max: number;
   step: number;
-  format?: (v: number) => string;
-  action?: { label: string; onClick: () => void };
-}> = ({ label, description, settingKey, min, max, step, format, action }) => {
-  const value = useSettingsStore((s) => s[settingKey]) as number;
+  format?: (value: number) => string;
+  action?: SliderAction;
+}
+
+// -- Setting Controls ----------------------------------------------------------
+
+const SliderSetting: React.FC<SliderSettingProps> = ({ id, min, max, step, format, action }) => {
+  const settingKey = settingKeyOf(id);
+  const stored = useSettingsStore((s) => s[settingKey]);
   const set = useSettingsStore((s) => s.set);
+  const value = typeof stored === "number" ? stored : min;
   const percent = ((value - min) / (max - min)) * 100;
 
   return (
     <div className="flex flex-col gap-2 py-3">
       <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium text-composer-text">{label}</span>
-          <span className="text-xs text-composer-text-muted">{description}</span>
-        </div>
+        <SettingText id={id} />
         <div className="flex items-center gap-2">
           {action && (
             <button
@@ -57,7 +55,7 @@ const SliderSetting: React.FC<{
       </div>
       <input
         type="range"
-        aria-label={label}
+        aria-label={settingEntry(id).label}
         min={min}
         max={max}
         step={step}
@@ -72,59 +70,55 @@ const SliderSetting: React.FC<{
   );
 };
 
-const ToggleSetting: React.FC<{
-  label: string;
-  description: string;
-  settingKey: keyof SettingsState;
-}> = ({ label, description, settingKey }) => {
-  const value = useSettingsStore((s) => s[settingKey]) as boolean;
+const ToggleSetting: React.FC<{ id: SettingId }> = ({ id }) => {
+  const settingKey = settingKeyOf(id);
+  const isOn = useSettingsStore((s) => s[settingKey] === true);
   const set = useSettingsStore((s) => s.set);
 
   return (
-    <SettingRow label={label} description={description}>
+    <div className="flex items-center justify-between py-3">
+      <SettingText id={id} />
       <button
         type="button"
         role="switch"
-        aria-checked={value}
-        aria-label={label}
-        onClick={() => set(settingKey, !value)}
+        aria-checked={isOn}
+        aria-label={settingEntry(id).label}
+        onClick={() => set(settingKey, !isOn)}
         className={cn(
           "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors",
-          value ? "bg-composer-accent" : "bg-composer-button",
+          isOn ? "bg-composer-accent" : "bg-composer-button",
         )}
       >
         <span
           className={cn(
             "pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform mt-0.5",
-            value ? "translate-x-4.5" : "translate-x-0.5",
+            isOn ? "translate-x-4.5" : "translate-x-0.5",
           )}
         />
       </button>
-    </SettingRow>
+    </div>
   );
 };
 
-const SelectSetting: React.FC<{
-  label: string;
-  description: string;
-  settingKey: keyof SettingsState;
-  options: { value: string; label: string }[];
-}> = ({ label, description, settingKey, options }) => {
-  const value = useSettingsStore((s) => s[settingKey]) as string;
+const SelectSetting: React.FC<{ id: SettingId; options: SelectOption[] }> = ({ id, options }) => {
+  const settingKey = settingKeyOf(id);
+  const value = useSettingsStore((s) => String(s[settingKey]));
   const set = useSettingsStore((s) => s.set);
 
   return (
-    <SettingRow label={label} description={description}>
+    <div className="flex items-center justify-between py-3">
+      <SettingText id={id} />
       <Select
-        aria-label={label}
+        aria-label={settingEntry(id).label}
         value={value}
-        onChange={(next) => set(settingKey, next as SettingsState[typeof settingKey])}
+        onChange={(next) => set(settingKey, next)}
         options={options}
       />
-    </SettingRow>
+    </div>
   );
 };
 
-// -- Exports ------------------------------------------------------------------
+// -- Exports -------------------------------------------------------------------
 
-export { SettingRow, SliderSetting, ToggleSetting, SelectSetting };
+export { SelectSetting, SliderSetting, ToggleSetting };
+export type { SelectOption, SliderAction };

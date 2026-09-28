@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { renderHook } from "vitest-browser-react";
 import { parseLamePriming } from "@/audio/lame-priming";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import type { WordTiming } from "@/domain/word/timing";
@@ -11,35 +9,30 @@ import type { SavedProject } from "@/lib/saved-project";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createMp3File } from "@/test/audio-fixtures";
+import { createProjectSaveInput } from "@/test/factories";
 import { loadOpenProjectRecord } from "@/test/projects";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { renderHook } from "vitest-browser-react";
 
 // -- Helpers ------------------------------------------------------------------
 
 function seedSavedProject(opts: { primingStripped: boolean }): Promise<void> {
-  return saveCurrentProject([
-    { title: "t", artists: [], album: "", duration: 0 },
-    DEFAULT_AGENTS,
-    [
-      {
-        id: "L1",
-        text: "hello world",
-        agentId: DEFAULT_AGENTS[0].id,
-        words: [
-          { text: "hello", begin: 1.0, end: 1.5 },
-          { text: "world", begin: 1.5, end: 2.0 },
-        ],
-      },
-    ],
-    [],
-    "word",
-    { applyToAll: false, caseInsensitive: false },
-    { kind: "file", name: "silence.mp3" },
-    [],
-    [],
-    "original",
-    opts.primingStripped,
-    [],
-  ]);
+  return saveCurrentProject(
+    createProjectSaveInput({
+      lines: [
+        {
+          id: "L1",
+          text: "hello world",
+          agentId: DEFAULT_AGENTS[0].id,
+          words: [
+            { text: "hello", begin: 1.0, end: 1.5 },
+            { text: "world", begin: 1.5, end: 2.0 },
+          ],
+        },
+      ],
+      primingStripped: opts.primingStripped,
+    }),
+  );
 }
 
 async function loadOpenProjectForRestore(): Promise<SavedProject | undefined> {
@@ -131,20 +124,9 @@ describe("usePersistence priming-stripped flag survives the boot restore", () =>
     const mp3 = createMp3File();
     expect(parseLamePriming(await mp3.arrayBuffer()).samples).toBeGreaterThan(0);
     await saveAudioFile(mp3);
-    await saveCurrentProject([
-      { title: "race", artists: [], album: "", duration: 0 },
-      DEFAULT_AGENTS,
-      [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
-      [],
-      "word",
-      { applyToAll: false, caseInsensitive: false },
-      { kind: "file", name: "silence.mp3" },
-      [],
-      [],
-      "original",
-      false,
-      [],
-    ]);
+    await saveCurrentProject(
+      createProjectSaveInput({ metadata: { title: "race", artists: [], album: "", duration: 0 } }),
+    );
 
     await renderHook(() => usePersistence());
     await waitForProjectHydration();
@@ -157,20 +139,12 @@ describe("usePersistence priming-stripped flag survives the boot restore", () =>
   it("flag stays true after the boot restore even when audio has zero priming", async () => {
     const noPrimingMp3 = new File([new Uint8Array([0, 1, 2, 3])], "not-mp3.bin", { type: "audio/mpeg" });
     await saveAudioFile(noPrimingMp3);
-    await saveCurrentProject([
-      { title: "race-zero", artists: [], album: "", duration: 0 },
-      DEFAULT_AGENTS,
-      [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
-      [],
-      "word",
-      { applyToAll: false, caseInsensitive: false },
-      { kind: "file", name: "not-mp3.bin" },
-      [],
-      [],
-      "original",
-      false,
-      [],
-    ]);
+    await saveCurrentProject(
+      createProjectSaveInput({
+        metadata: { title: "race-zero", artists: [], album: "", duration: 0 },
+        audioSource: { kind: "file", name: "not-mp3.bin" },
+      }),
+    );
 
     await renderHook(() => usePersistence());
     await waitForProjectHydration();

@@ -1,7 +1,7 @@
 import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { hasLyrics, progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
-import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
 import { type MenuAnchor, menuTriggerProps } from "@/ui/menu";
 import { ProgressBar } from "@/ui/progress-bar";
 import { ProjectArt } from "@/ui/projects/project-art";
@@ -133,16 +133,14 @@ const ProjectRowContent: React.FC<ProjectItemProps> = ({
       <div className={cn("text-right whitespace-nowrap text-[13px] tabular-nums", ROW_MUTED)}>
         {formatRelativeTime(project.updatedAt, now)}
       </div>
-      <Button
+      <IconButton
         variant="ghost"
-        size="icon"
-        aria-label={`More actions for ${title}`}
+        label={`More actions for ${title}`}
+        icon={<IconDots aria-hidden="true" className="size-5" />}
         {...menuTriggerProps(isMenuOpen)}
         onClick={(event) => onOpenMenu(project.id, { kind: "element", element: event.currentTarget })}
         className="absolute top-3 right-2 z-1 opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100 group-data-menu/row:opacity-100"
-      >
-        <IconDots aria-hidden="true" className="size-5" />
-      </Button>
+      />
     </li>
   );
 };

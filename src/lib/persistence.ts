@@ -3,7 +3,9 @@ import type { Agent } from "@/domain/agent/model";
 import type { LinkGroup } from "@/domain/group/template";
 import type { LyricLine } from "@/domain/line/model";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
+import type { MetadataKey } from "@/domain/project/imported-metadata";
 import type { ProjectMetadata } from "@/domain/project/metadata";
+import type { SyllableSplitDefaults } from "@/domain/project/syllable-split-defaults";
 import type { ProjectTab } from "@/domain/project/tab";
 import type { SnapPoint } from "@/domain/snap-point/model";
 import { ensureOpenProjectId, findOpenProjectId } from "@/lib/open-project-session";
@@ -11,56 +13,44 @@ import { deleteProjectAudio, saveProjectAudio } from "@/lib/project-audio";
 import { saveProjectRecord } from "@/lib/project-repository";
 import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
 import type { GranularityMode } from "@/stores/project";
-import type { SyllableSplitDefaults } from "@/domain/project/syllable-split-defaults";
+import type { TtmlEditState } from "@/stores/project/types";
+
+// -- Types --------------------------------------------------------------------
+
+interface ProjectSaveInput {
+  metadata: ProjectMetadata;
+  agents: Agent[];
+  lines: LyricLine[];
+  groups: LinkGroup[];
+  granularity: GranularityMode;
+  syllableSplitDefaults: SyllableSplitDefaults;
+  audioSource: SavedAudioSource | undefined;
+  dismissedSuggestions: string[];
+  dismissedExplicitSuggestions: string[];
+  currentStem: Stem;
+  primingStripped: boolean;
+  customSnapPoints: SnapPoint[];
+  hasUnexportedImport: boolean;
+  importedMetadataKeys: MetadataKey[];
+  ttmlEditState: TtmlEditState;
+}
 
 // -- Records ------------------------------------------------------------------
 
-function buildSavedProject(
-  metadata: ProjectMetadata,
-  agents: Agent[],
-  lines: LyricLine[],
-  groups: LinkGroup[],
-  granularity: GranularityMode,
-  syllableSplitDefaults: SyllableSplitDefaults,
-  audioSource: SavedAudioSource | undefined,
-  dismissedSuggestions: string[],
-  dismissedExplicitSuggestions: string[],
-  currentStem: Stem,
-  primingStripped: boolean,
-  customSnapPoints: SnapPoint[],
-  hasUnexportedImport = false,
-): SavedProject {
-  return {
-    version: SAVED_PROJECT_VERSION,
-    savedAt: Date.now(),
-    metadata,
-    agents,
-    lines,
-    groups,
-    granularity,
-    syllableSplitDefaults,
-    audioFileName: audioSource?.kind === "file" ? audioSource.name : undefined,
-    audioSource,
-    dismissedSuggestions,
-    dismissedExplicitSuggestions,
-    currentStem,
-    primingStripped,
-    customSnapPoints,
-    hasUnexportedImport,
-  };
+function buildSavedProject(input: ProjectSaveInput): SavedProject {
+  const audioFileName = input.audioSource?.kind === "file" ? input.audioSource.name : undefined;
+  return { version: SAVED_PROJECT_VERSION, savedAt: Date.now(), ...input, audioFileName };
 }
 
-type ProjectSaveArgs = Parameters<typeof buildSavedProject>;
-
-async function saveProjectTo(target: Promise<string>, args: ProjectSaveArgs, lastTab?: ProjectTab): Promise<void> {
-  const project = buildSavedProject(...args);
+async function saveProjectTo(target: Promise<string>, input: ProjectSaveInput, lastTab?: ProjectTab): Promise<void> {
+  const project = buildSavedProject(input);
   await saveProjectRecord(await target, project, lastTab);
 }
 
 // -- Public API ---------------------------------------------------------------
 
-function saveCurrentProject(args: ProjectSaveArgs, lastTab?: ProjectTab): Promise<void> {
-  return saveProjectTo(ensureOpenProjectId(), args, lastTab);
+function saveCurrentProject(input: ProjectSaveInput, lastTab?: ProjectTab): Promise<void> {
+  return saveProjectTo(ensureOpenProjectId(), input, lastTab);
 }
 
 // -- Audio File Persistence ---------------------------------------------------
@@ -77,4 +67,4 @@ async function clearAudioFile(): Promise<void> {
 // -- Exports ------------------------------------------------------------------
 
 export { buildSavedProject, saveProjectTo, saveCurrentProject, saveAudioFile, clearAudioFile };
-export type { ProjectSaveArgs };
+export type { ProjectSaveInput };

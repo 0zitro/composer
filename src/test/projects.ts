@@ -1,12 +1,11 @@
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
-import type { ProjectSaveArgs } from "@/lib/persistence";
 import { findOpenProjectId } from "@/lib/open-project-session";
+import type { ProjectSaveInput } from "@/lib/persistence";
 import { loadProjectAudio, saveProjectAudio } from "@/lib/project-audio";
 import { saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { SAVED_PROJECT_VERSION, type SavedProject } from "@/lib/saved-project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/domain/project/syllable-split-defaults";
-import { createLine } from "@/test/factories";
+import { createLine, createProjectSaveInput } from "@/test/factories";
 
 // -- Types --------------------------------------------------------------------
 
@@ -35,22 +34,13 @@ function songTitled(title: string): Pick<SavedProject, "metadata"> {
   return { metadata: { title, artists: [], album: "", duration: 0 } };
 }
 
-function saveArgsTitled(title: string): ProjectSaveArgs {
-  return [
-    { title, artists: [], album: "", duration: 0 },
-    DEFAULT_AGENTS,
-    [createLine({ text: `${title} line` })],
-    [],
-    "word",
-    DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
-    undefined,
-    [],
-    [],
-    "original",
-    true,
-    [],
-    false,
-  ];
+function saveInputTitled(title: string): ProjectSaveInput {
+  return createProjectSaveInput({
+    metadata: { title, artists: [], album: "", duration: 0 },
+    lines: [createLine({ text: `${title} line` })],
+    audioSource: undefined,
+    primingStripped: true,
+  });
 }
 
 // -- Seeding ------------------------------------------------------------------
@@ -77,5 +67,5 @@ async function loadOpenProjectAudio(): Promise<File | undefined> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { storedProject, songTitled, saveArgsTitled, seedStoredProject, loadOpenProjectRecord, loadOpenProjectAudio };
+export { storedProject, songTitled, saveInputTitled, seedStoredProject, loadOpenProjectRecord, loadOpenProjectAudio };
 export type { SeedOptions };

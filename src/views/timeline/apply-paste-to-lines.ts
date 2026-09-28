@@ -1,6 +1,10 @@
 import { manualBackgroundWordEdit } from "@/domain/line/background";
-import { effectiveTrackWords, effectiveWords } from "@/domain/line/effective-words";
-import { mainWordEditFields } from "@/domain/line/main-words";
+import {
+  type ReadableLine,
+  effectiveMainWordEdit,
+  effectiveTrackWords,
+  effectiveWords,
+} from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
 import { mergeWordsIntoTrack } from "@/domain/word/merge-track";
 import { boundsOverlap } from "@/domain/word/overlap";
@@ -10,7 +14,7 @@ import type { ClipboardData, ClipboardEntry } from "@/views/timeline/selection-t
 // -- Types --------------------------------------------------------------------
 
 interface PasteInput {
-  lines: LyricLine[];
+  lines: readonly ReadableLine[];
   clipboard: ClipboardData;
   targetLineIndex: number;
   timeDelta: number;
@@ -28,7 +32,7 @@ function pasteOverlaps(
   clipboard: ClipboardData,
   targetLineIndex: number,
   timeDelta: number,
-  lines: LyricLine[],
+  lines: readonly ReadableLine[],
   duration: number,
 ): boolean {
   for (const entry of clipboard.entries) {
@@ -78,7 +82,8 @@ function applyPasteToLines({
 
     const lineUpdates: Partial<LyricLine> = {};
     if (newWords.length > 0) {
-      Object.assign(lineUpdates, mainWordEditFields(mergeWordsIntoTrack(effectiveWords(line), newWords)));
+      const merged = mergeWordsIntoTrack(effectiveWords(line), newWords);
+      Object.assign(lineUpdates, effectiveMainWordEdit(line, merged, { convertLineSynced: true }));
     }
     if (newBgWords.length > 0) {
       Object.assign(lineUpdates, manualBackgroundWordEdit(mergeWordsIntoTrack(line.backgroundWords ?? [], newBgWords)));

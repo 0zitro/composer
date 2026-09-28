@@ -2,11 +2,11 @@ import { useProjectShortcuts } from "@/hooks/useProjectShortcuts";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { useProjectStore } from "@/stores/project";
-import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
+import { assignBinding } from "@/stores/shortcut-bindings";
 import { useUIStore } from "@/stores/ui";
-import { render } from "@/test/render";
 import { TRUNCATION_UTILITIES_CSS, installStyleSheet } from "@/test/browser-css";
 import { seedStoredProject, songTitled } from "@/test/projects";
+import { render } from "@/test/render";
 import { ProjectBreadcrumb } from "@/ui/projects/project-breadcrumb";
 import { isMac } from "@/utils/platform";
 import { describe, expect, it } from "vitest";
@@ -67,7 +67,7 @@ describe("ProjectBreadcrumb", () => {
     const screen = await render(<ProjectBreadcrumb />, { withRouter: true });
     const trigger = screen.getByRole("button", { name: /switch project/ });
     await expect.element(trigger).toHaveAttribute("title", `Switch project (${isMac ? "⌘O" : "Ctrl+O"})`);
-    useShortcutBindingsStore.getState().setBinding("global.openProjectSwitcher", { key: "p", mod: true });
+    assignBinding("global.openProjectSwitcher", { key: "p", mod: true });
     await expect.element(trigger).toHaveAttribute("title", `Switch project (${isMac ? "⌘P" : "Ctrl+P"})`);
   });
 

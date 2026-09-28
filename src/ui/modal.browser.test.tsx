@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { Modal } from "@/ui/modal";
 import { useModalStackStore } from "@/stores/modal-stack";
 import { render } from "@/test/render";
+import { Modal } from "@/ui/modal";
+import { describe, expect, it } from "vitest";
 
 // -- Render -------------------------------------------------------------------
 
@@ -25,7 +25,37 @@ describe("Modal", () => {
     await expect.element(screen.getByText("Body content")).toBeInTheDocument();
   });
 
+  it("gives stacked modals distinct title ids, each labelling its own dialog", async () => {
+    await render(
+      <>
+        <Modal isOpen onClose={() => {}} title="First">
+          <div>One</div>
+        </Modal>
+        <Modal isOpen onClose={() => {}} title="Second">
+          <div>Two</div>
+        </Modal>
+      </>,
+    );
+    const dialogs = [...document.querySelectorAll("dialog")];
+    expect(dialogs).toHaveLength(2);
+    const labelIds = dialogs.map((dialog) => dialog.getAttribute("aria-labelledby"));
+    expect(new Set(labelIds).size).toBe(2);
+    const labels = labelIds.map((id) => (id ? document.getElementById(id)?.textContent : null));
+    expect(labels).toEqual(["First", "Second"]);
+  });
+
   // -- Dismissal --------------------------------------------------------------
+
+  it("closes from the named close button in the title bar", async () => {
+    let closed = 0;
+    const screen = await render(
+      <Modal isOpen onClose={() => closed++} title="Settings">
+        <div>Body content</div>
+      </Modal>,
+    );
+    await screen.getByRole("button", { name: "Close" }).click();
+    expect(closed).toBe(1);
+  });
 
   it("closes when Escape is pressed", async () => {
     let closeCalls = 0;
@@ -98,7 +128,8 @@ describe("Modal", () => {
       </Modal>,
     );
     await expect.element(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
-    const titleBar = document.querySelector("#modal-title")?.parentElement;
+    const titleId = document.querySelector("dialog")?.getAttribute("aria-labelledby");
+    const titleBar = titleId ? document.getElementById(titleId)?.parentElement : null;
     const closeButton = titleBar?.querySelector("button");
     expect(closeButton).not.toBeNull();
     closeButton?.click();
@@ -128,5 +159,14 @@ describe("Modal", () => {
     await expect.element(dialog).toBeInTheDocument();
     expect(dialog.element().getAttribute("aria-describedby")).toBe("modal-danger-body");
     expect(document.getElementById("modal-danger-body")?.textContent).toBe("Body copy");
+  });
+
+  it("renders the header accessory next to the title", async () => {
+    const screen = await render(
+      <Modal isOpen onClose={() => {}} title="Settings" headerAccessory={<button type="button">Back</button>}>
+        <p>Body</p>
+      </Modal>,
+    );
+    await expect.element(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
   });
 });

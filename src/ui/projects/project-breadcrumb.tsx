@@ -2,16 +2,15 @@ import { displayTitle } from "@/domain/project/display-title";
 import { useProjectStore } from "@/stores/project";
 import { getEffectiveKeysArray, useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { useUIStore } from "@/stores/ui";
-import { Button, buttonClassName } from "@/ui/button";
+import { Button } from "@/ui/button";
+import { LinkButton } from "@/ui/link-button";
 import { Popover } from "@/ui/popover";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { ProjectSwitcher } from "@/ui/projects/project-switcher";
 import { SaveStatusLabel } from "@/ui/projects/save-status-label";
 import { LIBRARY_PATH } from "@/utils/app-routes";
-import { cn } from "@/utils/cn";
 import { formatShortcut } from "@/utils/format-key";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
-import { Link } from "react-router-dom";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -31,9 +30,9 @@ const ProjectBreadcrumb: React.FC = () => {
   return (
     <div className="flex items-center gap-0.5 min-w-0 select-none">
       <nav aria-label="Project" className="flex items-center gap-0.5 min-w-0">
-        <Link to={LIBRARY_PATH} className={cn(buttonClassName({ variant: "ghost" }), "px-2 text-[15px]")}>
+        <LinkButton to={LIBRARY_PATH} variant="ghost" className="px-2 text-[15px]">
           Projects
-        </Link>
+        </LinkButton>
         <IconChevronRight aria-hidden="true" className="size-4 shrink-0 text-composer-text-faint" />
         <Popover
           open={isOpen}

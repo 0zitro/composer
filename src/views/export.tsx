@@ -1,10 +1,14 @@
 import { useExportTtml } from "@/hooks/use-export-ttml";
 import { useProjectFileActions } from "@/hooks/useProjectFileActions";
+import { downloadText, sanitizeFileName } from "@/lib/download-file";
 import { PROJECT_FILE_ACCEPT } from "@/lib/project-file-read";
 import { useProjectStore } from "@/stores/project";
+import { useThemeStore } from "@/stores/theme";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Scroll } from "@/ui/scroll";
+import { validateTtml } from "@/utils/lyrics-parsers/validate-ttml";
+import { codeHighlightThemeFor } from "@/utils/theme/code-highlight-theme";
 import { MetadataPanel } from "@/views/export/metadata-panel";
 import { TtmlConflictNotice } from "@/views/export/ttml-conflict-notice";
 import { TtmlEditor } from "@/views/export/ttml-editor";
@@ -18,12 +22,14 @@ import {
   IconTrash,
   IconUpload,
 } from "@tabler/icons-react";
-import { Highlight, themes } from "prism-react-renderer";
+import { Highlight } from "prism-react-renderer";
 import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 
 // -- Components ---------------------------------------------------------------
 
 const ExportPanel: React.FC = () => {
+  const scheme = useThemeStore((s) => s.getThemeById(s.activeThemeId)?.scheme ?? "dark");
   const {
     content: exportContent,
     editedContent,
@@ -42,31 +48,29 @@ const ExportPanel: React.FC = () => {
 
   const hasSyncedContent = syncedLineCount > 0;
 
-  const handleDownload = useCallback(() => {
-    if (!exportContent) return;
+  const isExportable = useCallback(() => {
+    if (editedContent === null) return true;
+    const validation = validateTtml(editedContent);
+    if (validation.ok) return true;
+    toast.error(`The TTML has an XML error: ${validation.message}`);
+    return false;
+  }, [editedContent]);
 
-    const blob = new Blob([exportContent], {
-      type: "application/ttml+xml;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title || "lyrics"}.ttml`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownload = useCallback(() => {
+    if (!exportContent || !isExportable()) return;
+
+    downloadText(exportContent, `${sanitizeFileName(title, "lyrics")}.ttml`, "application/ttml+xml;charset=utf-8");
     useProjectStore.getState().clearUnexportedImport();
-  }, [exportContent, title]);
+  }, [exportContent, isExportable, title]);
 
   const handleCopy = useCallback(async () => {
-    if (!exportContent) return;
+    if (!exportContent || !isExportable()) return;
 
     await navigator.clipboard.writeText(exportContent);
     useProjectStore.getState().clearUnexportedImport();
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [exportContent]);
+  }, [exportContent, isExportable]);
 
   const handleEdit = useCallback(() => {
     setIsEditing((prev) => !prev);
@@ -192,15 +196,9 @@ const ExportPanel: React.FC = () => {
         <TtmlEditor value={exportContent} generatedTtml={generatedTtml} onChange={handleEditContent} />
       ) : (
         <Scroll className="flex-1 p-6">
-          <Highlight theme={themes.nightOwl} code={exportContent} language="xml">
+          <Highlight theme={codeHighlightThemeFor(scheme)} code={exportContent} language="xml">
             {({ style, tokens, getLineProps, getTokenProps }) => (
-              <pre
-                className="p-4 rounded-lg font-mono text-xs whitespace-pre-wrap break-all select-text"
-                style={{
-                  ...style,
-                  background: "var(--color-composer-bg-elevated)",
-                }}
-              >
+              <pre className="p-4 rounded-lg font-mono text-xs whitespace-pre-wrap break-all select-text" style={style}>
                 {tokens.map((line, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: stable line indices
                   <div key={i} {...getLineProps({ line })}>

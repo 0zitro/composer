@@ -1,7 +1,7 @@
 import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { hasLyrics, progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
-import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
 import { menuTriggerProps } from "@/ui/menu";
 import { ProgressBar } from "@/ui/progress-bar";
 import { ProjectArt } from "@/ui/projects/project-art";
@@ -68,19 +68,17 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
           onToggle={(range) => onToggleSelect(project.id, range)}
           className={cn("absolute top-2.5 left-2.5 z-2 pointer-events-auto checked:opacity-100", REVEAL_ON_CARD)}
         />
-        <Button
+        <IconButton
           variant="ghost"
-          size="icon"
-          aria-label={`More actions for ${title}`}
+          label={`More actions for ${title}`}
+          icon={<IconDots aria-hidden="true" className="size-5" />}
           {...menuTriggerProps(isMenuOpen)}
           onClick={(event) => onOpenMenu(project.id, { kind: "element", element: event.currentTarget })}
           className={cn(
             "absolute top-2 right-2 z-2 pointer-events-auto bg-black/50 text-white hover:bg-black/70 hover:text-white group-data-menu/card:opacity-100",
             REVEAL_ON_CARD,
           )}
-        >
-          <IconDots aria-hidden="true" className="size-5" />
-        </Button>
+        />
       </div>
       <div className="min-w-0">
         <button

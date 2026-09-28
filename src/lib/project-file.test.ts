@@ -141,6 +141,35 @@ describe("persistence: customSnapPoints round-trip", () => {
   });
 });
 
+describe("persistence: imported song details and hand-edited TTML round-trip", () => {
+  const edit = { source: "<tt>generated</tt>", content: "<tt>hand edited</tt>" };
+  const project = {
+    version: 3 as const,
+    savedAt: 1_758_900_000_000,
+    metadata: { title: "Song", artists: [], album: "", duration: 0 },
+    agents: DEFAULT_AGENTS,
+    lines: [],
+    granularity: "word" as const,
+    importedMetadataKeys: ["title" as const],
+    ttmlEditState: edit,
+  };
+
+  it("exports and reads back which details an import brought and the TTML edit", async () => {
+    const exported = projectFileFrom("p1", project);
+    const parsed = await readProjectFile(new File([JSON.stringify(exported)], "song.ttml-project.json"));
+    const saved = savedProjectFromFile(parsed, 1);
+    expect(saved.importedMetadataKeys).toEqual(["title"]);
+    expect(saved.ttmlEditState).toEqual(edit);
+  });
+
+  it("leaves both undefined for a file saved before the fields existed", async () => {
+    const { importedMetadataKeys: _keys, ttmlEditState: _edit, ...legacy } = project;
+    const parsed = await readProjectFile(new File([JSON.stringify(legacy)], "legacy.ttml-project.json"));
+    expect(parsed.importedMetadataKeys).toBeUndefined();
+    expect(parsed.ttmlEditState).toBeUndefined();
+  });
+});
+
 describe("projectFileFrom", () => {
   const project = {
     version: 3 as const,

@@ -1,5 +1,5 @@
 import type { LyricLine } from "@/domain/line/model";
-import type { WordTiming } from "@/domain/word/timing";
+import { trackWords } from "@/domain/line/tracks";
 import {
   STRETCH_EPS,
   type StretchAnchor,
@@ -9,7 +9,6 @@ import {
   deriveBounds,
   isFiniteWord,
   resolveStretchTargets,
-  trackWords,
 } from "@/views/timeline/stretch-targets";
 import { selectionGripEdges } from "@/views/timeline/stretch-grips";
 
@@ -59,10 +58,8 @@ function planStretchDrag(
   }
 
   const draggedTrack = targets.tracks.get(`${drag.lineId}:${drag.type}`);
-  const draggedWords = draggedTrack ? trackWords(draggedTrack) : null;
-  const draggedWord = draggedTrack?.indices.has(drag.wordIndex)
-    ? (draggedWords?.[drag.wordIndex] as WordTiming | undefined)
-    : undefined;
+  const draggedWords = draggedTrack ? trackWords(draggedTrack.line, draggedTrack.type) : null;
+  const draggedWord = draggedTrack?.indices.has(drag.wordIndex) ? draggedWords?.[drag.wordIndex] : undefined;
   if (!isFiniteWord(draggedWord)) return null;
 
   const anchor: StretchAnchor = drag.edge === "right" ? "start" : "end";

@@ -1,11 +1,5 @@
-import { getEffectiveBinding } from "@/stores/shortcut-bindings";
-import {
-  type ShortcutBinding,
-  type ShortcutDefinition,
-  type ShortcutScope,
-  SHORTCUT_REGISTRY,
-  getShortcutsByScope,
-} from "@/stores/shortcut-registry";
+import { bindingsEqual, getEffectiveBinding } from "@/stores/shortcut-bindings";
+import { type ShortcutBinding, type ShortcutScope, getShortcutsByScope } from "@/stores/shortcut-registry";
 import { isMac } from "@/utils/platform";
 
 // -- Matching -----------------------------------------------------------------
@@ -20,6 +14,57 @@ function getEventKey(event: KeyboardEvent): string {
     if (event.code.startsWith("Digit") && event.code.length === 6) return event.code.slice(5);
   }
   return event.key.length === 1 ? event.key.toLowerCase() : event.key;
+}
+
+const MODIFIER_KEYS = new Set([
+  "Shift",
+  "Alt",
+  "Control",
+  "Meta",
+  "AltGraph",
+  "CapsLock",
+  "Fn",
+  "FnLock",
+  "Hyper",
+  "Super",
+  "OS",
+]);
+const NAMED_BINDABLE_KEYS = new Set([
+  "Enter",
+  "Tab",
+  "Backspace",
+  "Delete",
+  "Insert",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
+const FUNCTION_KEY = /^F([1-9]|1\d|2[0-4])$/;
+
+function isBindableKey(key: string): boolean {
+  return key.length === 1 || NAMED_BINDABLE_KEYS.has(key) || FUNCTION_KEY.test(key);
+}
+
+function bindingFromKeyboardEvent(event: KeyboardEvent): ShortcutBinding | null {
+  if (MODIFIER_KEYS.has(event.key)) return null;
+  const key = getEventKey(event);
+  if (!isBindableKey(key)) return null;
+  const modPressed = isMac ? event.metaKey : event.ctrlKey;
+  const rawCtrl = isMac && event.ctrlKey;
+  const rawMeta = !isMac && event.metaKey;
+  return {
+    key,
+    ...(event.shiftKey && { shift: true }),
+    ...(event.altKey && { alt: true }),
+    ...(modPressed && { mod: true }),
+    ...(rawCtrl && { ctrl: true }),
+    ...(rawMeta && { meta: true }),
+  };
 }
 
 function matchesBinding(event: KeyboardEvent, binding: ShortcutBinding): boolean {
@@ -48,41 +93,9 @@ function findMatchingShortcut(event: KeyboardEvent, scope: ShortcutScope): strin
   const shortcuts = getShortcutsByScope(scope);
   for (const shortcut of shortcuts) {
     const binding = getEffectiveBinding(shortcut.id);
-    if (matchesBinding(event, binding)) return shortcut.id;
+    if (matchesBinding(event, binding)) return event.repeat && !shortcut.repeatable ? null : shortcut.id;
   }
   return null;
-}
-
-// -- Conflict Detection -------------------------------------------------------
-
-function bindingsEqual(a: ShortcutBinding, b: ShortcutBinding): boolean {
-  const aKey = a.key.length === 1 ? a.key.toLowerCase() : a.key;
-  const bKey = b.key.length === 1 ? b.key.toLowerCase() : b.key;
-  return (
-    aKey === bKey &&
-    !!a.shift === !!b.shift &&
-    !!a.alt === !!b.alt &&
-    !!a.ctrl === !!b.ctrl &&
-    !!a.meta === !!b.meta &&
-    !!a.mod === !!b.mod
-  );
-}
-
-function scopesConflict(a: ShortcutScope, b: ShortcutScope): boolean {
-  if (a === "global" || b === "global") return true;
-  return a === b;
-}
-
-function detectConflicts(id: string, newBinding: ShortcutBinding): ShortcutDefinition[] {
-  const source = SHORTCUT_REGISTRY.find((d) => d.id === id);
-  if (!source) return [];
-
-  return SHORTCUT_REGISTRY.filter((def) => {
-    if (def.id === id) return false;
-    if (!scopesConflict(source.scope, def.scope)) return false;
-    const effective = getEffectiveBinding(def.id);
-    return bindingsEqual(effective, newBinding);
-  });
 }
 
 // -- Reserved Browser Shortcuts -----------------------------------------------
@@ -145,4 +158,4 @@ function isReservedBrowserShortcut(binding: ShortcutBinding): boolean {
 
 // -- Exports ------------------------------------------------------------------
 
-export { findMatchingShortcut, detectConflicts, isReservedBrowserShortcut };
+export { bindingFromKeyboardEvent, findMatchingShortcut, isReservedBrowserShortcut };

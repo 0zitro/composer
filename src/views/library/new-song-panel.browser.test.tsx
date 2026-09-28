@@ -8,8 +8,8 @@ import { useProjectStore } from "@/stores/project";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { allowConsole } from "@/test/console-guard";
 import { LocationProbe } from "@/test/location-probe";
+import { saveInputTitled, seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { render } from "@/test/render";
-import { saveArgsTitled, seedStoredProject, songTitled, storedProject } from "@/test/projects";
 import { NewSongPanel } from "@/views/library/new-song-panel";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
@@ -43,8 +43,12 @@ describe("NewSongPanel", () => {
     await userEvent.upload(screen.getByLabelText("Upload audio file"), createAudioFile("bravo.wav"));
     await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent("/editor");
     expect(openProjectIdSnapshot()).not.toBe("a");
-    const source = useAudioStore.getState().source;
-    expect(source?.type === "file" ? source.file.name : null).toBe("bravo.wav");
+    await expect
+      .poll(() => {
+        const source = useAudioStore.getState().source;
+        return source?.type === "file" ? source.file.name : null;
+      })
+      .toBe("bravo.wav");
     expect(useProjectStore.getState().metadata.title).toBe("bravo");
     expect((await loadProjectRecord("a"))?.metadata.title).toBe("Alpha");
   });
@@ -97,7 +101,7 @@ describe("NewSongPanel", () => {
       await userEvent.keyboard(`${VIDEO_ID}{Enter}`);
       const newId = openProjectIdSnapshot();
       expect(newId).toBeDefined();
-      debouncedSave(...saveArgsTitled(VIDEO_ID));
+      debouncedSave(saveInputTitled(VIDEO_ID));
       await flushPendingSave();
       expect(await loadProjectRecord(newId ?? "")).toBeDefined();
 

@@ -1,6 +1,5 @@
-import { DEFAULT_AGENTS } from "@/domain/agent/colors";
-import { normalizeLoadedMetadata } from "@/domain/project/normalize-metadata";
 import { type ProjectTab, isProjectTab } from "@/domain/project/tab";
+import { applySavedProject } from "@/lib/apply-saved-project";
 import { stripLamePriming } from "@/lib/priming-migration";
 import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectIndexEntry, saveProjectRecord } from "@/lib/project-repository";
@@ -8,9 +7,7 @@ import { loadProjectRecord } from "@/lib/project-storage";
 import { type SavedProject, upgradeSavedProject } from "@/lib/saved-project";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/domain/project/syllable-split-defaults";
 import { useSeparationStore } from "@/stores/separation";
-import { useSettingsStore } from "@/stores/settings";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 
 // -- Types --------------------------------------------------------------------
@@ -63,19 +60,7 @@ function resetProjectScopedStores(): void {
   useTimelineStore.getState().resetProjectScope();
 }
 
-function warnAboutMalformedFields(project: SavedProject): void {
-  const issues: string[] = [];
-  if (!project.lines) issues.push("missing lines");
-  if (!project.agents || project.agents.length === 0) issues.push("missing or empty agents");
-  if (project.granularity === undefined) issues.push("missing granularity");
-  if (issues.length === 0) return;
-  console.warn(
-    `${LOG_PREFIX} loaded project has malformed fields (${issues.join(", ")}); using safe defaults. The raw record is still in IndexedDB; visit /recover to download it.`,
-  );
-}
-
-function applySavedProject(project: SavedProject, audio: File | undefined): void {
-  warnAboutMalformedFields(project);
+function applyStoredProject(project: SavedProject, audio: File | undefined): void {
   // The stem goes first: useAutoSeparate keeps it only if it is set before the source changes.
   if (project.currentStem) useSeparationStore.getState().restoreCurrentStem(project.currentStem);
 
@@ -84,25 +69,18 @@ function applySavedProject(project: SavedProject, audio: File | undefined): void
   else if (audio) useAudioStore.getState().setSource({ type: "file", file: audio });
   else if (savedSource) useAudioStore.getState().expectProjectAudio(savedSource);
 
-  const state = useProjectStore.getState();
-  state.setMetadata(normalizeLoadedMetadata(project.metadata));
-  state.setLines(project.lines ?? []);
-  state.setGroups(project.groups ?? []);
-  state.setGranularity(project.granularity ?? useSettingsStore.getState().defaultGranularity);
-  state.setSyllableSplitDefaults(project.syllableSplitDefaults ?? DEFAULT_SYLLABLE_SPLIT_DEFAULTS);
-  state.setAgents(project.agents && project.agents.length > 0 ? project.agents : DEFAULT_AGENTS);
-  state.setDismissedSuggestions(project.dismissedSuggestions ?? []);
-  state.setDismissedExplicitSuggestions(project.dismissedExplicitSuggestions ?? []);
-  state.setPrimingStripped(project.primingStripped ?? false);
-  state.setCustomSnapPoints(project.customSnapPoints ?? []);
-  if (project.hasUnexportedImport) state.markSongDetailsImported();
+  const issues = applySavedProject(project, "storage");
+  if (issues.length === 0) return;
+  console.warn(
+    `${LOG_PREFIX} loaded project has malformed fields (${issues.join(", ")}); using safe defaults. The raw record is still in IndexedDB; visit /recover to download it.`,
+  );
 }
 
 function applyProjectToStores(payload: RestorePayload): void {
   restoring = true;
   try {
     resetProjectScopedStores();
-    if (payload.project) applySavedProject(payload.project, payload.audio);
+    if (payload.project) applyStoredProject(payload.project, payload.audio);
     else if (payload.audio) useAudioStore.getState().setSource({ type: "file", file: payload.audio });
     if (payload.lastTab) useProjectStore.getState().setActiveTab(payload.lastTab);
     useProjectStore.getState().markClean();

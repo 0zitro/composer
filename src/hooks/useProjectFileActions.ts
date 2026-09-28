@@ -4,7 +4,7 @@ import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave } from "@/lib/persistence-debounce";
 import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
 import { importProjectFromInput } from "@/lib/project-import";
-import { currentSaveArgs } from "@/lib/project-snapshot";
+import { currentSaveInput } from "@/lib/project-snapshot";
 import { useConfirm } from "@/stores/confirm-store";
 import { useCallback } from "react";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ function useProjectFileActions() {
   const confirm = useConfirm();
 
   const handleExportProject = useCallback(() => {
-    downloadProjectFile(projectFileFrom(openProjectIdSnapshot(), buildSavedProject(...currentSaveArgs())));
+    downloadProjectFile(projectFileFrom(openProjectIdSnapshot(), buildSavedProject(currentSaveInput())));
   }, []);
 
   const handleImportProject = importProjectFromInput;

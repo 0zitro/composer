@@ -1,6 +1,6 @@
 import { bindSaveTarget } from "@/lib/open-project-session";
-import { type ProjectSaveArgs, saveProjectTo } from "@/lib/persistence";
-import { currentSaveArgs } from "@/lib/project-snapshot";
+import { type ProjectSaveInput, saveProjectTo } from "@/lib/persistence";
+import { currentSaveInput } from "@/lib/project-snapshot";
 import { awaitInFlightSaves, setSavePending, trackSave } from "@/lib/save-status";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
@@ -13,7 +13,7 @@ const LOG_PREFIX = "[SaveQueue]";
 
 interface PendingSave {
   target: Promise<string>;
-  args: ProjectSaveArgs;
+  input: ProjectSaveInput;
 }
 
 // -- Module state -------------------------------------------------------------
@@ -38,7 +38,7 @@ function takePendingSave(): Promise<void> {
   }
   const written = trackSave(
     "project",
-    saveProjectTo(pending.target, pending.args, useProjectStore.getState().activeTab),
+    saveProjectTo(pending.target, pending.input, useProjectStore.getState().activeTab),
   );
   setSavePending(false);
   return written;
@@ -46,8 +46,8 @@ function takePendingSave(): Promise<void> {
 
 // -- Public API ---------------------------------------------------------------
 
-function debouncedSave(...args: ProjectSaveArgs): void {
-  pendingSave = { target: bindSaveTarget(), args };
+function debouncedSave(input: ProjectSaveInput): void {
+  pendingSave = { target: bindSaveTarget(), input };
   setSavePending(true);
   clearSaveTimer();
   saveTimeout = setTimeout(() => {
@@ -72,7 +72,7 @@ function flushPendingSaveQuietly(): void {
 }
 
 function saveOpenProjectNow(): Promise<void> {
-  debouncedSave(...currentSaveArgs());
+  debouncedSave(currentSaveInput());
   return flushPendingSave();
 }
 

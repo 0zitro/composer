@@ -9,7 +9,7 @@ import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile } from "@/test/audio-fixtures";
-import { saveArgsTitled, seedStoredProject, songTitled } from "@/test/projects";
+import { saveInputTitled, seedStoredProject, songTitled } from "@/test/projects";
 import { beforeEach, describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
@@ -47,13 +47,13 @@ describe("createProject", () => {
     const id = createProject();
     await expect.poll(getOpenProjectId).toBe(id);
     expect((await listProjectIndex()).map((entry) => entry.id)).toEqual(["a"]);
-    await saveCurrentProject(saveArgsTitled("Fresh"));
+    await saveCurrentProject(saveInputTitled("Fresh"));
     expect((await listProjectIndex()).map((entry) => entry.id).toSorted()).toEqual(["a", id].toSorted());
   });
 
   it("flushes the previous project's pending save into it", async () => {
     await seedOpenProject();
-    debouncedSave(...saveArgsTitled("Alpha (edited)"));
+    debouncedSave(saveInputTitled("Alpha (edited)"));
     createProject();
     await expect.poll(async () => (await loadProjectRecord("a"))?.metadata.title).toBe("Alpha (edited)");
   });
@@ -89,7 +89,7 @@ describe("deleteProject", () => {
   it("the next save after deleting the open project starts a new project", async () => {
     await seedOpenProject();
     await deleteProject("a");
-    await saveCurrentProject(saveArgsTitled("Fresh"));
+    await saveCurrentProject(saveInputTitled("Fresh"));
     const index = await listProjectIndex();
     expect(index.map((entry) => entry.title)).toEqual(["Fresh"]);
     expect(index[0].id).not.toBe("a");
@@ -107,7 +107,7 @@ describe("deleteProject", () => {
   describe("regressions", () => {
     it("regression: a pending save of the deleted open project never resurrects it", async () => {
       await seedOpenProject();
-      debouncedSave(...saveArgsTitled("Alpha (edited)"));
+      debouncedSave(saveInputTitled("Alpha (edited)"));
       await deleteProject("a");
       await flushPendingSave();
       expect(await loadProjectRecord("a")).toBeUndefined();
@@ -116,7 +116,7 @@ describe("deleteProject", () => {
 
     it("regression: an immediate save already in flight when the project is deleted writes nothing", async () => {
       await seedOpenProject();
-      const inFlight = saveCurrentProject(saveArgsTitled("Alpha (late)"));
+      const inFlight = saveCurrentProject(saveInputTitled("Alpha (late)"));
       await deleteProject("a");
       await expect(inFlight).rejects.toBeInstanceOf(ProjectDeletedError);
       expect(await loadProjectRecord("a")).toBeUndefined();
@@ -130,7 +130,7 @@ describe("deleteProject", () => {
       await opening;
       expect(openProjectIdSnapshot()).not.toBe("b");
       useProjectStore.getState().setMetadata({ title: "Still writable" });
-      debouncedSave(...saveArgsTitled("Still writable"));
+      debouncedSave(saveInputTitled("Still writable"));
       await flushPendingSave();
       const currentId = openProjectIdSnapshot();
       expect(currentId).toBeDefined();

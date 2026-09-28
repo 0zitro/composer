@@ -1,6 +1,6 @@
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import { keepsYouTubeAudio } from "@/domain/storage/audio-retention";
-import type { ProjectSaveArgs } from "@/lib/persistence";
+import type { ProjectSaveInput } from "@/lib/persistence";
 import { type AudioSource, useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useSeparationStore } from "@/stores/separation";
@@ -36,37 +36,39 @@ function hadStoredAudio(source: AudioSource): boolean {
   return playableFile(source) !== null;
 }
 
-// -- Save arguments -----------------------------------------------------------
+// -- Save input ---------------------------------------------------------------
 
-function currentSaveArgs(): ProjectSaveArgs {
+function currentSaveInput(): ProjectSaveInput {
   const projectState = useProjectStore.getState();
   const audioState = useAudioStore.getState();
-  return [
-    projectState.metadata,
-    projectState.agents,
-    projectState.lines,
-    projectState.groups,
-    projectState.granularity,
-    projectState.syllableSplitDefaults,
-    toSavedAudioSource(audioState.source) ?? audioState.expectedAudio ?? undefined,
-    projectState.dismissedSuggestions,
-    projectState.dismissedExplicitSuggestions,
-    useSeparationStore.getState().currentStem,
-    projectState.primingStripped,
-    projectState.customSnapPoints,
-    projectState.hasUnexportedImport,
-  ];
+  return {
+    metadata: projectState.metadata,
+    agents: projectState.agents,
+    lines: projectState.lines,
+    groups: projectState.groups,
+    granularity: projectState.granularity,
+    syllableSplitDefaults: projectState.syllableSplitDefaults,
+    audioSource: toSavedAudioSource(audioState.source) ?? audioState.expectedAudio ?? undefined,
+    dismissedSuggestions: projectState.dismissedSuggestions,
+    dismissedExplicitSuggestions: projectState.dismissedExplicitSuggestions,
+    currentStem: useSeparationStore.getState().currentStem,
+    primingStripped: projectState.primingStripped,
+    customSnapPoints: projectState.customSnapPoints,
+    hasUnexportedImport: projectState.hasUnexportedImport,
+    importedMetadataKeys: projectState.importedMetadataKeys,
+    ttmlEditState: projectState.ttmlEditState,
+  };
 }
 
-function buildSaveArgs(): ProjectSaveArgs | null {
+function buildSaveInput(): ProjectSaveInput | null {
   const projectState = useProjectStore.getState();
   const audioState = useAudioStore.getState();
   // An audio-only session still saves: the stem and the audio source kind must survive a reload.
   const hasContent = projectState.lines.length > 0 || projectState.metadata.title;
   if (!hasContent && audioState.source === null && audioState.expectedAudio === null) return null;
-  return currentSaveArgs();
+  return currentSaveInput();
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { storedAudioFile, hadStoredAudio, keepsYouTubeAudioNow, buildSaveArgs, currentSaveArgs };
+export { storedAudioFile, hadStoredAudio, keepsYouTubeAudioNow, buildSaveInput, currentSaveInput };

@@ -16,7 +16,10 @@ function showStorageFullToast(freedBytes: number): void {
   toast.error("Storage is full", {
     id: STORAGE_FULL_TOAST_ID,
     description,
-    action: { label: "Manage storage", onClick: () => useUIStore.getState().openSettings("storage-section") },
+    action: {
+      label: "Manage storage",
+      onClick: () => useUIStore.getState().openSettings({ target: { section: "storage" } }),
+    },
   });
 }
 
