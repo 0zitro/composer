@@ -1,14 +1,16 @@
-import { describe, expect, it } from "vitest";
 import { DEFAULTS } from "@/stores/settings";
 import {
-  SETTING_IDS,
   SETTINGS_SECTIONS,
+  SETTING_IDS,
+  isSettingVisible,
   readSettingOn,
   sectionLabel,
+  settingDescription,
   settingEntry,
   settingIdsInSection,
   settingKeyOf,
 } from "@/stores/settings-catalog";
+import { describe, expect, it } from "vitest";
 
 const SECTION_ORDER = SETTINGS_SECTIONS.map((section) => section.id);
 
@@ -107,6 +109,41 @@ describe("readSettingOn", () => {
 
     it("returns null for a setting with no store key", () => {
       expect(readSettingOn("theme", DEFAULTS)).toBeNull();
+    });
+  });
+});
+
+describe("settingDescription", () => {
+  it("returns the static description for a setting with no override", () => {
+    expect(settingDescription("followPlayhead", DEFAULTS)).toBe(settingEntry("followPlayhead").description);
+  });
+
+  it("computes the description from state when the entry declares one", () => {
+    expect(settingDescription("keepYouTubeAudio", { ...DEFAULTS, keepYouTubeAudio: "always" })).toBe(
+      "YouTube audio is kept, so projects open offline. Cleanup can still remove it.",
+    );
+  });
+
+  describe("edge cases", () => {
+    it("reacts to the bridge flag through the same override", () => {
+      const bridgeOn = { ...DEFAULTS, experiments: { ...DEFAULTS.experiments, youtubeBridge: true } };
+      const bridgeOff = { ...DEFAULTS, experiments: { ...DEFAULTS.experiments, youtubeBridge: false } };
+      expect(settingDescription("keepYouTubeAudio", bridgeOn)).not.toBe(
+        settingDescription("keepYouTubeAudio", bridgeOff),
+      );
+    });
+  });
+});
+
+describe("isSettingVisible", () => {
+  it("is true for a setting with no visibility predicate", () => {
+    expect(isSettingVisible("followPlayhead", DEFAULTS)).toBe(true);
+  });
+
+  describe("edge cases", () => {
+    it("reads the predicate when the entry declares one", () => {
+      expect(isSettingVisible("storageLimit", { ...DEFAULTS, smartCleanup: false })).toBe(false);
+      expect(isSettingVisible("storageLimit", { ...DEFAULTS, smartCleanup: true })).toBe(true);
     });
   });
 });

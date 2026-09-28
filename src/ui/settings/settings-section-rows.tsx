@@ -1,6 +1,14 @@
-import { type SettingId, type SettingsSectionId, settingEntry, settingIdsInSection } from "@/stores/settings-catalog";
+import { useSettingsStore } from "@/stores/settings";
+import {
+  type SettingId,
+  type SettingsSectionId,
+  isSettingVisible,
+  settingEntry,
+  settingIdsInSection,
+} from "@/stores/settings-catalog";
 import { SettingsGroup } from "@/ui/settings/setting-controls";
 import { SettingRow } from "@/ui/settings/setting-row";
+import { useShallow } from "zustand/react/shallow";
 
 // -- Types --------------------------------------------------------------------
 
@@ -24,21 +32,26 @@ function runsOf(ids: readonly SettingId[]): SettingRowRun[] {
 
 // -- Component -----------------------------------------------------------------
 
-const SettingsSectionRows: React.FC<{ section: SettingsSectionId }> = ({ section }) => (
-  <div className="divide-y divide-composer-border">
-    {runsOf(settingIdsInSection(section)).map((run) =>
-      run.group ? (
-        <SettingsGroup key={run.ids[0]} title={run.group}>
-          {run.ids.map((id) => (
-            <SettingRow key={id} id={id} />
-          ))}
-        </SettingsGroup>
-      ) : (
-        run.ids.map((id) => <SettingRow key={id} id={id} />)
-      ),
-    )}
-  </div>
-);
+const SettingsSectionRows: React.FC<{ section: SettingsSectionId }> = ({ section }) => {
+  const ids = settingIdsInSection(section);
+  const visibleIds = useSettingsStore(useShallow((state) => ids.filter((id) => isSettingVisible(id, state))));
+
+  return (
+    <div className="divide-y divide-composer-border">
+      {runsOf(visibleIds).map((run) =>
+        run.group ? (
+          <SettingsGroup key={run.ids[0]} title={run.group}>
+            {run.ids.map((id) => (
+              <SettingRow key={id} id={id} />
+            ))}
+          </SettingsGroup>
+        ) : (
+          run.ids.map((id) => <SettingRow key={id} id={id} />)
+        ),
+      )}
+    </div>
+  );
+};
 
 // -- Exports -------------------------------------------------------------------
 

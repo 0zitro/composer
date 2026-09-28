@@ -28,6 +28,8 @@ interface SettingEntry {
   settingKey?: keyof SettingsState;
   readOn?: (state: SettingsState) => boolean;
   group?: string;
+  describe?: (state: SettingsState) => string;
+  visibleWhen?: (state: SettingsState) => boolean;
 }
 
 // -- Sections ------------------------------------------------------------------
@@ -82,7 +84,27 @@ function readSettingOn(id: SettingId, state: SettingsState): boolean | null {
   return typeof value === "boolean" ? value : null;
 }
 
+function settingDescription(id: SettingId, state: SettingsState): string {
+  const entry = settingEntry(id);
+  return entry.describe ? entry.describe(state) : entry.description;
+}
+
+function isSettingVisible(id: SettingId, state: SettingsState): boolean {
+  const { visibleWhen } = settingEntry(id);
+  return visibleWhen ? visibleWhen(state) : true;
+}
+
 // -- Exports -------------------------------------------------------------------
 
-export { SETTING_IDS, SETTINGS_SECTIONS, readSettingOn, sectionLabel, settingEntry, settingIdsInSection, settingKeyOf };
+export {
+  SETTING_IDS,
+  SETTINGS_SECTIONS,
+  isSettingVisible,
+  readSettingOn,
+  sectionLabel,
+  settingDescription,
+  settingEntry,
+  settingIdsInSection,
+  settingKeyOf,
+};
 export type { SettingEntry, SettingHint, SettingId, SettingsSectionId };

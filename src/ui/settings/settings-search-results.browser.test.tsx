@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { userEvent } from "vitest/browser";
 import { useSettingsStore } from "@/stores/settings";
 import { useUIStore } from "@/stores/ui";
 import { render } from "@/test/render";
 import { searchSettings } from "@/ui/settings/search-settings";
 import { SettingsSearchQueryContext } from "@/ui/settings/settings-search-query";
 import { SettingsSearchResults } from "@/ui/settings/settings-search-results";
+import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 
 function renderResults(query: string) {
   const results = searchSettings(query);
@@ -52,6 +52,18 @@ describe("SettingsSearchResults", () => {
       await expect.element(screen.getByRole("status")).toHaveTextContent('No settings match "zzzqqq"');
       await screen.getByRole("button", { name: "Clear search" }).click();
       expect(useUIStore.getState().settingsQuery).toBe("");
+    });
+
+    it("hides a matching row whose visibility predicate is false", async () => {
+      useSettingsStore.setState({ smartCleanup: false });
+      const screen = await renderResults("quota limit");
+      expect(screen.getByRole("button", { name: "Storage limit" }).elements()).toHaveLength(0);
+    });
+
+    it("drops a group left with no visible matches", async () => {
+      useSettingsStore.setState({ smartCleanup: false });
+      const screen = await renderResults("quota limit");
+      await expect.element(screen.getByRole("status")).toHaveTextContent('No settings match "quota limit"');
     });
   });
 });

@@ -1,11 +1,13 @@
-import { type SettingId, settingEntry } from "@/stores/settings-catalog";
+import { useSettingsStore } from "@/stores/settings";
+import { type SettingId, settingDescription, settingEntry } from "@/stores/settings-catalog";
 import { HighlightMatches } from "@/ui/highlight-matches";
 import { useSettingsSearchQuery } from "@/ui/settings/settings-search-query";
 
 // -- Component -----------------------------------------------------------------
 
 const SettingText: React.FC<{ id: SettingId }> = ({ id }) => {
-  const { label, description } = settingEntry(id);
+  const { label } = settingEntry(id);
+  const description = useSettingsStore((state) => settingDescription(id, state));
   const query = useSettingsSearchQuery();
   return (
     <div className="flex flex-col gap-0.5">

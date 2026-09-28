@@ -32,6 +32,10 @@ describe("searchSettings", () => {
     expect(search("persist").settings).toEqual(["storageProtection"]);
   });
 
+  it("finds the keep YouTube audio row by a keyword not in its copy", () => {
+    expect(search("cache").settings).toEqual(["keepYouTubeAudio"]);
+  });
+
   it("finds shortcuts by description", () => {
     expect(search("toggle snap").shortcuts.map((definition) => definition.id)).toContain("timeline.toggleSnap");
   });
