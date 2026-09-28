@@ -46,7 +46,7 @@ describe("StorageProtectionNotice", () => {
       expect(screen.getByRole("listitem").elements()).toHaveLength(2);
       await expect
         .element(
-          screen.getByText("Install Composer as an app: browser menu > Cast, save, and share > Install page as app."),
+          screen.getByText("Install Composer as an app: open the browser menu and choose Install page as app."),
         )
         .toBeInTheDocument();
       await expect.element(screen.getByText("Bookmark Composer and keep using it.")).toBeInTheDocument();

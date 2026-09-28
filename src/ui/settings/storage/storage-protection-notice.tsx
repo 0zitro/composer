@@ -18,7 +18,7 @@ const NOTICE_STYLES = "flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[
 const UNPROTECTED_DESCRIPTION = "The browser can clear your projects, lyrics included, when disk space runs low.";
 const CHROMIUM_STEPS_INTRO = "Your browser decides this on its own. Either of these usually works:";
 const CHROMIUM_STEPS = [
-  "Install Composer as an app: browser menu > Cast, save, and share > Install page as app.",
+  "Install Composer as an app: open the browser menu and choose Install page as app.",
   "Bookmark Composer and keep using it.",
 ];
 const CHROMIUM_STEPS_OUTRO = "Then click Protect storage again. This doesn't work in Incognito.";
