@@ -66,7 +66,7 @@ const StorageProtectionRow: React.FC<StorageProtectionRowProps> = ({ status, bro
   if (status === undefined) return null;
 
   return (
-    <SettingRowLayout className={status === "unprotected" && browser === "chromium" ? "items-start" : undefined}>
+    <SettingRowLayout>
       <SettingText
         id="storageProtection"
         badge={<ProtectionChip status={status} />}

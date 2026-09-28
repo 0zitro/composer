@@ -56,7 +56,14 @@ const DeleteAllProjectsRow: React.FC<{ projectCount: number }> = ({ projectCount
   return (
     <SettingRowLayout>
       <SettingText id="deleteAllProjects" />
-      <Button variant="danger" size="sm" hasIcon onClick={deleteAll} disabled={projectCount === 0}>
+      <Button
+        variant="danger"
+        size="sm"
+        hasIcon
+        onClick={deleteAll}
+        disabled={projectCount === 0}
+        className="bg-composer-negative/10"
+      >
         <IconTrash aria-hidden="true" className="size-3.5" />
         Delete all
       </Button>

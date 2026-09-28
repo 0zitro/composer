@@ -7,6 +7,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { settingDescription, settingEntry } from "@/stores/settings-catalog";
 import { Button } from "@/ui/button";
 import { SegmentedControl } from "@/ui/segmented-control";
+import { SettingRowLayout } from "@/ui/settings/setting-row-layout";
 import { ProjectAudioRow } from "@/ui/settings/storage/project-audio-row";
 import { AUDIO_FILTER_OPTIONS } from "@/ui/settings/storage/storage-options";
 import { formatProjectCount } from "@/utils/project-count";
@@ -97,10 +98,10 @@ const ProjectAudioList: React.FC<ProjectAudioListProps> = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
+      <SettingRowLayout className="py-0">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-sm font-medium text-composer-text">{label}</span>
-          <span className="text-xs text-composer-text-muted">{description}</span>
+          <span className="text-xs text-composer-text-muted text-pretty">{description}</span>
         </div>
         {showYouTube && (
           <SegmentedControl
@@ -110,7 +111,7 @@ const ProjectAudioList: React.FC<ProjectAudioListProps> = ({
             onChange={setFilter}
           />
         )}
-      </div>
+      </SettingRowLayout>
       {rows.length > 0 ? (
         <ul className="-mx-2 m-0 list-none p-0">
           {rows.map((entry) => (
@@ -124,7 +125,9 @@ const ProjectAudioList: React.FC<ProjectAudioListProps> = ({
           ))}
         </ul>
       ) : (
-        <p className="text-[13px] text-composer-text-muted select-none">No audio is stored on this device.</p>
+        <p className="rounded-lg bg-composer-input px-3 py-2.5 text-xs text-composer-text-muted select-none">
+          No audio is stored on this device.
+        </p>
       )}
       {(canClearYouTube || canClearStems) && (
         <div className="flex flex-wrap gap-2">

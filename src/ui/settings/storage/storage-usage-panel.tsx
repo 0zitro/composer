@@ -54,7 +54,7 @@ const StorageUsagePanel: React.FC<StorageUsagePanelProps> = ({ usage, freeBytes,
           </small>
         </span>
         {freeBytes !== undefined && (
-          <span className="text-xs text-composer-text-muted select-text">
+          <span className="text-[13px] text-composer-text-muted select-text">
             About {formatApproximateFileSize(freeBytes)} free
           </span>
         )}
