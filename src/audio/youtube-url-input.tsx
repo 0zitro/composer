@@ -1,9 +1,13 @@
-import { useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
+import { isYouTubeLoadError, isYouTubeLoadFailure, useLoadYouTubeSource } from "@/hooks/useLoadYouTubeSource";
 import { useAudioStore } from "@/stores/audio";
 import { Button } from "@/ui/button";
 import { INVALID_YOUTUBE_LINK_MESSAGE, extractVideoId } from "@/utils/youtube-url";
 import { IconBrandYoutube, IconLoader2 } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
+
+// -- Constants ----------------------------------------------------------------
+
+const LOG_PREFIX = "[YouTubeUrlInput]";
 
 // -- Component ----------------------------------------------------------------
 
@@ -34,8 +38,12 @@ const YouTubeUrlInput: React.FC<YouTubeUrlInputProps> = ({
     try {
       await (onLoadVideo ?? loadYouTubeSource)(videoId);
       setValue("");
-    } catch {
-      // Error is surfaced via the store's youtubeLoadError; keep the input populated for retry.
+    } catch (error) {
+      if (isYouTubeLoadError(error) && !isYouTubeLoadFailure(error)) {
+        console.info(LOG_PREFIX, "ignored a superseded video load", error);
+        return;
+      }
+      // Real load failures are surfaced via the store's youtubeLoadError; keep the input populated for retry.
     }
   }, [value, loadYouTubeSource, onLoadVideo]);
 

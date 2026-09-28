@@ -1,11 +1,12 @@
 import { restoreOpenProject } from "@/lib/open-project";
 import { useAudioStore } from "@/stores/audio";
 import { useUIStore } from "@/stores/ui";
-import { createAudioFile } from "@/test/audio-fixtures";
+import { createAudioFile, createUnplayableAudioFile } from "@/test/audio-fixtures";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
 import { MissingAudioPanel } from "@/views/import/missing-audio-panel";
+import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -21,6 +22,7 @@ async function openMissingFile() {
     <>
       <MissingAudioPanel expected={{ kind: "file", name: "city.wav" }} />
       <ConfirmModalHost />
+      <Toaster />
     </>,
   );
 }
@@ -82,6 +84,15 @@ describe("MissingAudioPanel · local file", () => {
     await expect
       .poll(() => useAudioStore.getState().expectedAudio)
       .toEqual({ kind: "youtube", videoId: "dQw4w9WgXcQ" });
+  });
+
+  describe("error paths", () => {
+    it("keeps the file missing and shows a toast when the dropped file isn't playable", async () => {
+      const screen = await openMissingFile();
+      await userEvent.upload(screen.getByLabelText("Upload audio file"), createUnplayableAudioFile());
+      await expect.element(screen.getByText("Couldn't link that file")).toBeInTheDocument();
+      expect(sourceFileName()).toBeNull();
+    });
   });
 });
 

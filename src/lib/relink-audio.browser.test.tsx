@@ -1,4 +1,5 @@
 import { usePersistence } from "@/hooks/usePersistence";
+import { openProject as switchToProject } from "@/lib/open-project";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectIndexEntry } from "@/lib/project-repository";
@@ -9,25 +10,28 @@ import type { SavedProject } from "@/lib/saved-project";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
-import { createAudioFile } from "@/test/audio-fixtures";
-import { seedStoredProject } from "@/test/projects";
+import { createAudioFile, createUnplayableAudioFile } from "@/test/audio-fixtures";
+import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
+import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
+import type { RenderResult } from "vitest-browser-react";
 
 // -- Helpers ------------------------------------------------------------------
 
 const PersistenceHost: React.FC = () => {
   usePersistence();
-  return null;
+  return <Toaster />;
 };
 
-async function openProject(project: Partial<SavedProject>): Promise<void> {
+async function openProject(project: Partial<SavedProject>): Promise<RenderResult> {
   await seedStoredProject("p", { open: true, project });
-  await render(<PersistenceHost />);
+  const screen = await render(<PersistenceHost />);
   await getPersistenceSettled();
+  return screen;
 }
 
-function openMissingFile(): Promise<void> {
+function openMissingFile(): Promise<RenderResult> {
   return openProject({
     metadata: { title: "City", artists: ["M83"], album: "Hurry Up", duration: 243 },
     audioSource: { kind: "file", name: "city.wav" },
@@ -87,6 +91,32 @@ describe("relinkProjectAudioFile", () => {
       await awaitInFlightSaves();
       expect((await loadProjectRecord("p"))?.audioSource).toEqual({ kind: "file", name: "local.wav" });
       expect((await loadProjectAudio("p"))?.name).toBe("local.wav");
+    });
+
+    it("returns false and writes nothing when the project changes while the confirm is open", async () => {
+      await openMissingFile();
+      await seedStoredProject("q", { project: songTitled("Other Song") });
+      const unsubscribe = useConfirmStore.subscribe((state) => {
+        if (!state.isOpen) return;
+        unsubscribe();
+        void switchToProject("q").then(() => state.resolveAndClose(true, false));
+      });
+
+      expect(await relinkProjectAudioFile(createAudioFile("other.wav"))).toBe(false);
+      await awaitInFlightSaves();
+      expect((await loadProjectRecord("p"))?.audioSource).toEqual({ kind: "file", name: "city.wav" });
+      expect((await loadProjectRecord("q"))?.audioSource).toBeUndefined();
+    });
+  });
+
+  describe("error paths", () => {
+    it("keeps the audio missing and shows a toast when the file can't be played", async () => {
+      const screen = await openMissingFile();
+      expect(await relinkProjectAudioFile(createUnplayableAudioFile())).toBe(false);
+      expect(useAudioStore.getState().source).toBeNull();
+      expect(useAudioStore.getState().expectedAudio).toEqual({ kind: "file", name: "city.wav" });
+      expect((await loadProjectRecord("p"))?.audioSource).toEqual({ kind: "file", name: "city.wav" });
+      await expect.element(screen.getByText("Couldn't link that file")).toBeInTheDocument();
     });
   });
 });

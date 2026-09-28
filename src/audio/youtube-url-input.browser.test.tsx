@@ -1,7 +1,8 @@
 import { YouTubeUrlInput } from "@/audio/youtube-url-input";
+import { waitForYouTubeLoad } from "@/hooks/useLoadYouTubeSource";
 import { useAudioStore } from "@/stores/audio";
 import { render } from "@/test/render";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 const VALID_VIDEO_ID = "dQw4w9WgXcQ";
@@ -119,5 +120,25 @@ describe("YouTubeUrlInput", () => {
     await userEvent.keyboard("{Enter}");
     expect(loaded).toEqual([VALID_VIDEO_ID]);
     expect(useAudioStore.getState().source).toBeNull();
+  });
+
+  describe("error paths", () => {
+    it("logs a superseded video load instead of swallowing it silently", async () => {
+      const info = vi.spyOn(console, "info");
+      const screen = await render(
+        <YouTubeUrlInput
+          onLoadVideo={async (videoId) => {
+            useAudioStore.getState().setYouTubeSource(videoId);
+            const pending = waitForYouTubeLoad(videoId);
+            useAudioStore.getState().setSource(null);
+            await pending;
+          }}
+        />,
+      );
+      await screen.getByPlaceholder(/YouTube URL/i).fill(VALID_VIDEO_ID);
+      await userEvent.keyboard("{Enter}");
+      await expect.poll(() => info.mock.calls.length).toBeGreaterThan(0);
+      expect(info.mock.calls[0][0]).toBe("[YouTubeUrlInput]");
+    });
   });
 });

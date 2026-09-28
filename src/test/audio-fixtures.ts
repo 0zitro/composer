@@ -38,6 +38,10 @@ function createAudioFile(name = "silence.wav"): File {
   return new File([SILENT_WAV_BYTES], name, { type: "audio/wav" });
 }
 
+function createUnplayableAudioFile(name = "unplayable.mp3"): File {
+  return new File(["not real audio data"], name, { type: "audio/mpeg" });
+}
+
 // A ~0.3-second stereo 44.1 kHz silent mp3, used by tests that need a real
 // decodable mp3 source (the audio engine's decode-to-wav path).
 const SILENT_MP3_BASE64 =
@@ -108,4 +112,4 @@ function bufferToBlobUrl(audioBuffer: AudioBuffer): string {
   return URL.createObjectURL(blob);
 }
 
-export { bufferToBlobUrl, createAudioFile, createMp3File, encodeWav, makeSineBuffer };
+export { bufferToBlobUrl, createAudioFile, createMp3File, createUnplayableAudioFile, encodeWav, makeSineBuffer };

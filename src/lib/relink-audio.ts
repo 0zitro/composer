@@ -1,9 +1,11 @@
+import { probeAudioFile } from "@/audio/probe-audio-file";
 import type { SavedAudioSource } from "@/domain/project/audio-source";
 import { waitForYouTubeLoad } from "@/hooks/useLoadYouTubeSource";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { saveOpenProjectNow } from "@/lib/persistence-debounce";
 import { useAudioStore } from "@/stores/audio";
 import { useConfirmStore } from "@/stores/confirm-store";
+import { toast } from "sonner";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -23,6 +25,11 @@ function needsConfirmation(expected: SavedAudioSource | null, file: File): expec
 // -- Relinking ----------------------------------------------------------------
 
 async function relinkProjectAudioFile(file: File): Promise<boolean> {
+  const probe = await probeAudioFile(file);
+  if (!probe.ok) {
+    toast.error("Couldn't link that file");
+    return false;
+  }
   const projectId = openProjectIdSnapshot();
   const expected = useAudioStore.getState().expectedAudio;
   if (needsConfirmation(expected, file) && !(await confirmDifferentFile(expected.name, file.name))) return false;

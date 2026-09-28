@@ -7,7 +7,7 @@ import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectRecord } from "@/lib/project-storage";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { createAudioFile } from "@/test/audio-fixtures";
+import { createAudioFile, createUnplayableAudioFile } from "@/test/audio-fixtures";
 import { allowConsole } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
 import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
@@ -53,10 +53,6 @@ async function loader(): Promise<(file: File) => Promise<void>> {
   return result.current;
 }
 
-function textNamedMp3(): File {
-  return new File(["[00:01.00]these are lyrics, not audio"], "song.mp3", { type: "audio/mpeg" });
-}
-
 // -- Tests --------------------------------------------------------------------
 
 describe("useLoadAudioFile", () => {
@@ -68,7 +64,7 @@ describe("useLoadAudioFile", () => {
     const screen = await render(<Toaster />);
 
     const load = await loader();
-    await load(textNamedMp3());
+    await load(createUnplayableAudioFile());
 
     const source = useAudioStore.getState().source;
     expect(source?.type === "file" && source.file).toBe(current);
@@ -91,7 +87,7 @@ describe("useLoadAudioFile", () => {
     const valid = createAudioFile("Valid.wav");
 
     const load = await loader();
-    const first = load(textNamedMp3());
+    const first = load(createUnplayableAudioFile());
     const second = load(valid);
     await Promise.all([first, second]);
 
