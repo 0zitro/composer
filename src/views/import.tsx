@@ -7,6 +7,8 @@ import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { fileExtensionLabel, fileNameWithoutExtension } from "@/utils/file-name";
 import { formatFileSize } from "@/utils/format-file-size";
+import { OrDivider, SOURCE_GUTTER_WIDTH, SOURCE_ROW_HEIGHT } from "@/views/import/import-layout";
+import { MissingAudioPanel } from "@/views/import/missing-audio-panel";
 import { IconBrandYoutube, IconClock, IconFile, IconLoader2, IconMusic } from "@tabler/icons-react";
 
 // -- Helpers ------------------------------------------------------------------
@@ -17,11 +19,6 @@ function formatDuration(seconds: number): string {
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
-
-// -- Constants ----------------------------------------------------------------
-
-const GUTTER_WIDTH = 56;
-const ROW_HEIGHT = 56;
 
 // -- Sub-components -----------------------------------------------------------
 
@@ -40,14 +37,6 @@ const YouTubeSourceThumb: React.FC<{ videoId: string; loading: boolean }> = ({ v
   }
   return <IconBrandYoutube size={16} className="text-composer-accent" />;
 };
-
-const OrDivider: React.FC = () => (
-  <div className="flex items-center gap-3 w-full max-w-md select-none">
-    <div className="flex-1 h-px bg-composer-border" />
-    <span className="text-xs text-composer-text-muted">or</span>
-    <div className="flex-1 h-px bg-composer-border" />
-  </div>
-);
 
 interface ReplaceControlsProps {
   onFileDrop: (file: File) => void;
@@ -98,8 +87,11 @@ const ImportPanel: React.FC = () => {
   const duration = useAudioStore((s) => s.duration);
   const isLoading = useAudioStore((s) => s.isLoading);
   const projectTitle = useProjectStore((s) => s.metadata.title);
+  const expectedAudio = useAudioStore((s) => s.expectedAudio);
 
   const handleFileDrop = useLoadAudioFile();
+
+  if (!source && expectedAudio) return <MissingAudioPanel expected={expectedAudio} />;
 
   if (source && source.type === "file") {
     const file = source.file;
@@ -111,14 +103,14 @@ const ImportPanel: React.FC = () => {
         <div className="flex border-t border-composer-border">
           <div
             className="shrink-0 flex items-center justify-center bg-composer-accent/10"
-            style={{ width: GUTTER_WIDTH, height: ROW_HEIGHT }}
+            style={{ width: SOURCE_GUTTER_WIDTH, height: SOURCE_ROW_HEIGHT }}
           >
             <IconFile size={16} className="text-composer-accent" />
           </div>
 
           <div
             className="flex-1 flex items-center gap-6 px-4 border-l border-composer-accent/25"
-            style={{ height: ROW_HEIGHT }}
+            style={{ height: SOURCE_ROW_HEIGHT }}
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-composer-text select-text">{fileName}</p>
@@ -147,14 +139,14 @@ const ImportPanel: React.FC = () => {
         <div className="flex border-t border-composer-border">
           <div
             className="shrink-0 flex items-center justify-center bg-composer-accent/10 overflow-hidden"
-            style={{ width: GUTTER_WIDTH, height: ROW_HEIGHT }}
+            style={{ width: SOURCE_GUTTER_WIDTH, height: SOURCE_ROW_HEIGHT }}
           >
             <YouTubeSourceThumb videoId={videoId} loading={downloading} />
           </div>
 
           <div
             className="flex-1 flex items-center gap-6 px-4 border-l border-composer-accent/25"
-            style={{ height: ROW_HEIGHT }}
+            style={{ height: SOURCE_ROW_HEIGHT }}
           >
             <div className="flex-1 min-w-0">
               {titleLoading ? (

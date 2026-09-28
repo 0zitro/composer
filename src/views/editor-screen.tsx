@@ -1,5 +1,6 @@
 import { AudioPlayer } from "@/audio/audio-player";
 import type { ProjectTab } from "@/domain/project/tab";
+import { useMissingAudioNotice } from "@/hooks/useMissingAudioNotice";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { TabBar } from "@/ui/tab-bar";
@@ -29,6 +30,7 @@ const PANELS: readonly { tab: ProjectTab; Panel: React.FC }[] = [
 // -- Component ----------------------------------------------------------------
 
 const EditorScreen: React.FC = () => {
+  useMissingAudioNotice();
   const activeTab = useProjectStore((state) => state.activeTab);
   const source = useAudioStore((state) => state.source);
   const showPlayer = Boolean(source) && TABS_WITH_PLAYER.includes(activeTab);
