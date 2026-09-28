@@ -44,4 +44,30 @@ describe("SettingText", () => {
         .toBeInTheDocument();
     });
   });
+
+  describe("badge and description", () => {
+    it("shows a badge after the label and a description in place of the catalog one", async () => {
+      const screen = await render(
+        <SettingText id="storageProtection" badge={<span>Off</span>} description="Custom description" />,
+      );
+      await expect.element(screen.getByText("Off", { exact: true })).toBeInTheDocument();
+      await expect.element(screen.getByText("Custom description")).toBeInTheDocument();
+      expect(
+        screen.getByText("Ask the browser not to clear Composer's data when disk space runs low.").elements(),
+      ).toHaveLength(0);
+    });
+  });
+
+  describe("regressions", () => {
+    it("regression: keeps a highlighted label in one run of text, apart from the badge", async () => {
+      const screen = await render(
+        <SettingsSearchQueryContext value="stora">
+          <SettingText id="storageProtection" badge={<span>Off</span>} />
+        </SettingsSearchQueryContext>,
+      );
+      const mark = screen.container.querySelector("mark");
+      expect(mark?.textContent).toBe("Stora");
+      expect(mark?.parentElement?.textContent).toBe("Storage protection");
+    });
+  });
 });

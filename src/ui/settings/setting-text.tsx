@@ -20,7 +20,9 @@ const SettingText: React.FC<SettingTextProps> = ({ id, badge, description }) => 
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
       <span className="flex items-center gap-2 text-sm font-medium text-composer-text">
-        <HighlightMatches text={label} query={query} />
+        <span>
+          <HighlightMatches text={label} query={query} />
+        </span>
         {badge}
       </span>
       <span className="text-xs text-composer-text-muted text-pretty">
