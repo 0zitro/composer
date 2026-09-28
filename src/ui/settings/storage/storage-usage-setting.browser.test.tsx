@@ -32,6 +32,17 @@ describe("StorageUsageSetting", () => {
     await expect
       .element(screen.getByRole("definition").filter({ hasText: formatFileSize(audio.size) }))
       .toBeInTheDocument();
+    const usedOnDevice = screen.getByText("used on this device");
+    await expect.element(usedOnDevice).toBeInTheDocument();
+    expect(usedOnDevice.element().parentElement?.textContent).toBe(
+      `${formatFileSize(16 + audio.size)}used on this device`,
+    );
+  });
+
+  it("renders nothing until the project index and the storage report resolve", async () => {
+    const screen = await render(<StorageUsageSetting />);
+    expect(screen.container.textContent).toBe("");
+    await expect.element(screen.getByText("used on this device")).toBeInTheDocument();
   });
 
   it("marks YouTube audio as not stored when the rule discards it", async () => {

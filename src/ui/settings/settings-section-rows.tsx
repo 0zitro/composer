@@ -1,6 +1,7 @@
 import { useSettingsStore } from "@/stores/settings";
 import {
   type SettingId,
+  type SettingsGroupId,
   type SettingsSectionId,
   isSettingVisible,
   settingEntry,
@@ -13,7 +14,7 @@ import { useShallow } from "zustand/react/shallow";
 // -- Types --------------------------------------------------------------------
 
 interface SettingRowRun {
-  group: string | undefined;
+  group: SettingsGroupId | undefined;
   ids: SettingId[];
 }
 

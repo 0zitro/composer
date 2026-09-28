@@ -20,6 +20,8 @@ interface SettingsSection {
   label: string;
 }
 
+type SettingsGroupId = "Usage" | "Audio" | "Saving";
+
 interface SettingEntry {
   section: SettingsSectionId;
   label: string;
@@ -27,7 +29,7 @@ interface SettingEntry {
   keywords?: readonly string[];
   settingKey?: keyof SettingsState;
   readOn?: (state: SettingsState) => boolean;
-  group?: string;
+  group?: SettingsGroupId;
   describe?: (state: SettingsState) => string;
   visibleWhen?: (state: SettingsState) => boolean;
 }
@@ -107,4 +109,4 @@ export {
   settingIdsInSection,
   settingKeyOf,
 };
-export type { SettingEntry, SettingHint, SettingId, SettingsSectionId };
+export type { SettingEntry, SettingHint, SettingId, SettingsGroupId, SettingsSectionId };

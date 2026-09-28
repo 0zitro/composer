@@ -14,13 +14,15 @@ const StorageUsageSetting: React.FC = () => {
   const keepYouTubeAudio = useSettingsStore((s) => s.keepYouTubeAudio);
   const bridgeEnabled = useSettingsStore((s) => s.experiments.youtubeBridge);
 
-  const usage = storageUsage(entries ?? [], report?.stemJobs ?? [], report?.unindexedAudioBytes ?? 0);
+  if (entries === undefined || report === undefined) return null;
+
+  const usage = storageUsage(entries, report.stemJobs, report.unindexedAudioBytes);
 
   return (
     <div className="py-3">
       <StorageUsagePanel
         usage={usage}
-        freeBytes={report?.estimate ? freeBytes(report.estimate) : undefined}
+        freeBytes={report.estimate ? freeBytes(report.estimate) : undefined}
         youtubeKept={keepsYouTubeAudio(keepYouTubeAudio, bridgeEnabled)}
       />
     </div>

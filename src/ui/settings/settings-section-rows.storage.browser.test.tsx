@@ -26,7 +26,7 @@ describe("SettingsSectionRows (storage)", () => {
     await expect.poll(() => useSettingsStore.getState().autoSaveDelay).toBe(5000);
   });
 
-  it("wraps the usage panel and the protection notice in an Usage group", async () => {
+  it("wraps the usage panel and the protection notice in a Usage group", async () => {
     const screen = await render(<SettingsSectionRows section="storage" />);
     const usageGroup = screen.getByRole("region", { name: "Usage" });
     await expect.element(usageGroup).toBeInTheDocument();
