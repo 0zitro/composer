@@ -54,6 +54,13 @@ const STORAGE_CATALOG_ENTRIES = {
     group: "Audio",
     visibleWhen: (state) => state.smartCleanup,
   },
+  projectAudioList: {
+    section: "storage",
+    label: "Audio by project",
+    description: "Removing audio keeps the lyrics and timings. You can add the file again later.",
+    keywords: ["audio", "stems", "remove", "files", "space"],
+    group: "Audio",
+  },
   autoSaveDelay: {
     section: "storage",
     label: "Auto-save delay",

@@ -47,6 +47,16 @@ describe("SettingsSectionRows (storage)", () => {
       await expect.element(audioGroup.getByRole("button", { name: "Keep YouTube audio" })).toBeInTheDocument();
     });
 
+    it("mounts audio by project in the Audio group, after the storage rows", async () => {
+      const screen = await render(<SettingsSectionRows section="storage" />);
+      const audioGroup = screen.getByRole("region", { name: "Audio" });
+      await expect.element(audioGroup.getByText("Audio by project")).toBeInTheDocument();
+      const ids = Array.from(screen.container.querySelectorAll("[data-setting-id]")).map((el) =>
+        el.getAttribute("data-setting-id"),
+      );
+      expect(ids.indexOf("projectAudioList")).toBeGreaterThan(ids.indexOf("storageLimit"));
+    });
+
     it("describes Automatic by whether Composer Bridge is on", async () => {
       const screen = await render(<SettingsSectionRows section="storage" />);
       await expect

@@ -3,7 +3,7 @@ import { IconMusic } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
 
-type ProjectArtSize = "sm" | "md" | "row" | "dialog" | "hero" | "card";
+type ProjectArtSize = "xs" | "sm" | "md" | "row" | "dialog" | "hero" | "card";
 
 interface ProjectArtProps {
   src?: string;
@@ -14,6 +14,7 @@ interface ProjectArtProps {
 // -- Constants ----------------------------------------------------------------
 
 const FRAME_SIZES: Record<ProjectArtSize, string> = {
+  xs: "size-7 rounded-md",
   sm: "size-[22px] rounded-[5px]",
   md: "size-9 rounded-md",
   row: "size-10 rounded-md",
@@ -23,6 +24,7 @@ const FRAME_SIZES: Record<ProjectArtSize, string> = {
 };
 
 const ICON_SIZES: Record<ProjectArtSize, string> = {
+  xs: "size-3",
   sm: "size-2.5",
   md: "size-4",
   row: "size-[18px]",

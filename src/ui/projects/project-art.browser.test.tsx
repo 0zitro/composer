@@ -42,12 +42,13 @@ describe("ProjectArt", () => {
 
   it("renders each library size with the image or the music placeholder", async () => {
     const frameClassBySize = {
+      xs: "size-7",
       row: "size-10",
       dialog: "size-12",
       hero: "size-30",
       card: "aspect-square",
     } as const;
-    for (const size of ["row", "dialog", "hero", "card"] as const) {
+    for (const size of ["xs", "row", "dialog", "hero", "card"] as const) {
       const screen = await render(<ProjectArt src={PIXEL} size={size} />);
       expect(screen.container.querySelector("img")?.getAttribute("loading")).toBe("lazy");
       expect(screen.container.firstElementChild?.classList.contains(frameClassBySize[size])).toBe(true);

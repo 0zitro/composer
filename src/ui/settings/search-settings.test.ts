@@ -37,6 +37,10 @@ describe("searchSettings", () => {
     expect(search("cache").settings).toEqual(["keepYouTubeAudio"]);
   });
 
+  it("finds the audio by project row by a keyword not in its copy", () => {
+    expect(search("stems").settings).toContain("projectAudioList");
+  });
+
   it("finds shortcuts by description", () => {
     expect(search("toggle snap").shortcuts.map((definition) => definition.id)).toContain("timeline.toggleSnap");
   });

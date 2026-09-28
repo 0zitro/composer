@@ -1,5 +1,7 @@
 import type { KeepYouTubeAudio } from "@/domain/storage/audio-retention";
 import type { StorageLimit } from "@/domain/storage/storage-limit";
+import type { AudioFilter } from "@/domain/storage/stored-audio";
+import type { SegmentedOption } from "@/ui/segmented-control";
 
 // -- Options ------------------------------------------------------------------
 
@@ -16,6 +18,12 @@ const STORAGE_LIMIT_OPTIONS: { value: StorageLimit; label: string }[] = [
   { value: "none", label: "No limit" },
 ];
 
+const AUDIO_FILTER_OPTIONS: readonly SegmentedOption<AudioFilter>[] = [
+  { value: "all", label: "All" },
+  { value: "local", label: "Local" },
+  { value: "youtube", label: "YouTube" },
+];
+
 // -- Exports -------------------------------------------------------------------
 
-export { KEEP_YOUTUBE_AUDIO_OPTIONS, STORAGE_LIMIT_OPTIONS };
+export { AUDIO_FILTER_OPTIONS, KEEP_YOUTUBE_AUDIO_OPTIONS, STORAGE_LIMIT_OPTIONS };
