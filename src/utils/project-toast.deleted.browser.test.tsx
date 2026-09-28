@@ -62,7 +62,9 @@ describe("showDeletedProjectsToast", () => {
   describe("error paths", () => {
     it("shows an error toast and keeps the project visible when the commit fails for one project", async () => {
       allowConsole(/could not delete a project/);
+      allowConsole(/could not delete the projects/);
       allowConsole(/blocked/);
+      const error = vi.spyOn(console, "error");
       await seedStoredProject("a");
       const screen = await render(<Toaster />);
       showDeletedProjectsToast(["Heat Waves"], schedulePendingDeletion(["a"]));
@@ -70,11 +72,15 @@ describe("showDeletedProjectsToast", () => {
       await screen.getByRole("button", { name: "Close toast" }).click();
       await expect.element(screen.getByText("Couldn't delete that project")).toBeInTheDocument();
       expect(hiddenProjectIdsSnapshot().has("a")).toBe(false);
+      expect(
+        error.mock.calls.some((call) => call[0] === "[ProjectToast]" && call[1] === "could not delete the projects"),
+      ).toBe(true);
       await deleteDatabase(DB_NAME);
     });
 
     it("shows an error toast when the commit fails for several projects", async () => {
       allowConsole(/could not delete a project/);
+      allowConsole(/could not delete the projects/);
       allowConsole(/blocked/);
       await seedStoredProject("a");
       await seedStoredProject("b");

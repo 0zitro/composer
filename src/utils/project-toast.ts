@@ -15,7 +15,7 @@ const LOG_PREFIX = "[ProjectToast]";
 const NEW_PROJECT_TOAST_DURATION_MS = 10_000;
 const DELETE_UNDO_DURATION_MS = 8_000;
 
-// -- Switching back -------------------------------------------------------------
+// -- Switching back -----------------------------------------------------------
 
 function abandonedNewProjectId(newId: string): string | undefined {
   if (openProjectIdSnapshot() !== newId) return undefined;
@@ -80,7 +80,8 @@ function deletedMessage(titles: readonly string[]): string {
 
 function showDeletedProjectsToast(titles: readonly string[], deletion: PendingDeletion): void {
   const commit = () => {
-    deletion.commit().catch(() => {
+    deletion.commit().catch((error: unknown) => {
+      console.error(LOG_PREFIX, "could not delete the projects", error);
       toast.error(titles.length === 1 ? "Couldn't delete that project" : "Couldn't delete some projects");
     });
   };
