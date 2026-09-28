@@ -20,9 +20,14 @@ interface AudioRemoval {
   bytes: number;
 }
 
+type AudioDeletion = "removed" | "absent" | "in-use";
+
+type ProjectInUse = (id: string) => boolean;
+
 // -- Constants ----------------------------------------------------------------
 
 const AUDIO_STORES = [PROJECT_AUDIO_STORE_NAME, PROJECT_INDEX_STORE_NAME];
+const NEVER_IN_USE: ProjectInUse = () => false;
 
 // -- Writes -------------------------------------------------------------------
 
@@ -39,21 +44,27 @@ async function saveProjectAudio(id: string, file: File): Promise<void> {
   notifyStorageSignal("media-stored");
 }
 
-async function deleteProjectAudio(id: string): Promise<void> {
-  let removed = false;
+async function deleteProjectAudio(id: string, isInUse: ProjectInUse = NEVER_IN_USE): Promise<AudioDeletion> {
+  const outcome: { deletion: AudioDeletion } = { deletion: "absent" };
   await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
     const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME);
     const request = audio.get(id);
     request.onsuccess = () => {
       if (request.result === undefined) return;
-      removed = true;
+      if (isInUse(id)) {
+        outcome.deletion = "in-use";
+        return;
+      }
+      outcome.deletion = "removed";
       audio.delete(id);
       patchIndexEntry(tx, id, { storedAudioBytes: 0 });
     };
   });
-  if (!removed) return;
-  notifyProjectIndexChanged();
-  notifyStorageSignal("media-removed");
+  if (outcome.deletion === "removed") {
+    notifyProjectIndexChanged();
+    notifyStorageSignal("media-removed");
+  }
+  return outcome.deletion;
 }
 
 // -- Reads --------------------------------------------------------------------
@@ -86,7 +97,7 @@ async function unindexedAudioBytes(): Promise<number> {
 
 // -- Cache removal ------------------------------------------------------------
 
-async function removeCachedYouTubeAudio(id: string, isInUse: (id: string) => boolean = () => false): Promise<number> {
+async function removeCachedYouTubeAudio(id: string, isInUse: ProjectInUse = NEVER_IN_USE): Promise<number> {
   let freed = 0;
   await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
     const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
@@ -106,7 +117,7 @@ async function removeCachedYouTubeAudio(id: string, isInUse: (id: string) => boo
   return freed;
 }
 
-async function clearCachedYouTubeAudio(keepId: string | undefined): Promise<AudioRemoval> {
+async function clearCachedYouTubeAudio(isInUse: ProjectInUse): Promise<AudioRemoval> {
   const removal: AudioRemoval = { projects: 0, bytes: 0 };
   await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
     const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME);
@@ -116,7 +127,7 @@ async function clearCachedYouTubeAudio(keepId: string | undefined): Promise<Audi
       if (!cursor) return;
       const entry = cursor.value as ProjectIndexEntry;
       const id = String(cursor.key);
-      if (id !== keepId && isCachedYouTubeAudio(entry)) {
+      if (isCachedYouTubeAudio(entry) && !isInUse(id)) {
         audio.delete(id);
         cursor.update({ ...entry, storedAudioBytes: 0 });
         removal.projects += 1;

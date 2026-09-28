@@ -1,12 +1,13 @@
 import { listStemJobs, putStem } from "@/audio/separation/stem-store";
 import { loadProjectAudio } from "@/lib/project-audio";
+import { clearVocalStems, clearYouTubeAudio } from "@/lib/storage-actions";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { indexEntry } from "@/test/index-entries";
 import { seedStoredProject } from "@/test/projects";
 import { render } from "@/test/render";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
 import { ProjectAudioList } from "@/ui/settings/storage/project-audio-list";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { describe, expect, it } from "vitest";
 
 // -- Fixtures -----------------------------------------------------------------
@@ -21,7 +22,14 @@ const ENTRIES = [
 function listElement(overrides: Partial<Parameters<typeof ProjectAudioList>[0]> = {}) {
   return (
     <>
-      <ProjectAudioList entries={ENTRIES} openProjectId={undefined} now={NOW} stemBytes={0} {...overrides} />
+      <ProjectAudioList
+        entries={ENTRIES}
+        openProjectId={undefined}
+        now={NOW}
+        canClearYouTube
+        canClearStems={false}
+        {...overrides}
+      />
       <ConfirmModalHost />
       <Toaster />
     </>
@@ -95,7 +103,7 @@ describe("ProjectAudioList", () => {
       audio: createAudioFile("yt.opus"),
     });
     await putStem("h1", "vocals", "fp32", new Blob([new Uint8Array(8)]));
-    const screen = await renderList({ stemBytes: 8 });
+    const screen = await renderList({ canClearStems: true });
     await screen.getByRole("button", { name: "Clear YouTube audio" }).click();
     await expect.element(screen.getByText("Cleared YouTube audio from 1 project")).toBeInTheDocument();
     await screen.getByRole("button", { name: "Clear vocal stems" }).click();
@@ -117,7 +125,10 @@ describe("ProjectAudioList", () => {
 
   describe("edge cases", () => {
     it("hides the filter and Clear YouTube audio when no YouTube audio is stored", async () => {
-      const screen = await renderList({ entries: [ENTRIES[0], ENTRIES[2]].flatMap((entry) => (entry ? [entry] : [])) });
+      const screen = await renderList({
+        entries: [ENTRIES[0], ENTRIES[2]].flatMap((entry) => (entry ? [entry] : [])),
+        canClearYouTube: false,
+      });
       expect(screen.getByRole("group", { name: "Filter audio" }).elements()).toHaveLength(0);
       expect(screen.getByRole("button", { name: "Clear YouTube audio" }).elements()).toHaveLength(0);
     });
@@ -125,6 +136,15 @@ describe("ProjectAudioList", () => {
     it("hides Clear vocal stems when there are none", async () => {
       const screen = await renderList();
       expect(screen.getByRole("button", { name: "Clear vocal stems" }).elements()).toHaveLength(0);
+    });
+
+    it("shows no toast when a clear finds nothing left to remove", async () => {
+      const screen = await renderList({ canClearStems: true });
+      const before = toast.getHistory().length;
+      await screen.getByRole("button", { name: "Clear YouTube audio" }).click();
+      await screen.getByRole("button", { name: "Clear vocal stems" }).click();
+      await Promise.all([clearYouTubeAudio(), clearVocalStems()]);
+      expect(toast.getHistory()).toHaveLength(before);
     });
 
     it("says when no audio is stored", async () => {

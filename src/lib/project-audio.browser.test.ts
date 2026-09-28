@@ -97,14 +97,17 @@ describe("removeCachedYouTubeAudio", () => {
 });
 
 describe("clearCachedYouTubeAudio", () => {
-  it("removes every cached YouTube audio except the kept project's and never local files", async () => {
+  it("removes every cached YouTube audio except the in-use project's and never local files", async () => {
     const first = await seedYouTube("yt1");
     const second = await seedYouTube("yt2");
     const kept = await seedYouTube("open");
     const local = await seedLocal("local");
     const { seen, stop: stopSignals } = recordSignals();
     const { calls, stop: stopIndex } = recordIndexChanges();
-    expect(await clearCachedYouTubeAudio("open")).toEqual({ projects: 2, bytes: first.size + second.size });
+    expect(await clearCachedYouTubeAudio((id) => id === "open")).toEqual({
+      projects: 2,
+      bytes: first.size + second.size,
+    });
     stopSignals();
     stopIndex();
     expect(await loadProjectAudio("yt1")).toBeUndefined();
@@ -122,7 +125,7 @@ describe("clearCachedYouTubeAudio", () => {
     it("removes nothing on an empty device", async () => {
       const { seen, stop: stopSignals } = recordSignals();
       const { calls, stop: stopIndex } = recordIndexChanges();
-      expect(await clearCachedYouTubeAudio(undefined)).toEqual({ projects: 0, bytes: 0 });
+      expect(await clearCachedYouTubeAudio(() => false)).toEqual({ projects: 0, bytes: 0 });
       stopSignals();
       stopIndex();
       expect(seen).toEqual([]);
@@ -165,6 +168,17 @@ describe("deleteProjectAudio", () => {
       stopIndex();
       expect(seen).toEqual([]);
       expect(calls()).toBe(0);
+    });
+  });
+
+  describe("error paths", () => {
+    it("keeps the audio and stays quiet when the guard reports the project in use inside the transaction", async () => {
+      await seedLocal("a");
+      const { seen, stop: stopSignals } = recordSignals();
+      expect(await deleteProjectAudio("a", (id) => id === "a")).toBe("in-use");
+      stopSignals();
+      expect(await loadProjectAudio("a")).toBeDefined();
+      expect(seen).toEqual([]);
     });
   });
 });

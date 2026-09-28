@@ -1,6 +1,5 @@
 import type { Stem } from "@/audio/separation/types";
-import { compareIds } from "@/domain/project/id-order";
-import type { StemJobUsage } from "@/domain/storage/usage";
+import { type StemJobUsage, oldestStemJobFirst } from "@/domain/storage/usage";
 import { STEM_STORE_NAME, getFromStore, runTransaction } from "@/lib/persistence-idb";
 import { notifyStorageSignal, reportStorageWriteError } from "@/lib/storage-signals";
 import type { VocalModelVariant } from "@/stores/settings";
@@ -143,16 +142,14 @@ function removeStemJobs(
   return deleteStemRecords((jobKey) => doomed.has(jobKey) && !isInUse(jobKey));
 }
 
-function clearStemCache(keepJobKey: string | null): Promise<StemRemoval> {
-  return deleteStemRecords((jobKey) => jobKey !== keepJobKey);
+function clearStemCache(isInUse: (jobKey: string) => boolean): Promise<StemRemoval> {
+  return deleteStemRecords((jobKey) => !isInUse(jobKey));
 }
 
 async function evictIfOverCapacity(): Promise<void> {
   const jobs = await listStemJobs();
   if (jobs.length <= MAX_ENTRIES) return;
-  const oldest = jobs
-    .toSorted((a, b) => a.createdAt - b.createdAt || compareIds(a.jobKey, b.jobKey))
-    .slice(0, jobs.length - MAX_ENTRIES);
+  const oldest = jobs.toSorted(oldestStemJobFirst).slice(0, jobs.length - MAX_ENTRIES);
   await removeStemJobs(oldest.map((job) => job.jobKey));
 }
 

@@ -1,7 +1,14 @@
 import { hashFile } from "@/audio/separation/audio-codec";
-import { isStemJobLoading, listStemJobs, putStem, stemJobKey } from "@/audio/separation/stem-store";
+import {
+  beginLoadingStemJob,
+  endLoadingStemJob,
+  isStemJobLoading,
+  listStemJobs,
+  putStem,
+  stemJobKey,
+} from "@/audio/separation/stem-store";
 import { useAudioStore } from "@/stores/audio";
-import { useSeparationStore } from "@/stores/separation";
+import { isStemJobInUse, useSeparationStore } from "@/stores/separation";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { describe, expect, it } from "vitest";
 
@@ -39,6 +46,27 @@ describe("refreshForCurrentSource", () => {
       expect(isStemJobLoading(jobKey)).toBe(false);
       expect(useSeparationStore.getState().jobKey).toBe(jobKey);
       expect(useSeparationStore.getState().status).toBe("idle");
+    });
+  });
+});
+
+describe("isStemJobInUse", () => {
+  it("is true for the open project's job key and for a job that is loading", () => {
+    useSeparationStore.setState({ jobKey: "open|fp32|v2" });
+    beginLoadingStemJob("loading|fp32|v2");
+    try {
+      expect(isStemJobInUse("open|fp32|v2")).toBe(true);
+      expect(isStemJobInUse("loading|fp32|v2")).toBe(true);
+    } finally {
+      endLoadingStemJob("loading|fp32|v2");
+    }
+  });
+
+  describe("edge cases", () => {
+    it("is false for any other job, and with no job key at all", () => {
+      expect(isStemJobInUse("other|fp32|v2")).toBe(false);
+      useSeparationStore.setState({ jobKey: "open|fp32|v2" });
+      expect(isStemJobInUse("other|fp32|v2")).toBe(false);
     });
   });
 });

@@ -1,6 +1,12 @@
-import { listStemJobs, putStem, stemJobKey } from "@/audio/separation/stem-store";
+import {
+  beginLoadingStemJob,
+  endLoadingStemJob,
+  listStemJobs,
+  putStem,
+  stemJobKey,
+} from "@/audio/separation/stem-store";
 import { restoreOpenProject } from "@/lib/open-project";
-import { adoptOpenProjectId } from "@/lib/open-project-session";
+import { adoptOpenProjectId, beginOpeningProject, endOpeningProject } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { debouncedSave } from "@/lib/persistence-debounce";
 import { loadProjectAudio } from "@/lib/project-audio";
@@ -52,6 +58,18 @@ describe("removeAudioFromProject", () => {
       await expect(removeAudioFromProject("a")).rejects.toThrow("close it to remove its audio");
       expect(await loadProjectAudio("a")).toBeDefined();
     });
+
+    it("keeps the audio of a project that starts opening before the removal runs", async () => {
+      await seed("a", "file");
+      const removal = removeAudioFromProject("a");
+      beginOpeningProject("a");
+      try {
+        await expect(removal).rejects.toThrow("close it to remove its audio");
+      } finally {
+        endOpeningProject("a");
+      }
+      expect(await loadProjectAudio("a")).toBeDefined();
+    });
   });
 });
 
@@ -66,6 +84,20 @@ describe("clearYouTubeAudio", () => {
     expect(await loadProjectAudio("open")).toBeDefined();
     expect(await loadProjectAudio("f")).toBeDefined();
   });
+
+  it("keeps the cached audio of a project that starts opening before the clear runs", async () => {
+    await seed("y1", "youtube");
+    await seed("opening", "youtube");
+    const clearing = clearYouTubeAudio();
+    beginOpeningProject("opening");
+    try {
+      expect((await clearing).projects).toBe(1);
+    } finally {
+      endOpeningProject("opening");
+    }
+    expect(await loadProjectAudio("y1")).toBeUndefined();
+    expect(await loadProjectAudio("opening")).toBeDefined();
+  });
 });
 
 describe("clearVocalStems", () => {
@@ -75,6 +107,20 @@ describe("clearVocalStems", () => {
     useSeparationStore.setState({ jobKey: stemJobKey("mine", "fp32") });
     expect((await clearVocalStems()).jobs).toBe(1);
     expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([stemJobKey("mine", "fp32")]);
+  });
+
+  it("keeps a stem job that starts loading before the clear runs", async () => {
+    await putStem("loading", "vocals", "fp32", new Blob([new Uint8Array(4)]));
+    await putStem("other", "vocals", "fp32", new Blob([new Uint8Array(4)]));
+    const loadingKey = stemJobKey("loading", "fp32");
+    const clearing = clearVocalStems();
+    beginLoadingStemJob(loadingKey);
+    try {
+      expect((await clearing).jobs).toBe(1);
+    } finally {
+      endLoadingStemJob(loadingKey);
+    }
+    expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([loadingKey]);
   });
 
   describe("edge cases", () => {

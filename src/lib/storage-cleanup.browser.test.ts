@@ -110,7 +110,7 @@ describe("runSmartCleanup", () => {
       expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([key]);
     });
 
-    it("a stem job's stems if it starts loading between planning and removal", async () => {
+    it("a stem job's stems if it starts loading while the cleanup reads what is stored", async () => {
       await seedStems("mine");
       const key = stemJobKey("mine", "fp32");
       const resultPromise = runSmartCleanup({ ...EVERYTHING, limitBytes: 0, isStemJobInUse: isStemJobLoading });
@@ -120,6 +120,22 @@ describe("runSmartCleanup", () => {
       } finally {
         endLoadingStemJob(key);
       }
+      expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([key]);
+    });
+
+    it("a stem job's stems if it comes into use after planning, checked inside the removal", async () => {
+      await seedStems("mine");
+      const key = stemJobKey("mine", "fp32");
+      let planned = false;
+      const isStemJobInUse = (jobKey: string): boolean => {
+        if (!planned) {
+          planned = true;
+          return false;
+        }
+        return jobKey === key;
+      };
+      const result = await runSmartCleanup({ ...EVERYTHING, limitBytes: 0, isStemJobInUse });
+      expect(result.removedStemJobs).toBe(0);
       expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([key]);
     });
 

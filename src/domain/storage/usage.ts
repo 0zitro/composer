@@ -1,3 +1,4 @@
+import { compareIds } from "@/domain/project/id-order";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 
 // -- Types --------------------------------------------------------------------
@@ -44,7 +45,15 @@ function storageUsage(
   };
 }
 
+function oldestStemJobFirst(a: StemJobUsage, b: StemJobUsage): number {
+  return a.createdAt - b.createdAt || compareIds(a.jobKey, b.jobKey);
+}
+
+function hasClearableStems(stemJobs: readonly StemJobUsage[], isStemJobInUse: (jobKey: string) => boolean): boolean {
+  return stemJobs.some((job) => job.bytes > 0 && !isStemJobInUse(job.jobKey));
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { storageUsage };
+export { storageUsage, oldestStemJobFirst, hasClearableStems };
 export type { StemJobUsage, StorageUsage, UsageEntry };

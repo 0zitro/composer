@@ -20,7 +20,8 @@ interface ProjectAudioListProps {
   entries: readonly ProjectIndexEntry[];
   openProjectId: string | undefined;
   now: number;
-  stemBytes: number;
+  canClearYouTube: boolean;
+  canClearStems: boolean;
 }
 
 // -- Constants ----------------------------------------------------------------
@@ -38,21 +39,31 @@ function reportFailure(action: string, message: string): (error: unknown) => voi
 
 function clearYouTube(): void {
   clearYouTubeAudio().then(
-    (removal) => toast(`Cleared YouTube audio from ${formatProjectCount(removal.projects)}`),
+    (removal) => {
+      if (removal.projects > 0) toast(`Cleared YouTube audio from ${formatProjectCount(removal.projects)}`);
+    },
     reportFailure("could not clear the YouTube audio", "Couldn't clear the YouTube audio"),
   );
 }
 
 function clearStems(): void {
   clearVocalStems().then(
-    () => toast("Cleared vocal stems"),
+    (removal) => {
+      if (removal.jobs > 0) toast("Cleared vocal stems");
+    },
     reportFailure("could not clear the vocal stems", "Couldn't clear the vocal stems"),
   );
 }
 
 // -- Component ----------------------------------------------------------------
 
-const ProjectAudioList: React.FC<ProjectAudioListProps> = ({ entries, openProjectId, now, stemBytes }) => {
+const ProjectAudioList: React.FC<ProjectAudioListProps> = ({
+  entries,
+  openProjectId,
+  now,
+  canClearYouTube,
+  canClearStems,
+}) => {
   const [filter, setFilter] = useState<AudioFilter>("all");
   const confirm = useConfirm();
   const { label } = settingEntry("projectAudioList");
@@ -115,15 +126,15 @@ const ProjectAudioList: React.FC<ProjectAudioListProps> = ({ entries, openProjec
       ) : (
         <p className="text-[13px] text-composer-text-muted select-none">No audio is stored on this device.</p>
       )}
-      {(showYouTube || stemBytes > 0) && (
+      {(canClearYouTube || canClearStems) && (
         <div className="flex flex-wrap gap-2">
-          {showYouTube && (
+          {canClearYouTube && (
             <Button variant="secondary" size="sm" hasIcon onClick={clearYouTube}>
               <IconBrandYoutube aria-hidden="true" className="size-3.5" />
               Clear YouTube audio
             </Button>
           )}
-          {stemBytes > 0 && (
+          {canClearStems && (
             <Button variant="secondary" size="sm" hasIcon onClick={clearStems}>
               <IconMicrophone2 aria-hidden="true" className="size-3.5" />
               Clear vocal stems

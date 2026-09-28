@@ -1,5 +1,5 @@
 import { storedAudioBytesTotal } from "@/domain/project/audio-status";
-import { storageUsage } from "@/domain/storage/usage";
+import { hasClearableStems, oldestStemJobFirst, storageUsage } from "@/domain/storage/usage";
 import { indexEntry } from "@/test/index-entries";
 import { describe, expect, it } from "vitest";
 
@@ -60,6 +60,42 @@ describe("storageUsage", () => {
       expect(usage.totalBytes).toBe(
         usage.localAudioBytes + usage.youtubeAudioBytes + usage.stemBytes + usage.lyricsBytes,
       );
+    });
+  });
+});
+
+describe("hasClearableStems", () => {
+  it("is true when a stem job that is not in use holds bytes", () => {
+    expect(hasClearableStems(STEMS, (jobKey) => jobKey === "h1|fp32|v2")).toBe(true);
+  });
+
+  describe("edge cases", () => {
+    it("is false when every stem job is in use", () => {
+      expect(hasClearableStems(STEMS, () => true)).toBe(false);
+    });
+
+    it("is false when the only job not in use is empty", () => {
+      expect(hasClearableStems([{ jobKey: "empty", bytes: 0, createdAt: 1 }], () => false)).toBe(false);
+    });
+  });
+});
+
+describe("oldestStemJobFirst", () => {
+  it("orders by created-at time", () => {
+    expect(
+      STEMS.toReversed()
+        .toSorted(oldestStemJobFirst)
+        .map((job) => job.jobKey),
+    ).toEqual(["h1|fp32|v2", "h2|fp32|v2"]);
+  });
+
+  describe("invariants", () => {
+    it("breaks a created-at tie by job key, whatever the input order", () => {
+      const tied = [
+        { jobKey: "y", bytes: 1, createdAt: 5 },
+        { jobKey: "x", bytes: 1, createdAt: 5 },
+      ];
+      expect(tied.toSorted(oldestStemJobFirst).map((job) => job.jobKey)).toEqual(["x", "y"]);
     });
   });
 });

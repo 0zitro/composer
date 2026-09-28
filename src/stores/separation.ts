@@ -12,6 +12,7 @@ import {
   endLoadingStemJob,
   getStem,
   hasStems,
+  isStemJobLoading,
   putStem,
   stemJobKey,
 } from "@/audio/separation/stem-store";
@@ -283,4 +284,8 @@ const useSeparationStore = create<SeparationState & SeparationActions>((set, get
   },
 }));
 
-export { useSeparationStore };
+function isStemJobInUse(jobKey: string): boolean {
+  return jobKey === useSeparationStore.getState().jobKey || isStemJobLoading(jobKey);
+}
+
+export { useSeparationStore, isStemJobInUse };

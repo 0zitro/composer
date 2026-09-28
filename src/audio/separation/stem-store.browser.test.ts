@@ -64,10 +64,10 @@ describe("stem store", () => {
     expect(await listStemJobs()).toHaveLength(1);
   });
 
-  it("clears every job except the one kept", async () => {
+  it("clears every job except the one in use", async () => {
     await separate("h1");
     await separate("h2");
-    expect(await clearStemCache(stemJobKey("h2", "fp32"))).toEqual({ jobs: 1, bytes: 30 });
+    expect(await clearStemCache((jobKey) => jobKey === stemJobKey("h2", "fp32"))).toEqual({ jobs: 1, bytes: 30 });
     expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([stemJobKey("h2", "fp32")]);
   });
 
@@ -82,15 +82,15 @@ describe("stem store", () => {
     it("lists nothing and removes nothing on an empty cache", async () => {
       expect(await listStemJobs()).toEqual([]);
       const { seen, stop } = recordSignals();
-      expect(await clearStemCache(null)).toEqual({ jobs: 0, bytes: 0 });
+      expect(await clearStemCache(() => false)).toEqual({ jobs: 0, bytes: 0 });
       stop();
       expect(seen).toEqual([]);
     });
 
-    it("clearing with nothing kept removes everything", async () => {
+    it("clearing with nothing in use removes everything", async () => {
       await separate("h1");
       await separate("h2");
-      expect((await clearStemCache(null)).jobs).toBe(2);
+      expect((await clearStemCache(() => false)).jobs).toBe(2);
       expect(await listStemJobs()).toEqual([]);
     });
   });
@@ -104,7 +104,7 @@ describe("stem store", () => {
   });
 
   describe("invariants", () => {
-    it("breaks a created-at tie by job key order, regardless of write order", async () => {
+    it("keeps the three newest jobs when all share a created-at time, whatever the write order", async () => {
       const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
       try {
         for (const hash of ["d", "b", "a", "c"]) await separate(hash);

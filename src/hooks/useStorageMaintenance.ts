@@ -1,10 +1,9 @@
-import { isStemJobLoading } from "@/audio/separation/stem-store";
 import { storageLimitBytes } from "@/domain/storage/storage-limit";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import type { CleanupContext, CleanupResult } from "@/lib/storage-cleanup";
 import { type MaintenanceTrigger, createStorageMaintenance } from "@/lib/storage-maintenance";
 import { subscribeStorageSignals } from "@/lib/storage-signals";
-import { useSeparationStore } from "@/stores/separation";
+import { isStemJobInUse } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { showStorageFullToast } from "@/utils/storage-toast";
 import { useEffect } from "react";
@@ -14,10 +13,6 @@ import { useEffect } from "react";
 const CHECK_DELAY_MS = 1000;
 
 // -- Helpers ------------------------------------------------------------------
-
-function isStemJobInUse(jobKey: string): boolean {
-  return jobKey === useSeparationStore.getState().jobKey || isStemJobLoading(jobKey);
-}
 
 function readCleanupContext(): Omit<CleanupContext, "storageFull"> {
   const settings = useSettingsStore.getState();

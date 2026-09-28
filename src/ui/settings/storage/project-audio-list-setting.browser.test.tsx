@@ -1,6 +1,7 @@
-import { putStem } from "@/audio/separation/stem-store";
+import { putStem, stemJobKey } from "@/audio/separation/stem-store";
 import { adoptOpenProjectId } from "@/lib/open-project-session";
 import { loadProjectAudio } from "@/lib/project-audio";
+import { useSeparationStore } from "@/stores/separation";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
@@ -56,6 +57,26 @@ describe("ProjectAudioListSetting", () => {
       await putStem("h1", "vocals", "fp32", new Blob([new Uint8Array(8)]));
       const screen = await render(<ProjectAudioListSetting />);
       await expect.element(screen.getByRole("button", { name: "Clear vocal stems" })).toBeInTheDocument();
+    });
+
+    it("hides Clear YouTube audio when the open project holds the only cached YouTube audio", async () => {
+      await seedStoredProject("open", {
+        project: { ...songTitled("Midnight City"), audioSource: { kind: "youtube", videoId: "v-open" } },
+        audio: createAudioFile("open.opus"),
+      });
+      adoptOpenProjectId("open");
+      const screen = await render(<ProjectAudioListSetting />);
+      await expect.element(screen.getByRole("group", { name: "Filter audio" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Clear YouTube audio" }).elements()).toHaveLength(0);
+    });
+
+    it("hides Clear vocal stems when the open project's stem job is the only one stored", async () => {
+      await seedStoredProject("a", { project: songTitled("Midnight City"), audio: createAudioFile("a.wav") });
+      await putStem("mine", "vocals", "fp32", new Blob([new Uint8Array(8)]));
+      useSeparationStore.setState({ jobKey: stemJobKey("mine", "fp32") });
+      const screen = await render(<ProjectAudioListSetting />);
+      await expect.element(screen.getByText("Midnight City")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Clear vocal stems" }).elements()).toHaveLength(0);
     });
 
     it("says when no audio is stored on this device", async () => {

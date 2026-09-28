@@ -1,4 +1,9 @@
-import { hasStoredYouTubeAudio, isCachedYouTubeAudio, storedAudioProjects } from "@/domain/storage/stored-audio";
+import {
+  hasClearableYouTubeAudio,
+  hasStoredYouTubeAudio,
+  isCachedYouTubeAudio,
+  storedAudioProjects,
+} from "@/domain/storage/stored-audio";
 import { indexEntry } from "@/test/index-entries";
 import { describe, expect, it } from "vitest";
 
@@ -58,5 +63,21 @@ describe("hasStoredYouTubeAudio", () => {
     expect(hasStoredYouTubeAudio(ENTRIES)).toBe(true);
     expect(hasStoredYouTubeAudio(ENTRIES.filter((entry) => entry.id !== "big-yt"))).toBe(false);
     expect(hasStoredYouTubeAudio([])).toBe(false);
+  });
+});
+
+describe("hasClearableYouTubeAudio", () => {
+  it("is true when a project that is not in use has cached YouTube audio", () => {
+    expect(hasClearableYouTubeAudio(ENTRIES, () => false)).toBe(true);
+  });
+
+  describe("edge cases", () => {
+    it("is false when the only cached YouTube audio belongs to a project in use", () => {
+      expect(hasClearableYouTubeAudio(ENTRIES, (id) => id === "big-yt")).toBe(false);
+    });
+
+    it("is false with no entries", () => {
+      expect(hasClearableYouTubeAudio([], () => false)).toBe(false);
+    });
   });
 });

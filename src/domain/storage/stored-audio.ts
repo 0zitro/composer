@@ -32,7 +32,14 @@ function hasStoredYouTubeAudio(entries: readonly AudioFields[]): boolean {
   return entries.some(isCachedYouTubeAudio);
 }
 
+function hasClearableYouTubeAudio(
+  entries: readonly (AudioFields & Pick<ProjectIndexEntry, "id">)[],
+  isProjectInUse: (id: string) => boolean,
+): boolean {
+  return entries.some((entry) => isCachedYouTubeAudio(entry) && !isProjectInUse(entry.id));
+}
+
 // -- Exports ------------------------------------------------------------------
 
-export { isCachedYouTubeAudio, storedAudioProjects, hasStoredYouTubeAudio };
+export { isCachedYouTubeAudio, storedAudioProjects, hasStoredYouTubeAudio, hasClearableYouTubeAudio };
 export type { AudioFilter };
