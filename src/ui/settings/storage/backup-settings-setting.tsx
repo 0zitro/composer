@@ -1,7 +1,7 @@
 import { useProjectIndex } from "@/hooks/useProjectIndex";
 import { BackUpAllProjectsRow, DeleteAllProjectsRow } from "@/ui/settings/storage/backup-settings";
 
-// -- Components -----------------------------------------------------------------
+// -- Components ---------------------------------------------------------------
 
 const BackUpAllProjectsSetting: React.FC = () => {
   const { entries } = useProjectIndex();

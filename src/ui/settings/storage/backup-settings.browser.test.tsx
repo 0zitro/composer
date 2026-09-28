@@ -1,19 +1,31 @@
+import { DB_NAME, DB_VERSION } from "@/lib/persistence-idb";
 import { listProjectIndex } from "@/lib/project-repository";
+import { allowConsole } from "@/test/console-guard";
 import { captureDownloads } from "@/test/downloads";
+import { deleteDatabase, openAndCloseAtVersion } from "@/test/idb";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
-import { BackupSettings } from "@/ui/settings/storage/backup-settings";
+import { BackUpAllProjectsRow, DeleteAllProjectsRow } from "@/ui/settings/storage/backup-settings";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
 // -- Helpers ------------------------------------------------------------------
 
-function renderBackup(projectCount: number) {
+function renderBackUp(projectCount: number) {
   return render(
     <>
-      <BackupSettings projectCount={projectCount} />
+      <BackUpAllProjectsRow projectCount={projectCount} />
+      <Toaster />
+    </>,
+  );
+}
+
+function renderDeleteAll(projectCount: number) {
+  return render(
+    <>
+      <DeleteAllProjectsRow projectCount={projectCount} />
       <ConfirmModalHost />
       <Toaster />
     </>,
@@ -22,10 +34,10 @@ function renderBackup(projectCount: number) {
 
 // -- Tests --------------------------------------------------------------------
 
-describe("BackupSettings", () => {
-  it("backs up every project as one file", async () => {
+describe("BackUpAllProjectsRow", () => {
+  it("downloads every project as one file", async () => {
     await seedStoredProject("a", { project: songTitled("Alpha") });
-    const screen = await renderBackup(1);
+    const screen = await renderBackUp(1);
     await expect
       .element(screen.getByText("Download every project's lyrics and timings as one file. Audio is not included."))
       .toBeInTheDocument();
@@ -35,10 +47,31 @@ describe("BackupSettings", () => {
     downloads.stop();
   });
 
-  it("deletes every project after confirming", async () => {
+  describe("edge cases", () => {
+    it("disables the action with no projects", async () => {
+      const screen = await renderBackUp(0);
+      await expect.element(screen.getByRole("button", { name: "Export all" })).toBeDisabled();
+    });
+  });
+
+  describe("error paths", () => {
+    it("shows an error toast when the backup fails", async () => {
+      allowConsole(/could not back up the projects/);
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const screen = await renderBackUp(1);
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      await screen.getByRole("button", { name: "Export all" }).click();
+      await expect.element(screen.getByText("Couldn't back up your projects")).toBeInTheDocument();
+      await deleteDatabase(DB_NAME);
+    });
+  });
+});
+
+describe("DeleteAllProjectsRow", () => {
+  it("shows the confirm copy for the project count", async () => {
     await seedStoredProject("a", { project: songTitled("Alpha") });
     await seedStoredProject("b", { project: songTitled("Bravo") });
-    const screen = await renderBackup(2);
+    const screen = await renderDeleteAll(2);
     await expect
       .element(screen.getByText("Remove every project and all stored audio from this device. This can't be undone."))
       .toBeInTheDocument();
@@ -47,6 +80,12 @@ describe("BackupSettings", () => {
     await expect
       .element(screen.getByText("This removes 2 projects and all stored audio from this device. This can't be undone."))
       .toBeInTheDocument();
+  });
+
+  it("deletes every project after confirming", async () => {
+    await seedStoredProject("a", { project: songTitled("Alpha") });
+    const screen = await renderDeleteAll(1);
+    await screen.getByRole("button", { name: "Delete all" }).click();
     await screen.getByRole("dialog").getByRole("button", { name: "Delete all" }).click();
     await expect.poll(listProjectIndex).toEqual([]);
     await expect.element(screen.getByText("Deleted all projects")).toBeInTheDocument();
@@ -54,20 +93,31 @@ describe("BackupSettings", () => {
 
   it("keeps everything when the confirm is cancelled from the keyboard", async () => {
     await seedStoredProject("a", { project: songTitled("Alpha") });
-    const screen = await renderBackup(1);
+    const screen = await renderDeleteAll(1);
     await screen.getByRole("button", { name: "Delete all" }).click();
-    await expect
-      .element(screen.getByText("This removes 1 project and all stored audio from this device. This can't be undone."))
-      .toBeInTheDocument();
+    await expect.element(screen.getByText("Delete all projects?")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
-    await expect.poll(async () => (await listProjectIndex()).length).toBe(1);
+    await expect.poll(() => screen.getByRole("dialog").elements().length).toBe(0);
+    expect((await listProjectIndex()).length).toBe(1);
   });
 
   describe("edge cases", () => {
-    it("disables both actions with no projects", async () => {
-      const screen = await renderBackup(0);
-      await expect.element(screen.getByRole("button", { name: "Export all" })).toBeDisabled();
+    it("disables the action with no projects", async () => {
+      const screen = await renderDeleteAll(0);
       await expect.element(screen.getByRole("button", { name: "Delete all" })).toBeDisabled();
+    });
+  });
+
+  describe("error paths", () => {
+    it("shows an error toast when the delete fails", async () => {
+      allowConsole(/could not delete the projects/);
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const screen = await renderDeleteAll(1);
+      await openAndCloseAtVersion(DB_NAME, DB_VERSION + 1);
+      await screen.getByRole("button", { name: "Delete all" }).click();
+      await screen.getByRole("dialog").getByRole("button", { name: "Delete all" }).click();
+      await expect.element(screen.getByText("Couldn't delete your projects")).toBeInTheDocument();
+      await deleteDatabase(DB_NAME);
     });
   });
 });

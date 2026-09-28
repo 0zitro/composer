@@ -20,7 +20,7 @@ function backUp(): void {
   });
 }
 
-// -- Rows -----------------------------------------------------------------------
+// -- Rows ---------------------------------------------------------------------
 
 const BackUpAllProjectsRow: React.FC<{ projectCount: number }> = ({ projectCount }) => (
   <div className="flex items-center justify-between py-3">
@@ -63,15 +63,6 @@ const DeleteAllProjectsRow: React.FC<{ projectCount: number }> = ({ projectCount
   );
 };
 
-// -- Component ----------------------------------------------------------------
-
-const BackupSettings: React.FC<{ projectCount: number }> = ({ projectCount }) => (
-  <>
-    <BackUpAllProjectsRow projectCount={projectCount} />
-    <DeleteAllProjectsRow projectCount={projectCount} />
-  </>
-);
-
 // -- Exports ------------------------------------------------------------------
 
-export { BackupSettings, BackUpAllProjectsRow, DeleteAllProjectsRow };
+export { BackUpAllProjectsRow, DeleteAllProjectsRow };

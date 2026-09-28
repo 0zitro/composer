@@ -1,6 +1,5 @@
 import { listProjectIndex } from "@/lib/project-repository";
 import { useSettingsStore } from "@/stores/settings";
-import { captureDownloads } from "@/test/downloads";
 import { seedStoredProject, songTitled } from "@/test/projects";
 import { render } from "@/test/render";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
@@ -148,63 +147,26 @@ describe("SettingsSectionRows (storage)", () => {
   });
 
   describe("Saving group", () => {
-    it("wraps the auto-save delay, backup and delete-all rows in a Saving group", async () => {
+    it("wraps the auto-save delay, backup and delete-all rows in a Saving group, in order", async () => {
       const screen = await renderStorage();
       const savingGroup = screen.getByRole("region", { name: "Saving" });
       await expect.element(savingGroup.getByRole("button", { name: "Export all" })).toBeInTheDocument();
       await expect.element(savingGroup.getByRole("button", { name: "Delete all" })).toBeInTheDocument();
+      const ids = Array.from(screen.container.querySelectorAll("[data-setting-id]")).map((el) =>
+        el.getAttribute("data-setting-id"),
+      );
+      expect(ids.indexOf("autoSaveDelay")).toBeGreaterThanOrEqual(0);
+      expect(ids.indexOf("backUpAllProjects")).toBeGreaterThan(ids.indexOf("autoSaveDelay"));
+      expect(ids.indexOf("deleteAllProjects")).toBeGreaterThan(ids.indexOf("backUpAllProjects"));
     });
 
-    it("backs up every project as one file", async () => {
+    it("deletes every project through the real Settings rows after confirming", async () => {
       await seedStoredProject("a", { project: songTitled("Alpha") });
       const screen = await renderStorage();
-      await expect
-        .element(screen.getByText("Download every project's lyrics and timings as one file. Audio is not included."))
-        .toBeInTheDocument();
-      const downloads = captureDownloads();
-      await screen.getByRole("button", { name: "Export all" }).click();
-      await expect.poll(() => downloads.names().length).toBe(1);
-      downloads.stop();
-    });
-
-    it("deletes every project after confirming", async () => {
-      await seedStoredProject("a", { project: songTitled("Alpha") });
-      await seedStoredProject("b", { project: songTitled("Bravo") });
-      const screen = await renderStorage();
-      await expect
-        .element(screen.getByText("Remove every project and all stored audio from this device. This can't be undone."))
-        .toBeInTheDocument();
       await screen.getByRole("button", { name: "Delete all" }).click();
-      await expect.element(screen.getByText("Delete all projects?")).toBeInTheDocument();
-      await expect
-        .element(
-          screen.getByText("This removes 2 projects and all stored audio from this device. This can't be undone."),
-        )
-        .toBeInTheDocument();
       await screen.getByRole("dialog").getByRole("button", { name: "Delete all" }).click();
       await expect.poll(listProjectIndex).toEqual([]);
       await expect.element(screen.getByText("Deleted all projects")).toBeInTheDocument();
-    });
-
-    it("keeps everything when the confirm is cancelled from the keyboard", async () => {
-      await seedStoredProject("a", { project: songTitled("Alpha") });
-      const screen = await renderStorage();
-      await screen.getByRole("button", { name: "Delete all" }).click();
-      await expect
-        .element(
-          screen.getByText("This removes 1 project and all stored audio from this device. This can't be undone."),
-        )
-        .toBeInTheDocument();
-      await userEvent.keyboard("{Escape}");
-      await expect.poll(async () => (await listProjectIndex()).length).toBe(1);
-    });
-
-    describe("edge cases", () => {
-      it("disables both actions with no projects", async () => {
-        const screen = await renderStorage();
-        await expect.element(screen.getByRole("button", { name: "Export all" })).toBeDisabled();
-        await expect.element(screen.getByRole("button", { name: "Delete all" })).toBeDisabled();
-      });
     });
   });
 });
