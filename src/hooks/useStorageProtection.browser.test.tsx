@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
-const CHROMIUM_DECLINED = "Your browser said no for now. Try the steps above, then ask again.";
+const CHROMIUM_DECLINED = "Your browser said no for now. Try one of the steps, then ask again.";
 const OTHER_DECLINED = "Your browser didn't allow it this time.";
 
 function spyOnPersist() {

@@ -16,7 +16,7 @@ interface StorageProtectionState {
 const LOG_PREFIX = "[StorageProtection]";
 const STORAGE_PROTECTION_QUERY_KEY = ["storage-protection"] as const;
 const DECLINED_MESSAGE = "Your browser didn't allow it this time.";
-const CHROMIUM_DECLINED_MESSAGE = "Your browser said no for now. Try the steps above, then ask again.";
+const CHROMIUM_DECLINED_MESSAGE = "Your browser said no for now. Try one of the steps, then ask again.";
 
 // -- Hook ---------------------------------------------------------------------
 

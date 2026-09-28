@@ -6,7 +6,7 @@ import { userEvent } from "vitest/browser";
 
 // -- Helpers ------------------------------------------------------------------
 
-const DECLINED = "Your browser said no for now. Try the steps above, then ask again.";
+const DECLINED = "Your browser said no for now. Try one of the steps, then ask again.";
 
 function spyOnPersist() {
   return vi.spyOn(navigator.storage, "persist").mockClear();
@@ -17,12 +17,12 @@ async function browserStatus(): Promise<"protected" | "unprotected"> {
 }
 
 async function assertProtectedNoticeShown(screen: Awaited<ReturnType<typeof render>>): Promise<void> {
-  await expect.element(screen.getByText("Protected from browser cleanup")).toBeInTheDocument();
+  await expect.element(screen.getByText("On", { exact: true })).toBeInTheDocument();
   expect(screen.getByRole("button").elements()).toHaveLength(0);
 }
 
 async function assertUnprotectedNoticeShown(screen: Awaited<ReturnType<typeof render>>): Promise<void> {
-  await expect.element(screen.getByText("Not protected")).toBeInTheDocument();
+  await expect.element(screen.getByText("Off", { exact: true })).toBeInTheDocument();
   await expect.element(screen.getByRole("button", { name: "Protect storage" })).toBeInTheDocument();
 }
 
@@ -81,7 +81,7 @@ describe("StorageProtectionSetting", () => {
       await screen.getByRole("button", { name: "Protect storage" }).click();
       await expect.poll(() => persist.mock.results.length).toBe(1);
       if (await persist.mock.results[0]?.value) {
-        await expect.element(screen.getByText("Protected from browser cleanup")).toBeInTheDocument();
+        await expect.element(screen.getByText("On", { exact: true })).toBeInTheDocument();
         expect(screen.getByText(DECLINED).elements()).toHaveLength(0);
       } else {
         await expect.element(screen.getByText(DECLINED)).toBeInTheDocument();

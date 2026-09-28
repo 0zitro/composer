@@ -1,5 +1,5 @@
 import { useStorageProtection } from "@/hooks/useStorageProtection";
-import { StorageProtectionNotice } from "@/ui/settings/storage/storage-protection-notice";
+import { StorageProtectionRow } from "@/ui/settings/storage/storage-protection-row";
 import { BROWSER_KIND } from "@/utils/platform";
 
 // -- Component ----------------------------------------------------------------
@@ -7,11 +7,7 @@ import { BROWSER_KIND } from "@/utils/platform";
 const StorageProtectionSetting: React.FC = () => {
   const { status, protect } = useStorageProtection();
 
-  return (
-    <div className="py-3">
-      <StorageProtectionNotice status={status} browser={BROWSER_KIND} onProtect={() => void protect()} />
-    </div>
-  );
+  return <StorageProtectionRow status={status} browser={BROWSER_KIND} onProtect={() => void protect()} />;
 };
 
 // -- Exports ------------------------------------------------------------------
