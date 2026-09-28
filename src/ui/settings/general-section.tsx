@@ -1,6 +1,7 @@
 import { useConfirm } from "@/stores/confirm-store";
 import { useSettingsStore } from "@/stores/settings";
 import { Button } from "@/ui/button";
+import { SettingRowLayout } from "@/ui/settings/setting-row-layout";
 import { SettingsSectionRows } from "@/ui/settings/settings-section-rows";
 import { IconRefresh, IconRoute } from "@tabler/icons-react";
 
@@ -27,10 +28,10 @@ const GeneralSection: React.FC<{
   return (
     <div className="divide-y divide-composer-border">
       <SettingsSectionRows section="general" />
-      <div className="flex items-center justify-between py-3">
+      <SettingRowLayout>
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-composer-text">Reset product tour</span>
-          <span className="text-xs text-composer-text-muted">
+          <span className="text-xs text-composer-text-muted text-pretty">
             Restart the guided walkthrough that introduces Composer's features.
           </span>
         </div>
@@ -46,17 +47,19 @@ const GeneralSection: React.FC<{
           <IconRoute size={14} />
           Reset tour
         </Button>
-      </div>
-      <div className="flex items-center justify-between py-3">
+      </SettingRowLayout>
+      <SettingRowLayout>
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-composer-text">Reset to defaults</span>
-          <span className="text-xs text-composer-text-muted">Restore all settings to their original values.</span>
+          <span className="text-xs text-composer-text-muted text-pretty">
+            Restore all settings to their original values.
+          </span>
         </div>
         <Button size="sm" variant="secondary" hasIcon onClick={handleResetSettings}>
           <IconRefresh size={14} />
           Reset all
         </Button>
-      </div>
+      </SettingRowLayout>
     </div>
   );
 };

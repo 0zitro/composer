@@ -1,6 +1,7 @@
 import { useSettingsStore } from "@/stores/settings";
 import { LIBRARY_VIEW_OPTIONS } from "@/ui/projects/library-options";
 import { SegmentedControl } from "@/ui/segmented-control";
+import { SettingRowLayout } from "@/ui/settings/setting-row-layout";
 import { SettingText } from "@/ui/settings/setting-text";
 
 // -- Component -----------------------------------------------------------------
@@ -10,7 +11,7 @@ const LibraryViewSetting: React.FC = () => {
   const set = useSettingsStore((state) => state.set);
 
   return (
-    <div className="flex items-center justify-between py-3">
+    <SettingRowLayout>
       <SettingText id="libraryView" />
       <SegmentedControl
         aria-label="Library view"
@@ -18,7 +19,7 @@ const LibraryViewSetting: React.FC = () => {
         options={LIBRARY_VIEW_OPTIONS}
         onChange={(view) => set("libraryView", view)}
       />
-    </div>
+    </SettingRowLayout>
   );
 };
 

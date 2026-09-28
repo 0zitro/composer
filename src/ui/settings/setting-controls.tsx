@@ -1,6 +1,7 @@
 import { useSettingsStore } from "@/stores/settings";
 import { type SettingId, settingEntry, settingKeyOf } from "@/stores/settings-catalog";
 import { Select } from "@/ui/select";
+import { SettingRowLayout } from "@/ui/settings/setting-row-layout";
 import { SettingText } from "@/ui/settings/setting-text";
 import { cn } from "@/utils/cn";
 import { useId } from "react";
@@ -37,7 +38,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({ id, min, max, step, forma
 
   return (
     <div className="flex flex-col gap-2 py-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-8">
         <SettingText id={id} />
         <div className="flex items-center gap-2">
           {action && (
@@ -77,7 +78,7 @@ const ToggleSetting: React.FC<{ id: SettingId }> = ({ id }) => {
   const set = useSettingsStore((s) => s.set);
 
   return (
-    <div className="flex items-center justify-between py-3">
+    <SettingRowLayout>
       <SettingText id={id} />
       <button
         type="button"
@@ -97,7 +98,7 @@ const ToggleSetting: React.FC<{ id: SettingId }> = ({ id }) => {
           )}
         />
       </button>
-    </div>
+    </SettingRowLayout>
   );
 };
 
@@ -107,7 +108,7 @@ const SelectSetting: React.FC<{ id: SettingId; options: SelectOption[] }> = ({ i
   const set = useSettingsStore((s) => s.set);
 
   return (
-    <div className="flex items-center justify-between py-3">
+    <SettingRowLayout>
       <SettingText id={id} />
       <Select
         aria-label={settingEntry(id).label}
@@ -115,7 +116,7 @@ const SelectSetting: React.FC<{ id: SettingId; options: SelectOption[] }> = ({ i
         onChange={(next) => set(settingKey, next)}
         options={options}
       />
-    </div>
+    </SettingRowLayout>
   );
 };
 

@@ -2,6 +2,7 @@ import { deleteAllProjects } from "@/lib/delete-all-projects";
 import { backUpAllProjects } from "@/lib/storage-actions";
 import { useConfirm } from "@/stores/confirm-store";
 import { Button } from "@/ui/button";
+import { SettingRowLayout } from "@/ui/settings/setting-row-layout";
 import { SettingText } from "@/ui/settings/setting-text";
 import { formatProjectCount } from "@/utils/project-count";
 import { IconDownload, IconTrash } from "@tabler/icons-react";
@@ -23,13 +24,13 @@ function backUp(): void {
 // -- Rows ---------------------------------------------------------------------
 
 const BackUpAllProjectsRow: React.FC<{ projectCount: number }> = ({ projectCount }) => (
-  <div className="flex items-center justify-between py-3">
+  <SettingRowLayout>
     <SettingText id="backUpAllProjects" />
     <Button variant="secondary" size="sm" hasIcon onClick={backUp} disabled={projectCount === 0}>
       <IconDownload aria-hidden="true" className="size-3.5" />
       Export all
     </Button>
-  </div>
+  </SettingRowLayout>
 );
 
 const DeleteAllProjectsRow: React.FC<{ projectCount: number }> = ({ projectCount }) => {
@@ -53,13 +54,13 @@ const DeleteAllProjectsRow: React.FC<{ projectCount: number }> = ({ projectCount
   };
 
   return (
-    <div className="flex items-center justify-between py-3">
+    <SettingRowLayout>
       <SettingText id="deleteAllProjects" />
       <Button variant="danger" size="sm" hasIcon onClick={deleteAll} disabled={projectCount === 0}>
         <IconTrash aria-hidden="true" className="size-3.5" />
         Delete all
       </Button>
-    </div>
+    </SettingRowLayout>
   );
 };
 

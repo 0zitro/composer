@@ -14,7 +14,7 @@ const SettingText: React.FC<{ id: SettingId }> = ({ id }) => {
       <span className="text-sm font-medium text-composer-text">
         <HighlightMatches text={label} query={query} />
       </span>
-      <span className="text-xs text-composer-text-muted">
+      <span className="text-xs text-composer-text-muted text-pretty">
         <HighlightMatches text={description} query={query} />
       </span>
     </div>
