@@ -79,7 +79,7 @@ const NewSongLink: React.FC<{ onCreate: (videoId: string) => void }> = ({ onCrea
       <p
         id={hintId}
         aria-live="polite"
-        className={cn("mt-1.5 text-xs", error ? "text-composer-negative select-text" : "text-composer-text/60")}
+        className={cn("mt-1.5 text-xs", error ? "text-composer-negative select-text" : "text-composer-text-muted")}
       >
         {error ?? "Each song gets its own project."}
       </p>
@@ -101,7 +101,7 @@ const NewSongPanel: React.FC<NewSongPanelProps> = ({ className }) => {
 
   return (
     <section aria-labelledby={headingId} className={cn(PANEL_STYLES, className)}>
-      <div className="flex items-center justify-between -my-1 -mr-2">
+      <div className="flex items-center justify-between -my-1 -mr-3">
         <h2 id={headingId} className="text-[15px] font-bold">
           Start a new song
         </h2>
@@ -123,8 +123,8 @@ const NewSongPanel: React.FC<NewSongPanelProps> = ({ className }) => {
           <IconUpload aria-hidden="true" className="size-5" />
         </span>
         <span className="flex flex-col text-left">
-          <strong className="font-medium">Drop an audio file, or choose one</strong>
-          <small className="text-xs text-composer-text/60">MP3, FLAC, WAV, M4A, OGG</small>
+          <strong className="text-sm font-medium">Drop an audio file, or choose one</strong>
+          <small className="text-xs text-composer-text-muted">MP3, FLAC, WAV, M4A, OGG</small>
         </span>
       </FileDropZone>
       <NewSongLink onCreate={startWithVideo} />
