@@ -9,6 +9,7 @@ import {
   settingEntry,
   settingIdsInSection,
   settingKeyOf,
+  visibleSettingIds,
 } from "@/stores/settings-catalog";
 import { describe, expect, it } from "vitest";
 
@@ -39,7 +40,8 @@ describe("SETTINGS_CATALOG", () => {
 
     it("has trimmed, non-empty labels and descriptions ending in a period", () => {
       for (const id of SETTING_IDS) {
-        const { label, description } = settingEntry(id);
+        const { label } = settingEntry(id);
+        const description = settingDescription(id, DEFAULTS);
         expect(label.length).toBeGreaterThan(0);
         expect(label).toBe(label.trim());
         expect(description).toBe(description.trim());
@@ -49,7 +51,8 @@ describe("SETTINGS_CATALOG", () => {
 
     it("uses no em or en dashes", () => {
       for (const id of SETTING_IDS) {
-        const { label, description, keywords = [] } = settingEntry(id);
+        const { label, keywords = [] } = settingEntry(id);
+        const description = settingDescription(id, DEFAULTS);
         expect([label, description, ...keywords].join(" ")).not.toMatch(/[\u2013\u2014]/);
       }
     });
@@ -115,7 +118,9 @@ describe("readSettingOn", () => {
 
 describe("settingDescription", () => {
   it("returns the static description for a setting with no override", () => {
-    expect(settingDescription("followPlayhead", DEFAULTS)).toBe(settingEntry("followPlayhead").description);
+    expect(settingDescription("followPlayhead", DEFAULTS)).toBe(
+      "Auto-scroll the timeline to keep the playhead visible.",
+    );
   });
 
   it("computes the description from state when the entry declares one", () => {
@@ -144,6 +149,32 @@ describe("isSettingVisible", () => {
     it("reads the predicate when the entry declares one", () => {
       expect(isSettingVisible("storageLimit", { ...DEFAULTS, smartCleanup: false })).toBe(false);
       expect(isSettingVisible("storageLimit", { ...DEFAULTS, smartCleanup: true })).toBe(true);
+    });
+  });
+});
+
+describe("visibleSettingIds", () => {
+  it("keeps every id when none has a visibility predicate", () => {
+    const ids = settingIdsInSection("confirmations");
+    expect(visibleSettingIds(ids, DEFAULTS)).toEqual(ids);
+  });
+
+  it("drops a hidden id and keeps the rest in order", () => {
+    const ids = settingIdsInSection("storage");
+    const off = visibleSettingIds(ids, { ...DEFAULTS, smartCleanup: false });
+    expect(off).not.toContain("storageLimit");
+    expect(off).toEqual(ids.filter((id) => id !== "storageLimit"));
+  });
+
+  it("is the single owner SettingsSectionRows and search both read (positive control)", () => {
+    const ids = settingIdsInSection("storage");
+    const on = visibleSettingIds(ids, { ...DEFAULTS, smartCleanup: true });
+    expect(on).toEqual(ids);
+  });
+
+  describe("edge cases", () => {
+    it("returns an empty list for an empty input", () => {
+      expect(visibleSettingIds([], DEFAULTS)).toEqual([]);
     });
   });
 });

@@ -3,9 +3,9 @@ import {
   type SettingId,
   type SettingsGroupId,
   type SettingsSectionId,
-  isSettingVisible,
   settingEntry,
   settingIdsInSection,
+  visibleSettingIds,
 } from "@/stores/settings-catalog";
 import { SettingsGroup } from "@/ui/settings/setting-controls";
 import { SettingRow } from "@/ui/settings/setting-row";
@@ -35,7 +35,7 @@ function runsOf(ids: readonly SettingId[]): SettingRowRun[] {
 
 const SettingsSectionRows: React.FC<{ section: SettingsSectionId }> = ({ section }) => {
   const ids = settingIdsInSection(section);
-  const visibleIds = useSettingsStore(useShallow((state) => ids.filter((id) => isSettingVisible(id, state))));
+  const visibleIds = useSettingsStore(useShallow((state) => visibleSettingIds(ids, state)));
 
   return (
     <div className="divide-y divide-composer-border">

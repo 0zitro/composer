@@ -1,13 +1,14 @@
 import { useTypeToSearch } from "@/hooks/useTypeToSearch";
+import { useSettingsStore } from "@/stores/settings";
 import { SETTINGS_SECTIONS, type SettingsSectionId } from "@/stores/settings-catalog";
 import { useUIStore } from "@/stores/ui";
-import { withMatchCounts } from "@/ui/nav-match-counts";
 import { Modal } from "@/ui/modal";
 import { ModalNavLayout, type ModalNavSection } from "@/ui/modal-nav-layout";
+import { withMatchCounts } from "@/ui/nav-match-counts";
 import { revealElement } from "@/ui/reveal-element";
 import { SearchField } from "@/ui/search-field";
-import { ConfirmationsSection } from "@/ui/settings/confirmations-section";
 import { BackToHelpChip } from "@/ui/settings/back-to-help-chip";
+import { ConfirmationsSection } from "@/ui/settings/confirmations-section";
 import { GeneralSection } from "@/ui/settings/general-section";
 import { countMatchesBySection, searchSettings } from "@/ui/settings/search-settings";
 import { SettingsSearchQueryContext } from "@/ui/settings/settings-search-query";
@@ -60,7 +61,8 @@ const SettingsModalBody: React.FC<{ onResetTour: () => void; onClose: () => void
   const settingsQuery = useUIStore((s) => s.settingsQuery);
   const setSettingsQuery = useUIStore((s) => s.setSettingsQuery);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const results = useMemo(() => searchSettings(settingsQuery), [settingsQuery]);
+  const settingsState = useSettingsStore((s) => s);
+  const results = useMemo(() => searchSettings(settingsQuery, settingsState), [settingsQuery, settingsState]);
 
   useTypeToSearch(searchInputRef, settingsQuery, setSettingsQuery);
 

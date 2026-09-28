@@ -22,17 +22,19 @@ interface SettingsSection {
 
 type SettingsGroupId = "Usage" | "Audio" | "Saving";
 
-interface SettingEntry {
+interface SettingEntryCommon {
   section: SettingsSectionId;
   label: string;
-  description: string;
   keywords?: readonly string[];
   settingKey?: keyof SettingsState;
   readOn?: (state: SettingsState) => boolean;
   group?: SettingsGroupId;
-  describe?: (state: SettingsState) => string;
   visibleWhen?: (state: SettingsState) => boolean;
 }
+
+type SettingEntry =
+  | (SettingEntryCommon & { description: string; descriptionFor?: never })
+  | (SettingEntryCommon & { description?: never; descriptionFor: (state: SettingsState) => string });
 
 // -- Sections ------------------------------------------------------------------
 
@@ -88,12 +90,16 @@ function readSettingOn(id: SettingId, state: SettingsState): boolean | null {
 
 function settingDescription(id: SettingId, state: SettingsState): string {
   const entry = settingEntry(id);
-  return entry.describe ? entry.describe(state) : entry.description;
+  return entry.descriptionFor ? entry.descriptionFor(state) : entry.description;
 }
 
 function isSettingVisible(id: SettingId, state: SettingsState): boolean {
   const { visibleWhen } = settingEntry(id);
   return visibleWhen ? visibleWhen(state) : true;
+}
+
+function visibleSettingIds(ids: readonly SettingId[], state: SettingsState): SettingId[] {
+  return ids.filter((id) => isSettingVisible(id, state));
 }
 
 // -- Exports -------------------------------------------------------------------
@@ -108,5 +114,6 @@ export {
   settingEntry,
   settingIdsInSection,
   settingKeyOf,
+  visibleSettingIds,
 };
 export type { SettingEntry, SettingHint, SettingId, SettingsGroupId, SettingsSectionId };

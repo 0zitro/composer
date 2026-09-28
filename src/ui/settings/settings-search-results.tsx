@@ -1,11 +1,4 @@
-import { useSettingsStore } from "@/stores/settings";
-import {
-  SETTINGS_SECTIONS,
-  type SettingId,
-  type SettingsSectionId,
-  isSettingVisible,
-  settingEntry,
-} from "@/stores/settings-catalog";
+import { SETTINGS_SECTIONS, type SettingId, type SettingsSectionId, settingEntry } from "@/stores/settings-catalog";
 import type { ShortcutDefinition } from "@/stores/shortcut-registry";
 import { useUIStore } from "@/stores/ui";
 import { Button } from "@/ui/button";
@@ -16,7 +9,6 @@ import { SettingRow } from "@/ui/settings/setting-row";
 import { useSettingsSearchQuery } from "@/ui/settings/settings-search-query";
 import { SETTINGS_SECTION_ICONS } from "@/ui/settings/settings-section-icons";
 import { ShortcutRebindRow } from "@/ui/shortcut-rebind-row";
-import { useShallow } from "zustand/react/shallow";
 
 // -- Types ---------------------------------------------------------------------
 
@@ -43,10 +35,7 @@ const SettingsSearchResults: React.FC<{ results: SettingsSearchResult }> = ({ re
   const query = useSettingsSearchQuery();
   const setSettingsQuery = useUIStore((s) => s.setSettingsQuery);
   const setSettingsSection = useUIStore((s) => s.setSettingsSection);
-  const visibleSettings = useSettingsStore(
-    useShallow((state) => results.settings.filter((id) => isSettingVisible(id, state))),
-  );
-  const groups = groupResults({ ...results, settings: visibleSettings });
+  const groups = groupResults(results);
 
   if (groups.length === 0) {
     return (

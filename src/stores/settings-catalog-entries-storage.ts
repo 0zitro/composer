@@ -1,5 +1,15 @@
+import type { KeepYouTubeAudio } from "@/domain/storage/audio-retention";
 import type { SettingEntry } from "@/stores/settings-catalog";
-import { keepYouTubeAudioDescription } from "@/ui/settings/storage/storage-options";
+
+// -- Descriptions ---------------------------------------------------------------
+
+function keepYouTubeAudioDescription(rule: KeepYouTubeAudio, bridgeEnabled: boolean): string {
+  if (rule === "never") return "YouTube audio is fetched each time you open a project.";
+  if (rule === "always") return "YouTube audio is kept, so projects open offline. Cleanup can still remove it.";
+  return bridgeEnabled
+    ? "Composer Bridge is on, so YouTube audio is fetched when you open a project and not kept."
+    : "Composer Bridge is off, so YouTube audio is kept. Fetching it again can fail.";
+}
 
 // -- Catalog -------------------------------------------------------------------
 
@@ -21,11 +31,10 @@ const STORAGE_CATALOG_ENTRIES = {
   keepYouTubeAudio: {
     section: "storage",
     label: "Keep YouTube audio",
-    description: keepYouTubeAudioDescription("auto", false),
     keywords: ["youtube", "cache"],
     settingKey: "keepYouTubeAudio",
     group: "Audio",
-    describe: (state) => keepYouTubeAudioDescription(state.keepYouTubeAudio, state.experiments.youtubeBridge),
+    descriptionFor: (state) => keepYouTubeAudioDescription(state.keepYouTubeAudio, state.experiments.youtubeBridge),
   },
   smartCleanup: {
     section: "storage",
@@ -55,4 +64,4 @@ const STORAGE_CATALOG_ENTRIES = {
 
 // -- Exports -------------------------------------------------------------------
 
-export { STORAGE_CATALOG_ENTRIES };
+export { STORAGE_CATALOG_ENTRIES, keepYouTubeAudioDescription };

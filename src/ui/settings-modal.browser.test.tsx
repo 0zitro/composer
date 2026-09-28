@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { userEvent } from "vitest/browser";
 import { useModalStackStore } from "@/stores/modal-stack";
 import { useSettingsStore } from "@/stores/settings";
 import { useUIStore } from "@/stores/ui";
-import { SettingsModal } from "@/ui/settings-modal";
-import { allowConsole } from "@/test/console-guard";
 import { installStyleSheet } from "@/test/browser-css";
+import { allowConsole } from "@/test/console-guard";
 import { render } from "@/test/render";
+import { SettingsModal } from "@/ui/settings-modal";
+import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 
 describe("SettingsModal", () => {
   it("renders nothing when isOpen is false", async () => {
@@ -145,6 +145,16 @@ describe("SettingsModal target", () => {
     await render(<SettingsModal isOpen onClose={() => {}} onResetTour={() => {}} />);
     await expect.poll(() => row("youtubeBridge")?.querySelector('[data-testid="bridge-section"]')).not.toBeNull();
   });
+
+  it("opens the section without nudging or leaving a stale target when the row is hidden", async () => {
+    useSettingsStore.setState({ smartCleanup: false });
+    useUIStore.getState().openSettings({ target: { setting: "storageLimit" } });
+    await render(<SettingsModal isOpen onClose={() => {}} onResetTour={() => {}} />);
+    expect(useUIStore.getState().settingsSection).toBe("storage");
+    await expect.poll(() => useUIStore.getState().settingsTarget).toBeNull();
+    expect(document.querySelector("[data-nudge]")).toBeNull();
+    expect(row("storageLimit")).toBeNull();
+  });
 });
 
 describe("SettingsModal search", () => {
@@ -185,6 +195,18 @@ describe("SettingsModal search", () => {
     await searchBox(screen).fill("snap");
     await expect.element(screen.getByRole("button", { name: /^Timeline\s*\d+$/ })).toBeInTheDocument();
     await expect.element(screen.getByRole("button", { name: "General" })).toHaveAttribute("data-dimmed");
+  });
+
+  it("updates results and the section badge when a setting changes while a search is active", async () => {
+    useSettingsStore.setState({ smartCleanup: false });
+    const screen = await openModal();
+    await searchBox(screen).fill("quota limit");
+    await expect.element(screen.getByRole("status")).toHaveTextContent('No settings match "quota limit"');
+    await expect.element(screen.getByRole("button", { name: "Save & Storage" })).toHaveAttribute("data-dimmed");
+
+    useSettingsStore.setState({ smartCleanup: true });
+    await expect.element(screen.getByRole("button", { name: "Storage limit" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: /^Save & Storage\s*\d+$/ })).toBeInTheDocument();
   });
 
   it("finds shortcuts and renders them as rebind rows", async () => {

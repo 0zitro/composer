@@ -16,16 +16,6 @@ const STORAGE_LIMIT_OPTIONS: { value: StorageLimit; label: string }[] = [
   { value: "none", label: "No limit" },
 ];
 
-// -- Descriptions ---------------------------------------------------------------
-
-function keepYouTubeAudioDescription(rule: KeepYouTubeAudio, bridgeEnabled: boolean): string {
-  if (rule === "never") return "YouTube audio is fetched each time you open a project.";
-  if (rule === "always") return "YouTube audio is kept, so projects open offline. Cleanup can still remove it.";
-  return bridgeEnabled
-    ? "Composer Bridge is on, so YouTube audio is fetched when you open a project and not kept."
-    : "Composer Bridge is off, so YouTube audio is kept. Fetching it again can fail.";
-}
-
 // -- Exports -------------------------------------------------------------------
 
-export { KEEP_YOUTUBE_AUDIO_OPTIONS, STORAGE_LIMIT_OPTIONS, keepYouTubeAudioDescription };
+export { KEEP_YOUTUBE_AUDIO_OPTIONS, STORAGE_LIMIT_OPTIONS };

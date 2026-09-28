@@ -1,10 +1,11 @@
+import { DEFAULTS, type SettingsState } from "@/stores/settings";
 import { SETTING_IDS, settingIdsInSection } from "@/stores/settings-catalog";
 import { getEffectiveKeysArray } from "@/stores/shortcut-bindings";
 import { countMatchesBySection, searchSettings } from "@/ui/settings/search-settings";
 import { describe, expect, it } from "vitest";
 
-function search(query: string) {
-  const result = searchSettings(query);
+function search(query: string, state: SettingsState = DEFAULTS) {
+  const result = searchSettings(query, state);
   if (!result) throw new Error(`expected results for "${query}"`);
   return result;
 }
@@ -47,8 +48,8 @@ describe("searchSettings", () => {
 
   describe("edge cases", () => {
     it("returns null for an empty or whitespace query", () => {
-      expect(searchSettings("")).toBeNull();
-      expect(searchSettings("   ")).toBeNull();
+      expect(searchSettings("", DEFAULTS)).toBeNull();
+      expect(searchSettings("   ", DEFAULTS)).toBeNull();
     });
 
     it("ignores case", () => {
@@ -83,5 +84,32 @@ describe("countMatchesBySection", () => {
     expect(counts.timeline).toBe(result.settings.length);
     expect(counts.shortcuts).toBe(result.shortcuts.length);
     expect(counts.general).toBeUndefined();
+  });
+});
+
+describe("searchSettings visibility", () => {
+  it("drops a hidden setting from results and its section badge, restores both once visible (positive control)", () => {
+    const off = search("quota limit", { ...DEFAULTS, smartCleanup: false });
+    expect(off.settings).toEqual([]);
+    expect(countMatchesBySection(off).storage).toBeUndefined();
+
+    const on = search("quota limit", { ...DEFAULTS, smartCleanup: true });
+    expect(on.settings).toEqual(["storageLimit"]);
+    expect(countMatchesBySection(on).storage).toBe(1);
+  });
+
+  describe("edge cases", () => {
+    it("still finds a sibling row in the same section once the hidden one is filtered out", () => {
+      const off = search("storage", { ...DEFAULTS, smartCleanup: false });
+      expect(off.settings).not.toContain("storageLimit");
+      expect(off.settings).toContain("storageProtection");
+    });
+  });
+});
+
+describe("searchSettings computed description", () => {
+  it("matches a word only present in the current computed description", () => {
+    expect(search("offline", DEFAULTS).settings).toEqual([]);
+    expect(search("offline", { ...DEFAULTS, keepYouTubeAudio: "always" }).settings).toEqual(["keepYouTubeAudio"]);
   });
 });
