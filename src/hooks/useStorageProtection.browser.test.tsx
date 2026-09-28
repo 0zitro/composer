@@ -1,9 +1,15 @@
 import { useStorageProtection } from "@/hooks/useStorageProtection";
 import { render } from "@/test/render";
 import { Toaster } from "sonner";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
+
+const DECLINED = "Your browser didn't allow it this time.";
+
+function spyOnPersist() {
+  return vi.spyOn(navigator.storage, "persist").mockClear();
+}
 
 let latest: ReturnType<typeof useStorageProtection>;
 
@@ -24,20 +30,29 @@ describe("useStorageProtection", () => {
     await expect.poll(() => latest?.status).toBe(await browserStatus());
   });
 
-  it("asking again leaves the status matching the browser's answer", async () => {
+  it("asking again asks the browser and shows exactly its answer", async () => {
+    const persist = spyOnPersist();
     await render(<ProtectionProbe />);
     await expect.poll(() => latest?.status).toBeDefined();
     await latest.protect();
-    await expect.poll(() => latest?.status).toBe(await browserStatus());
+    expect(persist).toHaveBeenCalledTimes(1);
+    const granted = await persist.mock.results[0]?.value;
+    await expect.poll(() => latest.status).toBe(granted ? "protected" : "unprotected");
   });
 
   describe("edge cases", () => {
-    it("tells the user when the browser declines", async () => {
+    it("tells the user when the browser declines, and says nothing when it grants", async () => {
+      const persist = spyOnPersist();
       const screen = await render(<ProtectionProbe />);
       await expect.poll(() => latest?.status).toBeDefined();
       await latest.protect();
-      if ((await browserStatus()) === "unprotected") {
-        await expect.element(screen.getByText("Your browser didn't allow it this time.")).toBeInTheDocument();
+      const granted = await persist.mock.results[0]?.value;
+      if (granted) {
+        expect(latest.status).toBe("protected");
+        expect(screen.getByText(DECLINED).elements()).toHaveLength(0);
+      } else {
+        await expect.element(screen.getByText(DECLINED)).toBeInTheDocument();
+        expect(latest.status).toBe("unprotected");
       }
     });
   });
