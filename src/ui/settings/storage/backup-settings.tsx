@@ -1,4 +1,4 @@
-import { deleteAllProjects } from "@/lib/open-project";
+import { deleteAllProjects } from "@/lib/delete-all-projects";
 import { backUpAllProjects } from "@/lib/storage-actions";
 import { useConfirm } from "@/stores/confirm-store";
 import { Button } from "@/ui/button";

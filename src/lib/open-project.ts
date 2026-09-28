@@ -7,7 +7,6 @@ import {
   forgetOpenProjectId,
   openProjectIdSnapshot,
 } from "@/lib/open-project-session";
-import { commitAllPendingDeletions } from "@/lib/pending-deletions";
 import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave, flushPendingSaveQuietly } from "@/lib/persistence-debounce";
 import { saveProjectAudio } from "@/lib/project-audio";
@@ -174,11 +173,10 @@ async function deleteProject(id: string): Promise<void> {
   closeIfOpen(id);
 }
 
-async function deleteAllProjects(): Promise<void> {
+async function closeAndClearAllProjects(): Promise<void> {
   claimRequest();
   markOpenProjectChanged();
   cancelPendingSave();
-  await commitAllPendingDeletions();
   await awaitInFlightSaves();
   await clearAllProjects();
   cancelPendingSave();
@@ -212,6 +210,6 @@ export {
   startSongInNewProject,
   reloadOpenProject,
   deleteProject,
-  deleteAllProjects,
+  closeAndClearAllProjects,
   forkOpenProject,
 };

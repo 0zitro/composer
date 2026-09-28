@@ -1,5 +1,6 @@
 import { listStemJobs, putStem } from "@/audio/separation/stem-store";
-import { deleteAllProjects, restoreOpenProject } from "@/lib/open-project";
+import { deleteAllProjects } from "@/lib/delete-all-projects";
+import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { hiddenProjectIdsSnapshot, schedulePendingDeletion } from "@/lib/pending-deletions";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
