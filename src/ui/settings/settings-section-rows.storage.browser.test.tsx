@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { useSettingsStore } from "@/stores/settings";
 import { render } from "@/test/render";
 import { SettingsSectionRows } from "@/ui/settings/settings-section-rows";
+import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -23,5 +23,18 @@ describe("SettingsSectionRows (storage)", () => {
     const screen = await render(<SettingsSectionRows section="storage" />);
     setRangeValue(screen.getByRole("slider").element() as HTMLInputElement, 5000);
     await expect.poll(() => useSettingsStore.getState().autoSaveDelay).toBe(5000);
+  });
+
+  it("wraps the usage panel and the protection notice in an Usage group", async () => {
+    const screen = await render(<SettingsSectionRows section="storage" />);
+    const usageGroup = screen.getByRole("region", { name: "Usage" });
+    await expect.element(usageGroup).toBeInTheDocument();
+    await expect.element(usageGroup.getByText("used on this device")).toBeInTheDocument();
+  });
+
+  it("leaves the auto-save delay row outside of any group", async () => {
+    const screen = await render(<SettingsSectionRows section="storage" />);
+    const autoSaveRow = screen.container.querySelector('[data-setting-id="autoSaveDelay"]');
+    expect(autoSaveRow?.closest("section")).toBeNull();
   });
 });

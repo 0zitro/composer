@@ -1,5 +1,6 @@
 import type { SettingsState } from "@/stores/settings";
 import type { SettingEntry } from "@/stores/settings-catalog";
+import { STORAGE_CATALOG_ENTRIES } from "@/stores/settings-catalog-entries-storage";
 import { MOD_KEY } from "@/utils/platform";
 
 // -- Catalog -------------------------------------------------------------------
@@ -267,12 +268,7 @@ const SETTINGS_CATALOG = {
     description: "Show a warning before a new song clears imported details you have not exported.",
     settingKey: "confirmClearImportedSongDetails",
   },
-  autoSaveDelay: {
-    section: "storage",
-    label: "Auto-save delay",
-    description: "How long to wait after your last edit before auto-saving.",
-    settingKey: "autoSaveDelay",
-  },
+  ...STORAGE_CATALOG_ENTRIES,
   previewRenderer: {
     section: "advanced",
     label: "Preview renderer",

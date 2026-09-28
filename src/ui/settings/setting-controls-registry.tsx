@@ -7,6 +7,8 @@ import { DefaultPlaybackRateSetting } from "@/ui/settings/default-playback-rate-
 import { LibraryViewSetting } from "@/ui/settings/library-view-setting";
 import type { SelectOption, SliderAction } from "@/ui/settings/setting-controls";
 import { SplitCharacterSetting } from "@/ui/settings/split-character-setting";
+import { StorageProtectionSetting } from "@/ui/settings/storage/storage-protection-setting";
+import { StorageUsageSetting } from "@/ui/settings/storage/storage-usage-setting";
 import { ThemeSettings } from "@/ui/settings/theme/theme-settings";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 
@@ -106,6 +108,8 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
   confirmConformToGroup: TOGGLE,
   confirmGroupDissolution: TOGGLE,
   confirmClearImportedSongDetails: TOGGLE,
+  storageUsage: { kind: "custom", Component: StorageUsageSetting },
+  storageProtection: { kind: "custom", Component: StorageProtectionSetting },
   autoSaveDelay: { kind: "slider", min: 500, max: 10000, step: 500, format: (v) => `${(v / 1000).toFixed(1)}s` },
   previewRenderer: {
     kind: "select",

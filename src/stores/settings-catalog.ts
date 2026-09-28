@@ -27,6 +27,7 @@ interface SettingEntry {
   keywords?: readonly string[];
   settingKey?: keyof SettingsState;
   readOn?: (state: SettingsState) => boolean;
+  group?: string;
 }
 
 // -- Sections ------------------------------------------------------------------

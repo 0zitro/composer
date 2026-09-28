@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { getEffectiveKeysArray } from "@/stores/shortcut-bindings";
 import { SETTING_IDS, settingIdsInSection } from "@/stores/settings-catalog";
+import { getEffectiveKeysArray } from "@/stores/shortcut-bindings";
 import { countMatchesBySection, searchSettings } from "@/ui/settings/search-settings";
+import { describe, expect, it } from "vitest";
 
 function search(query: string) {
   const result = searchSettings(query);
@@ -26,6 +26,10 @@ describe("searchSettings", () => {
 
   it("matches the section label", () => {
     expect(search("confirmations").settings).toEqual(settingIdsInSection("confirmations"));
+  });
+
+  it("finds the storage protection row by a keyword not in its copy", () => {
+    expect(search("persist").settings).toEqual(["storageProtection"]);
   });
 
   it("finds shortcuts by description", () => {

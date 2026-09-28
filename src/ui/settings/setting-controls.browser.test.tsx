@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { useSettingsStore } from "@/stores/settings";
 import { render } from "@/test/render";
-import { SelectSetting, SliderSetting, ToggleSetting } from "@/ui/settings/setting-controls";
+import { SelectSetting, SettingsGroup, SliderSetting, ToggleSetting } from "@/ui/settings/setting-controls";
+import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
 // -- Helpers -------------------------------------------------------------------
@@ -106,5 +106,17 @@ describe("SelectSetting", () => {
     await screen.getByRole("button", { name: "Default granularity" }).click();
     await screen.getByRole("option", { name: "Line" }).click();
     await expect.poll(() => useSettingsStore.getState().defaultGranularity).toBe("line");
+  });
+});
+
+describe("SettingsGroup", () => {
+  it("labels its rows with the group title", async () => {
+    const screen = await render(
+      <SettingsGroup title="Usage">
+        <p>Row</p>
+      </SettingsGroup>,
+    );
+    await expect.element(screen.getByRole("region", { name: "Usage" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("heading", { name: "Usage", level: 3 })).toBeInTheDocument();
   });
 });

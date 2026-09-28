@@ -3,6 +3,7 @@ import { type SettingId, settingEntry, settingKeyOf } from "@/stores/settings-ca
 import { Select } from "@/ui/select";
 import { SettingText } from "@/ui/settings/setting-text";
 import { cn } from "@/utils/cn";
+import { useId } from "react";
 
 // -- Types ---------------------------------------------------------------------
 
@@ -118,7 +119,22 @@ const SelectSetting: React.FC<{ id: SettingId; options: SelectOption[] }> = ({ i
   );
 };
 
+const SettingsGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} className="group/settings">
+      <h3
+        id={headingId}
+        className="mt-5 mb-0.5 text-xs font-medium text-composer-text-secondary select-none group-first/settings:mt-2"
+      >
+        {title}
+      </h3>
+      <div className="divide-y divide-composer-border">{children}</div>
+    </section>
+  );
+};
+
 // -- Exports -------------------------------------------------------------------
 
-export { SelectSetting, SliderSetting, ToggleSetting };
+export { SelectSetting, SettingsGroup, SliderSetting, ToggleSetting };
 export type { SelectOption, SliderAction };
