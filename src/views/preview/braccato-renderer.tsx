@@ -3,8 +3,11 @@ import { useRendererAudioSync } from "@/hooks/use-renderer-audio-sync";
 import { wake } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
 import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
 import { centeredFadeVariants, centeredSlideUpVariants, springSnappy } from "@/utils/animationVariants";
+import { cn } from "@/utils/cn";
 import braccatoTheme from "@/views/preview/braccato-theme.css?raw";
+import { LYRICS_ELEMENT_CLASS, type LyricsLayout } from "@/views/preview/lyrics-layout";
 import { type Lyric, injectRomanization, injectTranslation } from "@braccato/core";
 import type { BraccatoLyricsElement, LineClickDetail } from "@braccato/core/element";
 import { TTMLParser } from "@braccato/parsers";
@@ -16,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface BraccatoRendererProps {
   ttmlString: string;
+  layout?: LyricsLayout;
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -65,10 +69,12 @@ function decorateAlternateTracks(el: BraccatoLyricsElement, lyrics: Lyric[]): vo
 
 // -- Component ----------------------------------------------------------------
 
-const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
+const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString, layout = "page" }) => {
   const elementRef = useRef<BraccatoLyricsElement>(null);
   const lyrics = useMemo(() => TTMLParser.parse(ttmlString), [ttmlString]);
+  const songwriters = useMemo(() => TTMLParser.metadata(ttmlString).songwriters, [ttmlString]);
   const latestLyricsRef = useRef(lyrics);
+  const latestSongwritersRef = useRef(songwriters);
   const initializedElementRef = useRef<BraccatoLyricsElement | null>(null);
   const appliedLyricsRef = useRef<Lyric[] | null>(null);
   const rebuildScrollTopRef = useRef<number | null>(null);
@@ -123,7 +129,7 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
     decorateAlternateTracks(el, latestLyricsRef.current);
   }, []);
 
-  const applyLyrics = useCallback((el: BraccatoLyricsElement, next: Lyric[]) => {
+  const applyLyrics = useCallback((el: BraccatoLyricsElement, next: Lyric[], songwriters: readonly string[]) => {
     if (appliedLyricsRef.current === next) return;
     const scrollTopBefore = el.scrollTop;
     // Braccato's in-place lyrics swap keeps the old scroll geometry; a fresh renderer (writing host) positions from scratch.
@@ -133,6 +139,7 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
       el.host = { setResumeAffordanceVisible: setIsAutoscrollPaused };
     }
     appliedLyricsRef.current = next;
+    el.lyricsOptions = { songwriters };
     el.lyrics = next;
     // A rebuild that moves the scroll position fires one scroll the reader never made.
     rebuildScrollTopRef.current = el.scrollTop === scrollTopBefore ? null : el.scrollTop;
@@ -145,9 +152,8 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
       elementRef.current = el;
       if (!el || initializedElementRef.current === el) return;
       initializedElementRef.current = el;
-      el.theme = braccatoTheme;
       el.host = { setResumeAffordanceVisible: setIsAutoscrollPaused };
-      applyLyrics(el, latestLyricsRef.current);
+      applyLyrics(el, latestLyricsRef.current, latestSongwritersRef.current);
     },
     [applyLyrics],
   );
@@ -174,9 +180,10 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
 
   useEffect(() => {
     latestLyricsRef.current = lyrics;
+    latestSongwritersRef.current = songwriters;
     const element = elementRef.current;
-    if (element) applyLyrics(element, lyrics);
-  }, [lyrics, applyLyrics]);
+    if (element) applyLyrics(element, lyrics, songwriters);
+  }, [lyrics, songwriters, applyLyrics]);
 
   // Binding `source` would make braccato own the clock, and it only polls during
   // playback, freezing the preview whenever the timeline is scrubbed paused.
@@ -197,8 +204,8 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
   );
 
   return (
-    <div className="relative flex flex-col flex-1 min-h-0">
-      <braccato-lyrics ref={setElement} className="block flex-1 mx-auto w-full max-w-3xl px-6" />
+    <div data-lyrics-layout={layout} className="relative flex flex-col flex-1 min-h-0">
+      <braccato-lyrics ref={setElement} theme={braccatoTheme} className={LYRICS_ELEMENT_CLASS[layout]} />
       <AnimatePresence>
         {isAutoscrollPaused ? (
           <m.div
@@ -208,12 +215,22 @@ const BraccatoRenderer: React.FC<BraccatoRendererProps> = ({ ttmlString }) => {
             animate="visible"
             exit="exit"
             transition={springSnappy}
-            className="absolute bottom-6 left-1/2 z-10"
+            className={cn("absolute left-1/2 z-10", layout === "sidebar" ? "bottom-3" : "bottom-6")}
           >
-            <Button variant="secondary" hasIcon onClick={resumeAutoscroll} className="shadow-2xl backdrop-blur-md">
-              <IconArrowDown className="size-4" />
-              Resume autoscroll
-            </Button>
+            {layout === "sidebar" ? (
+              <IconButton
+                variant="secondary"
+                label="Resume autoscroll"
+                icon={<IconArrowDown className="size-4" />}
+                onClick={resumeAutoscroll}
+                className="shadow-2xl backdrop-blur-md"
+              />
+            ) : (
+              <Button variant="secondary" hasIcon onClick={resumeAutoscroll} className="shadow-2xl backdrop-blur-md">
+                <IconArrowDown className="size-4" />
+                Resume autoscroll
+              </Button>
+            )}
           </m.div>
         ) : null}
       </AnimatePresence>

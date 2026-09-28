@@ -2,6 +2,7 @@ import { alternateMatchesMainText } from "@/domain/language/alternate-visibility
 import { useRendererAudioSync } from "@/hooks/use-renderer-audio-sync";
 import { wake } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
+import { LYRICS_ELEMENT_CLASS, type LyricsLayout } from "@/views/preview/lyrics-layout";
 import type { AmLyrics as AmLyricsElement } from "@uimaxbai/am-lyrics";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 interface AmLyricsRendererProps {
   ttmlString: string;
   durationSeconds: number;
+  layout?: LyricsLayout;
 }
 
 // -- Element registration -----------------------------------------------------
@@ -80,14 +82,13 @@ function createAmLyricsElement(ttml: string, songDurationMs: number): AmLyricsEl
   el.ttml = ttml;
   removeMatchingAlternatesAfterUpdate(el);
   el.songDurationMs = songDurationMs;
-  el.className = "block flex-1 mx-auto w-full max-w-3xl px-6";
   el.style.setProperty("--am-lyrics-highlight-color", "var(--color-composer-text)");
   return el;
 }
 
 // -- Component ----------------------------------------------------------------
 
-const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, durationSeconds }) => {
+const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, durationSeconds, layout = "page" }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const elementRef = useRef<AmLyricsElement | null>(null);
   const createdElementRef = useRef<AmLyricsElement | null>(null);
@@ -116,6 +117,7 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
     // Activity re-runs this effect on every reveal; the element is kept so its rendered lines survive.
     const el = createdElementRef.current ?? createAmLyricsElement(latestTtmlRef.current, latestDurationMsRef.current);
     createdElementRef.current = el;
+    el.className = LYRICS_ELEMENT_CLASS[layout];
     const matchingAlternateObserver = new MutationObserver(() => markMatchingAlternateElements(el));
 
     const handleLineClick = (event: Event) => {
@@ -153,7 +155,7 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
       el.removeEventListener("line-click", handleLineClick);
       elementRef.current = null;
     };
-  }, [isRegistered]);
+  }, [isRegistered, layout]);
 
   useEffect(() => {
     const el = elementRef.current;
@@ -179,7 +181,7 @@ const AmLyricsRenderer: React.FC<AmLyricsRendererProps> = ({ ttmlString, duratio
     "am-lyrics-renderer",
   );
 
-  return <div ref={containerRef} className="flex flex-col flex-1 min-h-0" />;
+  return <div ref={containerRef} data-lyrics-layout={layout} className="flex flex-col flex-1 min-h-0" />;
 };
 
 // -- Exports ------------------------------------------------------------------
