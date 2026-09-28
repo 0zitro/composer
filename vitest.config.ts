@@ -68,7 +68,11 @@ export default defineConfig({
             enabled: true,
             provider: playwright({
               launchOptions: {
-                args: ["--autoplay-policy=no-user-gesture-required", "--enable-unsafe-swiftshader"],
+                args: [
+                  "--autoplay-policy=no-user-gesture-required",
+                  "--enable-unsafe-swiftshader",
+                  "--js-flags=--expose-gc",
+                ],
               },
             }),
             headless: true,
