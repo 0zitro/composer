@@ -48,12 +48,12 @@ const ProjectAudioRowView: React.FC<ProjectAudioRowProps> = ({ entry, isOpen, no
         icon={<IconTrash aria-hidden="true" className="size-4" />}
         variant="ghost"
         aria-disabled={isOpen ? "true" : undefined}
-        title={isOpen ? "Close this project to remove its audio" : undefined}
         onClick={isOpen ? undefined : () => onRemove(entry)}
         className={cn(
           "size-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
           isOpen && "cursor-not-allowed group-hover:opacity-35 hover:bg-transparent hover:text-composer-text-muted",
         )}
+        {...(isOpen ? { title: "Close this project to remove its audio" } : {})}
       />
     </li>
   );

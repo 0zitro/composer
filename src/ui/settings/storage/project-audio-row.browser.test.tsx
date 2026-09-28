@@ -49,6 +49,14 @@ describe("ProjectAudioRow", () => {
     expect(removed).toEqual(["a"]);
   });
 
+  it("keeps the label as a tooltip while enabled", async () => {
+    const { result } = renderRow();
+    const screen = await result;
+    await expect
+      .element(screen.getByRole("button", { name: "Remove audio from Midnight City" }))
+      .toHaveAttribute("title", "Remove audio from Midnight City");
+  });
+
   it("removes from the keyboard", async () => {
     const { result, removed } = renderRow();
     await result;

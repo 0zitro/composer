@@ -46,6 +46,8 @@ describe("ProjectAudioListSetting", () => {
     await screen.getByRole("button", { name: "Remove audio from Midnight City" }).click();
     await screen.getByRole("button", { name: "Remove audio", exact: true }).click();
     await expect.poll(() => loadProjectAudio("a")).toBeUndefined();
+    await expect.element(screen.getByText("No audio is stored on this device.")).toBeInTheDocument();
+    expect(screen.getByText("Midnight City").elements()).toHaveLength(0);
   });
 
   describe("edge cases", () => {

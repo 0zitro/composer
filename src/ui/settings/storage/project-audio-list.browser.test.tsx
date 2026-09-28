@@ -18,14 +18,18 @@ const ENTRIES = [
   indexEntry("gone", { title: "Gone", audioKind: "file", storedAudioBytes: 0, openedAt: NOW }),
 ];
 
-function renderList(overrides: Partial<Parameters<typeof ProjectAudioList>[0]> = {}) {
-  return render(
+function listElement(overrides: Partial<Parameters<typeof ProjectAudioList>[0]> = {}) {
+  return (
     <>
       <ProjectAudioList entries={ENTRIES} openProjectId={undefined} now={NOW} stemBytes={0} {...overrides} />
       <ConfirmModalHost />
       <Toaster />
-    </>,
+    </>
   );
+}
+
+function renderList(overrides: Partial<Parameters<typeof ProjectAudioList>[0]> = {}) {
+  return render(listElement(overrides));
 }
 
 function rowTitles(screen: Awaited<ReturnType<typeof renderList>>): string[] {
@@ -97,6 +101,18 @@ describe("ProjectAudioList", () => {
     await screen.getByRole("button", { name: "Clear vocal stems" }).click();
     await expect.element(screen.getByText("Cleared vocal stems")).toBeInTheDocument();
     expect(await listStemJobs()).toEqual([]);
+  });
+
+  describe("regressions", () => {
+    it("resets the filter to All once YouTube audio disappears, so it does not jump back when it reappears", async () => {
+      const screen = await renderList();
+      await screen.getByRole("button", { name: "YouTube", exact: true }).click();
+      expect(rowTitles(screen)).toEqual(["Big video"]);
+      await screen.rerender(listElement({ entries: [ENTRIES[0]].flatMap((entry) => (entry ? [entry] : [])) }));
+      expect(screen.getByRole("group", { name: "Filter audio" }).elements()).toHaveLength(0);
+      await screen.rerender(listElement());
+      expect(rowTitles(screen)).toEqual(["Big video", "Small file"]);
+    });
   });
 
   describe("edge cases", () => {

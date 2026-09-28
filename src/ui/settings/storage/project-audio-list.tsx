@@ -3,6 +3,8 @@ import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { type AudioFilter, hasStoredYouTubeAudio, storedAudioProjects } from "@/domain/storage/stored-audio";
 import { clearVocalStems, clearYouTubeAudio, removeAudioFromProject } from "@/lib/storage-actions";
 import { useConfirm } from "@/stores/confirm-store";
+import { useSettingsStore } from "@/stores/settings";
+import { settingDescription, settingEntry } from "@/stores/settings-catalog";
 import { Button } from "@/ui/button";
 import { SegmentedControl } from "@/ui/segmented-control";
 import { ProjectAudioRow } from "@/ui/settings/storage/project-audio-row";
@@ -53,7 +55,14 @@ function clearStems(): void {
 const ProjectAudioList: React.FC<ProjectAudioListProps> = ({ entries, openProjectId, now, stemBytes }) => {
   const [filter, setFilter] = useState<AudioFilter>("all");
   const confirm = useConfirm();
+  const { label } = settingEntry("projectAudioList");
+  const description = useSettingsStore((state) => settingDescription("projectAudioList", state));
   const showYouTube = hasStoredYouTubeAudio(entries);
+  const [wasYouTubeStored, setWasYouTubeStored] = useState(showYouTube);
+  if (showYouTube !== wasYouTubeStored) {
+    setWasYouTubeStored(showYouTube);
+    if (!showYouTube) setFilter("all");
+  }
   const activeFilter = showYouTube ? filter : "all";
   const rows = useMemo(() => storedAudioProjects(entries, activeFilter), [entries, activeFilter]);
 
@@ -76,13 +85,11 @@ const ProjectAudioList: React.FC<ProjectAudioListProps> = ({ entries, openProjec
   );
 
   return (
-    <div className="flex flex-col gap-3 py-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-sm font-medium text-composer-text">Audio by project</span>
-          <span className="text-xs text-composer-text-muted">
-            Removing audio keeps the lyrics and timings. You can add the file again later.
-          </span>
+          <span className="text-sm font-medium text-composer-text">{label}</span>
+          <span className="text-xs text-composer-text-muted">{description}</span>
         </div>
         {showYouTube && (
           <SegmentedControl

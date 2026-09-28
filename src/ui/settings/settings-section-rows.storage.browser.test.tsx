@@ -76,6 +76,7 @@ describe("SettingsSectionRows (storage)", () => {
       const ids = Array.from(screen.container.querySelectorAll("[data-setting-id]")).map((el) =>
         el.getAttribute("data-setting-id"),
       );
+      expect(ids.indexOf("storageLimit")).toBeGreaterThanOrEqual(0);
       expect(ids.indexOf("projectAudioList")).toBeGreaterThan(ids.indexOf("storageLimit"));
     });
 
