@@ -2,7 +2,12 @@ import type { ProjectTab } from "@/domain/project/tab";
 import { restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { clearAudioFile, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
-import { cancelPendingSave, debouncedSave, flushPendingSaveQuietly } from "@/lib/persistence-debounce";
+import {
+  cancelPendingSave,
+  debouncedSave,
+  flushPendingSaveQuietly,
+  saveOpenProjectNow,
+} from "@/lib/persistence-debounce";
 import { markPersistenceSettled } from "@/lib/persistence-settled";
 import { setProjectLastTab } from "@/lib/project-repository";
 import { isRestoringProject } from "@/lib/project-restore";
@@ -33,6 +38,10 @@ function commitProjectSaveNow(): void {
   trackSave("stem", saveCurrentProject(input, useProjectStore.getState().activeTab)).catch((err) =>
     console.error(LOG_PREFIX, "Immediate save failed:", err),
   );
+}
+
+function saveAudioKindNow(): void {
+  saveOpenProjectNow().catch((err) => console.error(LOG_PREFIX, "could not save the new audio kind:", err));
 }
 
 function rememberLastTab(tab: ProjectTab): void {
@@ -93,6 +102,7 @@ function usePersistence(): void {
         trackSave("audio", saveAudioFile(nextFile)).catch((err) =>
           console.error(`${LOG_PREFIX} audio save failed:`, err),
         );
+        if (previous && state.source && previous.type !== state.source.type) saveAudioKindNow();
         return;
       }
       if (!nextFile && hadStoredAudio(previous)) {
