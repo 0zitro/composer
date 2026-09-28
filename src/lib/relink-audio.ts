@@ -24,16 +24,21 @@ function needsConfirmation(expected: SavedAudioSource | null, file: File): expec
 
 // -- Relinking ----------------------------------------------------------------
 
+function isStillMissing(projectId: string | undefined): boolean {
+  return openProjectIdSnapshot() === projectId && useAudioStore.getState().source === null;
+}
+
 async function relinkProjectAudioFile(file: File): Promise<boolean> {
+  const projectId = openProjectIdSnapshot();
+  const expected = useAudioStore.getState().expectedAudio;
   const probe = await probeAudioFile(file);
   if (!probe.ok) {
     toast.error("Couldn't link that file");
     return false;
   }
-  const projectId = openProjectIdSnapshot();
-  const expected = useAudioStore.getState().expectedAudio;
+  if (!isStillMissing(projectId)) return false;
   if (needsConfirmation(expected, file) && !(await confirmDifferentFile(expected.name, file.name))) return false;
-  if (openProjectIdSnapshot() !== projectId) return false;
+  if (!isStillMissing(projectId)) return false;
   useAudioStore.getState().setSource({ type: "file", file });
   await saveOpenProjectNow();
   return true;

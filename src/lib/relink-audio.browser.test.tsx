@@ -1,5 +1,6 @@
 import { usePersistence } from "@/hooks/usePersistence";
 import { openProject as switchToProject } from "@/lib/open-project";
+import { adoptOpenProjectId } from "@/lib/open-project-session";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { loadProjectAudio } from "@/lib/project-audio";
 import { loadProjectIndexEntry } from "@/lib/project-repository";
@@ -106,6 +107,36 @@ describe("relinkProjectAudioFile", () => {
       await awaitInFlightSaves();
       expect((await loadProjectRecord("p"))?.audioSource).toEqual({ kind: "file", name: "city.wav" });
       expect((await loadProjectRecord("q"))?.audioSource).toBeUndefined();
+    });
+
+    it("returns false and links nothing when the project changes while the file is checked", async () => {
+      await openMissingFile();
+      await seedStoredProject("q", {
+        project: { ...songTitled("Other Song"), audioSource: { kind: "file", name: "city.wav" } },
+      });
+      const linking = relinkProjectAudioFile(createAudioFile("city.wav"));
+      adoptOpenProjectId("q");
+      useAudioStore.getState().expectProjectAudio({ kind: "file", name: "city.wav" });
+      expect(await linking).toBe(false);
+      await awaitInFlightSaves();
+      expect(useAudioStore.getState().source).toBeNull();
+      expect(await loadProjectAudio("q")).toBeUndefined();
+      expect(await loadProjectAudio("p")).toBeUndefined();
+    });
+
+    it("returns false and keeps the new audio when audio arrives while the confirm is open", async () => {
+      await openMissingFile();
+      const arrived = createAudioFile("city.wav");
+      const unsubscribe = useConfirmStore.subscribe((state) => {
+        if (!state.isOpen) return;
+        unsubscribe();
+        useAudioStore.getState().setSource({ type: "file", file: arrived });
+        state.resolveAndClose(true, false);
+      });
+      expect(await relinkProjectAudioFile(createAudioFile("other.wav"))).toBe(false);
+      const source = useAudioStore.getState().source;
+      expect(source?.type === "file" ? source.file : null).toBe(arrived);
+      await expect.poll(async () => (await loadProjectAudio("p"))?.name).toBe("city.wav");
     });
   });
 

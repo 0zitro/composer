@@ -2,6 +2,7 @@ import { probeAudioFile } from "@/audio/probe-audio-file";
 import { hasLyricLines } from "@/domain/project/lyrics-presence";
 import { confirmClearImportedSongDetails } from "@/hooks/imported-song-details";
 import { startSongInNewProject } from "@/lib/open-project";
+import { relinkProjectAudioFile } from "@/lib/relink-audio";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { audioTagsToMetadata } from "@/utils/audio-tags";
@@ -95,6 +96,11 @@ async function startFileInNewProject(file: File, title: string): Promise<void> {
 function useLoadAudioFile(): (file: File) => Promise<void> {
   return useCallback(async (file: File) => {
     latestPick = file;
+    const { source, expectedAudio } = useAudioStore.getState();
+    if (source === null && expectedAudio !== null) {
+      await relinkProjectAudioFile(file);
+      return;
+    }
     const probe = await probeAudioFile(file);
     if (latestPick !== file) return;
     if (!probe.ok) {
