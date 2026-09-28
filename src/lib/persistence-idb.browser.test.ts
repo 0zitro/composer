@@ -194,6 +194,15 @@ describe("persistence-idb · runTransaction", () => {
     expect(await getFromStore(PROJECT_RECORD_STORE_NAME, "p1")).toBeUndefined();
   });
 
+  it("rejects with the failing request's own error, so a request-level quota error stays recognizable", async () => {
+    await setInStore(PROJECT_RECORD_STORE_NAME, "p1", { a: 1 });
+    const failure = runTransaction([PROJECT_RECORD_STORE_NAME], "readwrite", (tx) => {
+      tx.objectStore(PROJECT_RECORD_STORE_NAME).add({ a: 2 }, "p1");
+    });
+    await expect(failure).rejects.toMatchObject({ name: "ConstraintError" });
+    expect(await getFromStore(PROJECT_RECORD_STORE_NAME, "p1")).toEqual({ a: 1 });
+  });
+
   it("getAllFromStore returns every value and an empty array for an empty store", async () => {
     expect(await getAllFromStore(PROJECT_INDEX_STORE_NAME)).toEqual([]);
     await setInStore(PROJECT_INDEX_STORE_NAME, "a", { id: "a" });

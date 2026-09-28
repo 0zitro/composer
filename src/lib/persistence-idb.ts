@@ -116,9 +116,10 @@ async function runTransaction(
       closeOnce();
       resolve();
     };
-    transaction.onerror = () => {
+    transaction.onerror = (event) => {
       closeOnce();
-      reject(workError ?? transaction.error ?? new Error("IndexedDB transaction failed"));
+      const requestError = event.target instanceof IDBRequest ? event.target.error : null;
+      reject(workError ?? requestError ?? transaction.error ?? new Error("IndexedDB transaction failed"));
     };
     transaction.onabort = () => {
       closeOnce();
