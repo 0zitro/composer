@@ -27,4 +27,3 @@ const SyncedBadge: React.FC<SyncedBadgeProps> = ({ withLabel = false, className 
 // -- Exports ------------------------------------------------------------------
 
 export { SyncedBadge };
-export type { SyncedBadgeProps };

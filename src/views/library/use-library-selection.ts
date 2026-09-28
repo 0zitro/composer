@@ -40,4 +40,3 @@ function useLibrarySelection(visibleIds: readonly string[]): LibrarySelection {
 // -- Exports ------------------------------------------------------------------
 
 export { useLibrarySelection };
-export type { LibrarySelection };

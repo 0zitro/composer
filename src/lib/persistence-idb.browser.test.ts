@@ -106,7 +106,7 @@ describe("persistence-idb · store isolation", () => {
   });
 });
 
-// -- Upgrade --------------------------------------------------------------------
+// -- Upgrade ------------------------------------------------------------------
 
 function openAtVersion(version: number, create: (db: IDBDatabase) => void): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -150,7 +150,7 @@ describe("persistence-idb · upgrade", () => {
   });
 });
 
-// -- Transactions ---------------------------------------------------------------
+// -- Transactions -------------------------------------------------------------
 
 describe("persistence-idb · runTransaction", () => {
   it("writes to several stores in one transaction", async () => {

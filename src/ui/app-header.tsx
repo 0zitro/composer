@@ -65,4 +65,3 @@ const AppHeader: React.FC<AppHeaderProps> = ({ screen, onSettingsOpen, onHelpOpe
 // -- Exports ------------------------------------------------------------------
 
 export { AppHeader };
-export type { AppHeaderActions, AppHeaderProps };

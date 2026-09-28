@@ -68,4 +68,3 @@ async function loadOpenProjectAudio(): Promise<File | undefined> {
 // -- Exports ------------------------------------------------------------------
 
 export { storedProject, songTitled, saveInputTitled, seedStoredProject, loadOpenProjectRecord, loadOpenProjectAudio };
-export type { SeedOptions };

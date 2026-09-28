@@ -56,4 +56,4 @@ function hasClearableStems(stemJobs: readonly StemJobUsage[], isStemJobInUse: (j
 // -- Exports ------------------------------------------------------------------
 
 export { storageUsage, oldestStemJobFirst, hasClearableStems };
-export type { StemJobUsage, StorageUsage, UsageEntry };
+export type { StemJobUsage, StorageUsage };

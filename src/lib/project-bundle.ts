@@ -43,11 +43,5 @@ function downloadProjectBundle(bundle: ProjectBundle): void {
 
 // -- Exports ------------------------------------------------------------------
 
-export {
-  PROJECT_BUNDLE_FORMAT,
-  PROJECT_BUNDLE_VERSION,
-  buildProjectBundle,
-  projectBundleFileName,
-  downloadProjectBundle,
-};
-export type { ProjectBundle, BundleSource };
+export { PROJECT_BUNDLE_FORMAT, buildProjectBundle, projectBundleFileName, downloadProjectBundle };
+export type { ProjectBundle };

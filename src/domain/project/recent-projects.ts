@@ -23,4 +23,3 @@ function recentProjects(entries: readonly ProjectIndexEntry[], options: RecentPr
 // -- Exports ------------------------------------------------------------------
 
 export { recentProjects };
-export type { RecentProjectsOptions };

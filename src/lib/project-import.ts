@@ -223,7 +223,7 @@ async function importProjectFile(file: File): Promise<string | null> {
   }
 }
 
-// -- Input wiring ---------------------------------------------------------------
+// -- Input wiring -------------------------------------------------------------
 
 async function importProjectFromInput(event: ChangeEvent<HTMLInputElement>): Promise<string | null> {
   const file = event.target.files?.[0];
@@ -242,4 +242,4 @@ export {
   importProjectFile,
   importProjectFromInput,
 };
-export type { ImportConflict, ImportConflictReason, ProjectFileSummary, BundleRestore };
+export type { ImportConflict, BundleRestore };

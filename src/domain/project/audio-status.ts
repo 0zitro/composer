@@ -39,4 +39,4 @@ function storedAudioBytesTotal(entries: readonly Pick<ProjectIndexEntry, "stored
 // -- Exports ------------------------------------------------------------------
 
 export { projectAudioStatus, storedAudioBytesTotal };
-export type { ProjectAudioStatus, AudioStatusFields };
+export type { AudioStatusFields };

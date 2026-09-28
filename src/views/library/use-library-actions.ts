@@ -69,4 +69,3 @@ function useLibraryActions(): LibraryActions {
 // -- Exports ------------------------------------------------------------------
 
 export { useLibraryActions };
-export type { LibraryActions };

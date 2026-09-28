@@ -1,7 +1,7 @@
 import type { SettingsState } from "@/stores/settings";
 import { SETTINGS_CATALOG } from "@/stores/settings-catalog-entries";
 
-// -- Types ---------------------------------------------------------------------
+// -- Types --------------------------------------------------------------------
 
 type SettingsSectionId =
   | "general"
@@ -36,7 +36,7 @@ type SettingEntry =
   | (SettingEntryCommon & { description: string; descriptionFor?: never })
   | (SettingEntryCommon & { description?: never; descriptionFor: (state: SettingsState) => string });
 
-// -- Sections ------------------------------------------------------------------
+// -- Sections -----------------------------------------------------------------
 
 const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "general", label: "General" },
@@ -60,7 +60,7 @@ interface SettingHint {
 
 const SETTING_IDS = Object.keys(SETTINGS_CATALOG) as readonly SettingId[];
 
-// -- Lookups -------------------------------------------------------------------
+// -- Lookups ------------------------------------------------------------------
 
 function settingEntry(id: SettingId): SettingEntry {
   return SETTINGS_CATALOG[id];
@@ -102,7 +102,7 @@ function visibleSettingIds(ids: readonly SettingId[], state: SettingsState): Set
   return ids.filter((id) => isSettingVisible(id, state));
 }
 
-// -- Exports -------------------------------------------------------------------
+// -- Exports ------------------------------------------------------------------
 
 export {
   SETTING_IDS,

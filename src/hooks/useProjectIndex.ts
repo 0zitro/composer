@@ -89,4 +89,3 @@ function useProjectIndex(): ProjectIndexState {
 // -- Exports ------------------------------------------------------------------
 
 export { useProjectIndex };
-export type { ProjectIndexState };

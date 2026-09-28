@@ -215,4 +215,3 @@ export {
   deleteAllProjects,
   forkOpenProject,
 };
-export type { NewSongProject };

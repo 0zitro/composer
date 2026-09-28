@@ -7,12 +7,11 @@ import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useUIStore } from "@/stores/ui";
 import { Button } from "@/ui/button";
-import { cn } from "@/utils/cn";
 import { OrDivider, SOURCE_GUTTER_WIDTH, SOURCE_ROW_HEIGHT } from "@/views/import/import-layout";
 import { IconAlertTriangle, IconFileAlert, IconRefresh } from "@tabler/icons-react";
 import { toast } from "sonner";
 
-// -- Types ----------------------------------------------------------------------
+// -- Types --------------------------------------------------------------------
 
 interface MissingAudioPanelProps {
   expected: SavedAudioSource;
@@ -24,15 +23,13 @@ interface WarningSourceRowProps {
   children?: React.ReactNode;
 }
 
-// -- Constants --------------------------------------------------------------------
+// -- Constants ----------------------------------------------------------------
 
 const LOG_PREFIX = "[MissingAudio]";
-const RELINK_DROP_STYLES = cn(
-  "gap-1.5 p-6 text-center rounded-xl border-2 border-dashed border-composer-warning/40 hover:border-composer-warning/60",
-  "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-composer-accent",
-);
+const RELINK_DROP_STYLES =
+  "gap-1.5 p-6 text-center rounded-xl border-2 border-dashed border-composer-warning/40 hover:border-composer-warning/60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-composer-accent";
 
-// -- Actions --------------------------------------------------------------------
+// -- Actions ------------------------------------------------------------------
 
 function relinkFile(file: File): void {
   relinkProjectAudioFile(file).catch((error: unknown) => {

@@ -167,4 +167,4 @@ const useAudioStore = create<AudioState & AudioActions>((set, get) => ({
 }));
 
 export { useAudioStore };
-export type { AudioSource, YouTubeLoadFailure };
+export type { AudioSource };

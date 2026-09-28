@@ -8,12 +8,12 @@ import { formatSavedWorkSummary } from "@/utils/format-saved-at";
 import { IconCheck, IconDownload, IconHome2, IconLifebuoy, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
-// -- Constants -----------------------------------------------------------------
+// -- Constants ----------------------------------------------------------------
 
 const TITLE = "Recover Your Work ・ Composer";
 const DESCRIPTION = "Grab the backup Composer saved in this browser and pick up where you left off.";
 
-// -- Helpers -------------------------------------------------------------------
+// -- Helpers ------------------------------------------------------------------
 
 // Middle-ellipsis truncation so the extension stays visible. End-truncation
 // (CSS text-overflow) would hide ".ttml-project.json" which is the most
@@ -26,7 +26,7 @@ function truncateMiddle(text: string, max: number): string {
   return `${text.slice(0, head)}…${text.slice(text.length - tail)}`;
 }
 
-// -- Component -----------------------------------------------------------------
+// -- Component ----------------------------------------------------------------
 
 type RecoveryState =
   | { phase: "reading" }
@@ -168,7 +168,7 @@ const RecoverPanel: React.FC = () => {
   );
 };
 
-// -- Page ----------------------------------------------------------------------
+// -- Page ---------------------------------------------------------------------
 
 const RecoverFallback: React.FC = () => (
   <div className="flex items-center justify-center h-screen bg-composer-bg text-composer-text-muted text-sm">

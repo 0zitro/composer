@@ -48,4 +48,3 @@ function useStorageProtection(): StorageProtectionState {
 // -- Exports ------------------------------------------------------------------
 
 export { useStorageProtection };
-export type { StorageProtectionState };

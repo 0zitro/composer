@@ -3,7 +3,7 @@ import type { SettingEntry } from "@/stores/settings-catalog";
 import { STORAGE_CATALOG_ENTRIES } from "@/stores/settings-catalog-entries-storage";
 import { MOD_KEY } from "@/utils/platform";
 
-// -- Catalog -------------------------------------------------------------------
+// -- Catalog ------------------------------------------------------------------
 
 const SETTINGS_CATALOG = {
   showShortcutHints: {
@@ -291,6 +291,6 @@ const SETTINGS_CATALOG = {
   },
 } as const satisfies Record<string, SettingEntry>;
 
-// -- Exports -------------------------------------------------------------------
+// -- Exports ------------------------------------------------------------------
 
 export { SETTINGS_CATALOG };

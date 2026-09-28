@@ -108,4 +108,3 @@ export {
   clearAllProjects,
   onProjectsCleared,
 };
-export type { StoredProjectRecord };

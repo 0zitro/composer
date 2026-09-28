@@ -64,4 +64,3 @@ function useLibraryShortcuts(handlers: LibraryShortcutHandlers): void {
 // -- Exports ------------------------------------------------------------------
 
 export { useLibraryShortcuts };
-export type { LibraryShortcutHandlers };

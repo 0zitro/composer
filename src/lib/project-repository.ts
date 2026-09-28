@@ -28,6 +28,13 @@ interface IndexCarriedFields {
   lastTab?: ProjectTab;
 }
 
+interface IndexEntryWrite {
+  id: string;
+  project: SavedProject;
+  lastTab?: ProjectTab;
+  onFirstEntry?: () => void;
+}
+
 type IndexPatch = Partial<IndexCarriedFields>;
 type ProjectUpdate = (project: SavedProject) => SavedProject;
 
@@ -76,13 +83,7 @@ function clearOpenProjectId(): Promise<void> {
 
 // -- Records ------------------------------------------------------------------
 
-function writeIndexEntry(
-  tx: IDBTransaction,
-  id: string,
-  project: SavedProject,
-  lastTab?: ProjectTab,
-  onFirstEntry?: () => void,
-): void {
+function writeIndexEntry(tx: IDBTransaction, { id, project, lastTab, onFirstEntry }: IndexEntryWrite): void {
   const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
   const previous = index.get(id);
   previous.onsuccess = () => {
@@ -110,8 +111,13 @@ function saveProjectRecord(id: string, project: SavedProject, lastTab?: ProjectT
   return runTransaction(RECORD_WRITE_STORES, "readwrite", (tx, abort) => {
     whenProjectWritable(tx, abort, id, () => {
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-      writeIndexEntry(tx, id, project, lastTab, () => {
-        createdFirstEntry = true;
+      writeIndexEntry(tx, {
+        id,
+        project,
+        lastTab,
+        onFirstEntry: () => {
+          createdFirstEntry = true;
+        },
       });
     });
   }).then(() => {
@@ -129,8 +135,12 @@ async function saveProjectRecordWithAudio(id: string, project: SavedProject, aud
     whenProjectWritable(tx, abort, id, () => {
       if (saved) tx.objectStore(PROJECT_AUDIO_STORE_NAME).put(saved, id);
       tx.objectStore(PROJECT_RECORD_STORE_NAME).put(project, id);
-      writeIndexEntry(tx, id, project, undefined, () => {
-        createdFirstEntry = true;
+      writeIndexEntry(tx, {
+        id,
+        project,
+        onFirstEntry: () => {
+          createdFirstEntry = true;
+        },
       });
     });
   });
@@ -158,7 +168,7 @@ function updateProjectRecord(id: string, update: ProjectUpdate): Promise<void> {
           return;
         }
         records.put(next, id);
-        writeIndexEntry(tx, id, next);
+        writeIndexEntry(tx, { id, project: next });
       };
     });
   }).then(notifyProjectIndexChanged);
@@ -245,4 +255,3 @@ export {
   patchIndexEntry,
   removeProjectData,
 };
-export type { ProjectUpdate, IndexPatch };

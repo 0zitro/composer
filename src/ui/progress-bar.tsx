@@ -47,4 +47,3 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ percent, label, tone = "defau
 // -- Exports ------------------------------------------------------------------
 
 export { ProgressBar };
-export type { ProgressBarTone };

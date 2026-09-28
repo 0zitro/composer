@@ -36,4 +36,4 @@ function bytesToFree(target: CleanupTarget): number {
 // -- Exports ------------------------------------------------------------------
 
 export { LOW_SPACE_BYTES, freeBytes, bytesToFree };
-export type { StorageEstimateBytes, CleanupTarget };
+export type { StorageEstimateBytes };

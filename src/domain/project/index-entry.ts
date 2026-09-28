@@ -80,4 +80,4 @@ function buildIndexEntry(input: IndexEntryInput): ProjectIndexEntry {
 // -- Exports ------------------------------------------------------------------
 
 export { buildIndexEntry };
-export type { IndexEntryInput, ProjectAudioKind, ProjectIndexEntry };
+export type { IndexEntryInput, ProjectIndexEntry };

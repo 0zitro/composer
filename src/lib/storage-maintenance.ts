@@ -71,4 +71,4 @@ function createStorageMaintenance(options: StorageMaintenanceOptions): StorageMa
 // -- Exports ------------------------------------------------------------------
 
 export { createStorageMaintenance };
-export type { MaintenanceTrigger, StorageMaintenance, StorageMaintenanceOptions };
+export type { MaintenanceTrigger };

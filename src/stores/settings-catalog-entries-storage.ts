@@ -1,7 +1,7 @@
 import type { KeepYouTubeAudio } from "@/domain/storage/audio-retention";
 import type { SettingEntry } from "@/stores/settings-catalog";
 
-// -- Descriptions ---------------------------------------------------------------
+// -- Descriptions -------------------------------------------------------------
 
 function keepYouTubeAudioDescription(rule: KeepYouTubeAudio, bridgeEnabled: boolean): string {
   if (rule === "never") return "YouTube audio is fetched each time you open a project.";
@@ -11,7 +11,7 @@ function keepYouTubeAudioDescription(rule: KeepYouTubeAudio, bridgeEnabled: bool
     : "Composer Bridge is off, so YouTube audio is kept. Fetching it again can fail.";
 }
 
-// -- Catalog -------------------------------------------------------------------
+// -- Catalog ------------------------------------------------------------------
 
 const STORAGE_CATALOG_ENTRIES = {
   storageUsage: {
@@ -84,6 +84,6 @@ const STORAGE_CATALOG_ENTRIES = {
   },
 } as const satisfies Record<string, SettingEntry>;
 
-// -- Exports -------------------------------------------------------------------
+// -- Exports ------------------------------------------------------------------
 
 export { STORAGE_CATALOG_ENTRIES, keepYouTubeAudioDescription };

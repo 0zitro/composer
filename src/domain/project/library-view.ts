@@ -50,4 +50,4 @@ function resumeProject(entries: readonly ProjectIndexEntry[]): ProjectIndexEntry
 // -- Exports ------------------------------------------------------------------
 
 export { LIBRARY_FILTERS, filterCounts, libraryProjects, resumeProject };
-export type { LibraryFilter, LibraryViewOptions };
+export type { LibraryFilter };

@@ -14,7 +14,7 @@ import { shallow } from "zustand/shallow";
 
 const LOG_PREFIX = "[YouTubeSource]";
 
-// -- Errors ---------------------------------------------------------------------
+// -- Errors -------------------------------------------------------------------
 
 class YouTubeLoadSupersededError extends Error {
   constructor() {

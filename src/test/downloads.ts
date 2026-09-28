@@ -26,4 +26,3 @@ function captureDownloads(): DownloadCapture {
 // -- Exports ------------------------------------------------------------------
 
 export { captureDownloads };
-export type { DownloadCapture };

@@ -153,4 +153,4 @@ const MenuSeparator: React.FC = () => <div role="separator" className="h-px my-1
 // -- Exports ------------------------------------------------------------------
 
 export { Menu, MenuItem, MenuSeparator, menuTriggerProps };
-export type { MenuAnchor, MenuItemProps };
+export type { MenuAnchor };

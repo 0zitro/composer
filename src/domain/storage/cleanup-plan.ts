@@ -53,4 +53,3 @@ function planCleanup(input: CleanupInput): CleanupStep[] {
 // -- Exports ------------------------------------------------------------------
 
 export { planCleanup };
-export type { CleanupStep, CleanupInput };

@@ -45,4 +45,3 @@ const useImportConflictStore = create<ImportConflictState>((set, get) => ({
 // -- Exports ------------------------------------------------------------------
 
 export { useImportConflictStore };
-export type { ImportConflictChoice, ImportConflictState };

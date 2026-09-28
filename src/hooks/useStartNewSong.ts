@@ -53,4 +53,3 @@ function useStartNewSong(): NewSongStarters {
 // -- Exports ------------------------------------------------------------------
 
 export { useStartNewSong };
-export type { NewSongStarters };
