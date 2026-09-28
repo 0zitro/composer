@@ -1,6 +1,6 @@
-import type { MenuAnchor } from "@/ui/menu";
 import { indexEntry } from "@/test/index-entries";
 import { render } from "@/test/render";
+import type { MenuAnchor } from "@/ui/menu";
 import { ProjectGrid } from "@/views/library/project-grid";
 import { describe, expect, it } from "vitest";
 
@@ -22,7 +22,7 @@ describe("ProjectGrid", () => {
     );
     const grid = screen.getByRole("list", { name: "Projects" });
     await expect.element(grid).toHaveAttribute("data-selecting", "true");
-    expect(grid.element().querySelectorAll("[role='listitem']")).toHaveLength(2);
+    expect(grid.element().querySelectorAll("li")).toHaveLength(2);
     await expect
       .element(screen.getByRole("button", { name: "More actions for Bravo" }))
       .toHaveAttribute("aria-expanded", "true");
@@ -49,7 +49,7 @@ describe("ProjectGrid", () => {
       );
       const grid = screen.getByRole("list", { name: "Projects" });
       await expect.element(grid).toBeInTheDocument();
-      expect(grid.element().querySelectorAll("[role='listitem']")).toHaveLength(0);
+      expect(grid.element().querySelectorAll("li")).toHaveLength(0);
     });
   });
 

@@ -3,8 +3,8 @@ import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { flushPendingSave, saveOpenProjectNow } from "@/lib/persistence-debounce";
-import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
 import { loadProjectAudio } from "@/lib/project-audio";
+import { downloadProjectFile, projectFileFrom } from "@/lib/project-file";
 import { createProjectId, saveProjectRecordWithAudio, updateProjectRecord } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
@@ -45,8 +45,7 @@ async function renameProject(id: string, title: string): Promise<void> {
 }
 
 async function duplicateProject(id: string): Promise<string> {
-  const record = await latestRecord(id);
-  const audio = await loadProjectAudio(id);
+  const [record, audio] = await Promise.all([latestRecord(id), loadProjectAudio(id)]);
   const copyId = createProjectId();
   await saveProjectRecordWithAudio(
     copyId,

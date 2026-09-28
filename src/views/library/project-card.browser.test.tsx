@@ -15,7 +15,7 @@ const noop = () => {};
 
 function renderCard(overrides: Parameters<typeof indexEntry>[1] = {}, onOpen: (id: string) => void = () => {}) {
   return render(
-    <div role="list">
+    <ul>
       <ProjectCard
         project={indexEntry("p02", {
           title: "Espresso",
@@ -32,7 +32,7 @@ function renderCard(overrides: Parameters<typeof indexEntry>[1] = {}, onOpen: (i
         onToggleSelect={() => {}}
         onOpenMenu={() => {}}
       />
-    </div>,
+    </ul>,
   );
 }
 
@@ -79,7 +79,7 @@ describe("ProjectCard", () => {
       const Harness: React.FC = () => {
         const [, setRenderCount] = useState(0);
         return (
-          <div role="list">
+          <ul>
             <ProjectCard
               project={countingIndexEntry("a", { title: "Alpha" }, () => {
                 readsA += 1;
@@ -103,7 +103,7 @@ describe("ProjectCard", () => {
             <button type="button" onClick={() => setRenderCount((count) => count + 1)}>
               Rerender
             </button>
-          </div>
+          </ul>
         );
       };
 

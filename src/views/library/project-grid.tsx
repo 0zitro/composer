@@ -12,8 +12,7 @@ const ProjectGrid: React.FC<ProjectCollectionProps> = ({
   onToggleSelect,
   onOpenMenu,
 }) => (
-  <div
-    role="list"
+  <ul
     aria-label="Projects"
     data-selecting={selectedIds.size > 0}
     className="group/grid grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-x-5 gap-y-8 pt-4"
@@ -30,7 +29,7 @@ const ProjectGrid: React.FC<ProjectCollectionProps> = ({
         onOpenMenu={onOpenMenu}
       />
     ))}
-  </div>
+  </ul>
 );
 
 // -- Exports ------------------------------------------------------------------

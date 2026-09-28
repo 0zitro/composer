@@ -2,7 +2,7 @@ import { displayArtists, displayTitle } from "@/domain/project/display-title";
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 import { hasLyrics, progressDescription, projectStage, syncedPercent } from "@/domain/project/progress";
 import { IconButton } from "@/ui/icon-button";
-import { menuTriggerProps } from "@/ui/menu";
+import { menuTriggerProps } from "@/ui/menu-trigger-props";
 import { ProgressBar } from "@/ui/progress-bar";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { SyncedBadge } from "@/ui/projects/synced-badge";
@@ -45,8 +45,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
 }) => {
   const title = displayTitle(project.title);
   return (
-    <div
-      role="listitem"
+    <li
       data-project-id={project.id}
       data-selected={isSelected || undefined}
       data-menu={isMenuOpen || undefined}
@@ -96,7 +95,7 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
         <AudioStatusLabel project={project} compact />
         <CardProgressLabel project={project} />
       </div>
-    </div>
+    </li>
   );
 };
 

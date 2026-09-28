@@ -4,17 +4,15 @@ import { type LibraryFilter, filterCounts, libraryProjects, resumeProject } from
 import { useProjectIndex } from "@/hooks/useProjectIndex";
 import { createProject } from "@/lib/open-project";
 import { useSettingsStore } from "@/stores/settings";
-import { EmptyState } from "@/ui/empty-state";
 import type { MenuAnchor } from "@/ui/menu";
 import { EDITOR_PATH, screenForPath } from "@/utils/app-routes";
 import { cn } from "@/utils/cn";
 import { BulkBar } from "@/views/library/bulk-bar";
-import { LibraryEmpty } from "@/views/library/library-empty";
+import { LibraryBody, type LibraryIndexState } from "@/views/library/library-body";
 import { LibraryFooter } from "@/views/library/library-footer";
 import { LibraryToolbar } from "@/views/library/library-toolbar";
 import { NewSongPanel } from "@/views/library/new-song-panel";
-import { ProjectGrid } from "@/views/library/project-grid";
-import { type ProjectCollectionProps, ProjectList, ProjectListColumns } from "@/views/library/project-list";
+import { type ProjectCollectionProps, ProjectListColumns } from "@/views/library/project-list";
 import { ProjectMenu } from "@/views/library/project-menu";
 import { RenameProjectModal } from "@/views/library/rename-project-modal";
 import { ResumeCard } from "@/views/library/resume-card";
@@ -172,25 +170,7 @@ const LibraryScreen: React.FC = () => {
     onOpenMenu: openMenu,
   };
 
-  let body: React.ReactNode = null;
-  if (error && !entries) {
-    body = (
-      <div className="flex py-18">
-        <EmptyState message="Couldn't load your projects" hint="Reload the page to try again." />
-      </div>
-    );
-  } else if (entries && visible.length === 0) {
-    body = (
-      <LibraryEmpty
-        query={query}
-        filter={filter}
-        onClearSearch={() => setQuery("")}
-        onShowAll={() => setFilter("all")}
-      />
-    );
-  } else if (entries) {
-    body = view === "grid" ? <ProjectGrid {...collection} /> : <ProjectList {...collection} />;
-  }
+  const indexState: LibraryIndexState = entries ? "loaded" : error ? "failed" : "loading";
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-composer-bg">
@@ -217,7 +197,15 @@ const LibraryScreen: React.FC = () => {
               />
               {view === "list" && <ProjectListColumns />}
             </div>
-            {body}
+            <LibraryBody
+              state={indexState}
+              view={view}
+              collection={collection}
+              query={query}
+              filter={filter}
+              onClearSearch={() => setQuery("")}
+              onShowAll={() => setFilter("all")}
+            />
             <LibraryFooter storedAudioBytes={storedBytes} onManageStorage={actions.manageStorage} />
           </section>
         </div>

@@ -50,10 +50,6 @@ const MenuContext = createContext<MenuContextValue | null>(null);
 
 // -- Helpers ------------------------------------------------------------------
 
-function menuTriggerProps(isOpen: boolean) {
-  return { "aria-haspopup": "menu", "aria-expanded": isOpen } as const;
-}
-
 function pointReference(x: number, y: number, within: Element) {
   return {
     getBoundingClientRect: () => DOMRect.fromRect({ x, y, width: 0, height: 0 }),
@@ -148,9 +144,9 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: ItemIcon, label, onSelect, to
   );
 };
 
-const MenuSeparator: React.FC = () => <div role="separator" className="h-px my-1 bg-composer-border" />;
+const MenuSeparator: React.FC = () => <hr className="h-px my-1 border-0 bg-composer-border" />;
 
 // -- Exports ------------------------------------------------------------------
 
-export { Menu, MenuItem, MenuSeparator, menuTriggerProps };
+export { Menu, MenuItem, MenuSeparator };
 export type { MenuAnchor };

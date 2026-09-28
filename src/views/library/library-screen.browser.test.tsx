@@ -88,7 +88,7 @@ describe("LibraryScreen", () => {
     const screen = await renderLibrary();
     await screen.getByRole("button", { name: "Grid view" }).click();
     expect(useSettingsStore.getState().libraryView).toBe("grid");
-    await expect.poll(() => document.querySelectorAll("[role='listitem'][data-project-id]").length).toBe(3);
+    await expect.poll(() => document.querySelectorAll("li[data-project-id]").length).toBe(3);
   });
 
   it("opens a project, then the editor", async () => {

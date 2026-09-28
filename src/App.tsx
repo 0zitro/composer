@@ -34,7 +34,7 @@ import { LibraryScreen } from "@/views/library/library-screen";
 import { LyricsImportModalHost } from "@/views/lyrics-import-modal/lyrics-import-modal-host";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { LazyMotion, domAnimation } from "motion/react";
-import { Activity, useCallback, useEffect, useRef, useState } from "react";
+import { Activity, useCallback, useEffect, useEffectEvent, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 
@@ -63,21 +63,20 @@ const AppShell: React.FC = () => {
   const { startTour, resumeOrStartTour, shouldShowTour, guideCard, skipGuideCard } = useTour({
     onOpenBestPractices: openBestPractices,
   });
-  const startTourRef = useRef(startTour);
-  startTourRef.current = startTour;
-  const resumeTourRef = useRef(resumeOrStartTour);
-  resumeTourRef.current = resumeOrStartTour;
+  const startTourLater = useEffectEvent(() => startTour());
+  const resumeTourLater = useEffectEvent(() => resumeOrStartTour());
   if (!isEditor && tourRequested) setTourRequested(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Effect Events always read current state and must not be dependencies.
   useEffect(() => {
     if (!isEditor || (!shouldShowTour && !tourRequested)) return;
     const timer = setTimeout(() => {
       if (!tourRequested) {
-        startTourRef.current();
+        startTourLater();
         return;
       }
       setTourRequested(false);
-      resumeTourRef.current();
+      resumeTourLater();
     }, TOUR_START_DELAY_MS);
     return () => clearTimeout(timer);
   }, [isEditor, shouldShowTour, tourRequested]);
