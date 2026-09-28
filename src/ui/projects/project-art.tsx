@@ -23,6 +23,8 @@ const FRAME_SIZES: Record<ProjectArtSize, string> = {
   card: "w-full aspect-square rounded-[10px]",
 };
 
+const LIGHT_STROKE_SIZES: ReadonlySet<ProjectArtSize> = new Set(["hero", "card"]);
+
 const ICON_SIZES: Record<ProjectArtSize, string> = {
   xs: "size-3",
   sm: "size-2.5",
@@ -30,7 +32,7 @@ const ICON_SIZES: Record<ProjectArtSize, string> = {
   row: "size-[18px]",
   dialog: "size-[22px]",
   hero: "size-[54px]",
-  card: "size-[45%]",
+  card: "size-[30%]",
 };
 
 // -- Component ----------------------------------------------------------------
@@ -47,7 +49,11 @@ const ProjectArt: React.FC<ProjectArtProps> = ({ src, size, className }) => (
     {src ? (
       <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
     ) : (
-      <IconMusic aria-hidden="true" className={cn("text-composer-text opacity-50", ICON_SIZES[size])} />
+      <IconMusic
+        aria-hidden="true"
+        stroke={LIGHT_STROKE_SIZES.has(size) ? 1.5 : 2}
+        className={cn("text-composer-text opacity-50", ICON_SIZES[size])}
+      />
     )}
   </span>
 );

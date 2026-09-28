@@ -38,6 +38,7 @@ const ROW_MUTED = cn(
   "text-composer-text-muted",
   "group-hover/row:text-composer-text/60 group-data-selected/row:text-composer-text/60 group-data-menu/row:text-composer-text/60",
 );
+const ROW_PLACEHOLDER = "text-composer-text-faint";
 const ROW_STYLES = cn(
   ROW_GRID,
   "group/row relative h-14 pl-3 pr-13 rounded-[10px] select-none transition-colors duration-100",
@@ -124,9 +125,13 @@ const ProjectRowContent: React.FC<ProjectItemProps> = ({
         >
           {title}
         </button>
-        <div className={cn("truncate text-[13px]", ROW_MUTED)}>{displayArtists(project.artists)}</div>
+        <div className={cn("truncate text-[13px]", project.artists.length > 0 ? ROW_MUTED : ROW_PLACEHOLDER)}>
+          {displayArtists(project.artists)}
+        </div>
       </div>
-      <div className={cn("truncate text-[13px]", ROW_MUTED, ALBUM_COLUMN)}>{project.album || "No album"}</div>
+      <div className={cn("truncate text-[13px]", project.album ? ROW_MUTED : ROW_PLACEHOLDER, ALBUM_COLUMN)}>
+        {project.album || "No album"}
+      </div>
       <RowProgress project={project} />
       <div className="min-w-0">
         <AudioStatusLabel project={project} />

@@ -175,7 +175,10 @@ const LibraryScreen: React.FC = () => {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-composer-bg">
       <main ref={mainRef} className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-        <div data-first-paint={firstPaint} className="group/lib max-w-[1264px] mx-auto px-16 pt-8 pb-30">
+        <div
+          data-first-paint={firstPaint}
+          className="group/lib max-w-[1264px] mx-auto px-16 pt-8 pb-30 max-[720px]:px-5"
+        >
           <div className="grid grid-cols-[minmax(0,1fr)_380px] gap-4 mb-10 max-[1180px]:grid-cols-[minmax(0,1fr)_320px] max-[880px]:grid-cols-1">
             {resume && <ResumeCard project={resume} now={fetchedAt} onOpen={actions.open} className={RISE} />}
             <NewSongPanel className={cn(RISE, "[animation-delay:60ms]")} />

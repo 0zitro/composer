@@ -60,7 +60,7 @@ const LibraryToolbar: React.FC<LibraryToolbarProps> = ({
   const sortLabel = LIBRARY_SORT_LABELS[sort];
 
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
       <h1 className="flex items-baseline gap-1.5 mr-1 text-lg font-bold">
         Projects <span className="text-sm font-medium text-composer-text-muted tabular-nums">{count}</span>
       </h1>
@@ -70,31 +70,44 @@ const LibraryToolbar: React.FC<LibraryToolbarProps> = ({
         options={filterOptions}
         onChange={onFilterChange}
       />
-      <IconField
-        ref={searchRef}
-        icon={IconSearch}
-        aria-label="Search projects"
-        placeholder="Search"
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-        wrapperClassName="flex-[0_1_260px] min-w-35 ms-auto"
-        trailing={searchShortcut ? <InlineKeyBadge text={searchShortcut} /> : undefined}
-      />
-      <Select
-        aria-label="Sort projects"
-        value={sort}
-        onChange={(next) => {
-          if (isLibrarySort(next)) onSortChange(next);
-        }}
-        options={LIBRARY_SORT_OPTIONS}
-        trigger={
-          <Button variant="secondary" hasIcon aria-label={`Sort: ${sortLabel}`}>
-            <IconArrowsSort aria-hidden="true" className="size-4" />
-            {sortLabel}
-          </Button>
-        }
-      />
-      <SegmentedControl aria-label="View" value={view} options={LIBRARY_VIEW_TOGGLE_OPTIONS} onChange={onViewChange} />
+      <div className="flex flex-[1_1_420px] items-center justify-end gap-3 min-w-0">
+        <IconField
+          ref={searchRef}
+          icon={IconSearch}
+          aria-label="Search projects"
+          placeholder="Search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          wrapperClassName="flex-[0_1_260px] min-w-35"
+          trailing={searchShortcut ? <InlineKeyBadge text={searchShortcut} /> : undefined}
+        />
+        <Select
+          aria-label="Sort projects"
+          value={sort}
+          onChange={(next) => {
+            if (isLibrarySort(next)) onSortChange(next);
+          }}
+          options={LIBRARY_SORT_OPTIONS}
+          trigger={
+            <Button
+              variant="secondary"
+              hasIcon
+              aria-label={`Sort: ${sortLabel}`}
+              className="shrink-0 whitespace-nowrap"
+            >
+              <IconArrowsSort aria-hidden="true" className="size-4" />
+              {sortLabel}
+            </Button>
+          }
+        />
+        <SegmentedControl
+          aria-label="View"
+          value={view}
+          options={LIBRARY_VIEW_TOGGLE_OPTIONS}
+          onChange={onViewChange}
+          className="shrink-0"
+        />
+      </div>
     </div>
   );
 };

@@ -88,7 +88,14 @@ const ProjectCardContent: React.FC<ProjectItemProps> = ({
         >
           {title}
         </button>
-        <div className="truncate text-[13px] text-composer-text-muted">{displayArtists(project.artists)}</div>
+        <div
+          className={cn(
+            "truncate text-[13px]",
+            project.artists.length > 0 ? "text-composer-text-muted" : "text-composer-text-faint",
+          )}
+        >
+          {displayArtists(project.artists)}
+        </div>
       </div>
       <ProgressBar percent={syncedPercent(project)} label={progressDescription(project)} />
       <div className="flex items-center justify-between gap-2 text-xs text-composer-text-muted">
