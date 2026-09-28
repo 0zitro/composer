@@ -44,7 +44,7 @@ const ProjectBreadcrumb: React.FC = () => {
               variant="ghost"
               aria-label={`${shownTitle}, switch project`}
               title={switchTitle}
-              className="group gap-2 h-auto max-w-[380px] min-w-0 p-1.5 rounded-[10px] text-[15px] leading-[22px] font-bold text-composer-text hover:text-composer-text aria-expanded:bg-composer-button"
+              className="group gap-2 h-8 max-w-[380px] min-w-0 px-1.5 py-0 rounded-[10px] text-[15px] leading-[22px] font-bold text-composer-text hover:text-composer-text aria-expanded:bg-composer-button"
             >
               <ProjectArt src={thumbnail} size="sm" />
               <span className="truncate">{shownTitle}</span>

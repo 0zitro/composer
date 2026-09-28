@@ -23,6 +23,49 @@ const CHROMIUM_STEPS = [
 ];
 const CHROMIUM_STEPS_OUTRO = "Then click Protect storage again. This doesn't work in Incognito.";
 
+// -- Sub-components -------------------------------------------------------------
+
+const WARNING_SURFACE =
+  "bg-composer-warning/8 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-composer-warning)_30%,transparent)]";
+
+const NoticeHeading: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="flex-1 min-w-0">
+    {title}
+    <span className="block text-xs text-composer-text-muted text-pretty">{description}</span>
+  </div>
+);
+
+const ChromiumSteps: React.FC<{ onProtect: () => void }> = ({ onProtect }) => (
+  <div className={cn("rounded-[10px] text-[13px] text-composer-text select-none", WARNING_SURFACE)}>
+    <div className="flex items-start gap-3 px-3.5 pt-3">
+      <IconShieldExclamation aria-hidden="true" className="size-[18px] mt-px shrink-0 text-composer-warning" />
+      <NoticeHeading title="Not protected" description={UNPROTECTED_DESCRIPTION} />
+    </div>
+    <div className="pt-3 pb-3.5 pr-3.5 pl-[44px] text-xs text-composer-text-muted">
+      <p className="text-pretty">{CHROMIUM_STEPS_INTRO}</p>
+      <ol className="mt-2 space-y-1.5">
+        {CHROMIUM_STEPS.map((step, index) => (
+          <li key={step} className="flex items-start gap-2.5 text-composer-text text-pretty">
+            <span
+              aria-hidden="true"
+              className="flex items-center justify-center size-[18px] shrink-0 rounded-full bg-composer-warning/15 text-[11px] font-medium leading-none text-composer-warning tabular-nums"
+            >
+              {index + 1}
+            </span>
+            <span className="min-w-0 pt-px">{step}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+    <div className="flex items-center justify-between gap-3 py-2.5 pr-2.5 pl-[44px] shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--color-composer-warning)_20%,transparent)]">
+      <p className="text-xs text-composer-text-muted text-pretty">{CHROMIUM_STEPS_OUTRO}</p>
+      <Button variant="secondary" size="sm" onClick={onProtect} className="shrink-0">
+        Protect storage
+      </Button>
+    </div>
+  </div>
+);
+
 // -- Component ----------------------------------------------------------------
 
 const StorageProtectionNotice: React.FC<StorageProtectionNoticeProps> = ({ status, browser, onProtect }) => {
@@ -32,48 +75,20 @@ const StorageProtectionNotice: React.FC<StorageProtectionNoticeProps> = ({ statu
     return (
       <div className={cn(NOTICE_STYLES, "bg-composer-input shadow-[inset_0_0_0_1px_var(--color-composer-border)]")}>
         <IconShieldCheck aria-hidden="true" className="size-[18px] shrink-0 text-composer-positive" />
-        <div className="flex-1 min-w-0">
-          Protected from browser cleanup
-          <span className="block text-xs text-composer-text-muted">
-            The browser won't clear your projects when disk space runs low.
-          </span>
-        </div>
+        <NoticeHeading
+          title="Protected from browser cleanup"
+          description="The browser won't clear your projects when disk space runs low."
+        />
       </div>
     );
   }
 
-  const showsChromiumSteps = status === "unprotected" && browser === "chromium";
+  if (status === "unprotected" && browser === "chromium") return <ChromiumSteps onProtect={onProtect} />;
 
   return (
-    <div
-      className={cn(
-        NOTICE_STYLES,
-        showsChromiumSteps && "items-start gap-3.5 p-4",
-        "bg-composer-warning/8 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-composer-warning)_30%,transparent)]",
-      )}
-    >
-      <IconShieldExclamation
-        aria-hidden="true"
-        className={cn("size-[18px] shrink-0 text-composer-warning", showsChromiumSteps && "mt-px")}
-      />
-      <div className="flex-1 min-w-0">
-        Not protected
-        {showsChromiumSteps ? (
-          <div className="mt-1 text-xs leading-[1.55] text-composer-text-muted text-pretty">
-            <p>{CHROMIUM_STEPS_INTRO}</p>
-            <ol className="my-2.5 pl-4 space-y-1.5 list-decimal marker:text-composer-text-muted/70 marker:tabular-nums">
-              {CHROMIUM_STEPS.map((step) => (
-                <li key={step} className="pl-1">
-                  {step}
-                </li>
-              ))}
-            </ol>
-            <p>{CHROMIUM_STEPS_OUTRO}</p>
-          </div>
-        ) : (
-          <span className="block text-xs text-composer-text-muted">{UNPROTECTED_DESCRIPTION}</span>
-        )}
-      </div>
+    <div className={cn(NOTICE_STYLES, WARNING_SURFACE)}>
+      <IconShieldExclamation aria-hidden="true" className="size-[18px] shrink-0 text-composer-warning" />
+      <NoticeHeading title="Not protected" description={UNPROTECTED_DESCRIPTION} />
       {status === "unprotected" && (
         <Button variant="secondary" size="sm" onClick={onProtect}>
           Protect storage

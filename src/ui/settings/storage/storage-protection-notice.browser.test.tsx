@@ -34,20 +34,21 @@ describe("StorageProtectionNotice", () => {
   });
 
   describe("Chromium browsers", () => {
-    it("shows concrete steps in place of the one-line description", async () => {
+    it("shows concrete steps under the reason", async () => {
       const screen = await render(
         <StorageProtectionNotice status="unprotected" browser="chromium" onProtect={() => {}} />,
       );
       await expect.element(screen.getByText("Not protected")).toBeInTheDocument();
+      await expect
+        .element(screen.getByText("The browser can clear your projects, lyrics included, when disk space runs low."))
+        .toBeInTheDocument();
       await expect
         .element(screen.getByText("Your browser decides this on its own. Either of these usually works:"))
         .toBeInTheDocument();
       await expect.element(screen.getByRole("list")).toBeInTheDocument();
       expect(screen.getByRole("listitem").elements()).toHaveLength(2);
       await expect
-        .element(
-          screen.getByText("Install Composer as an app: open the browser menu and choose Install page as app."),
-        )
+        .element(screen.getByText("Install Composer as an app: open the browser menu and choose Install page as app."))
         .toBeInTheDocument();
       await expect.element(screen.getByText("Bookmark Composer and keep using it.")).toBeInTheDocument();
       await expect
