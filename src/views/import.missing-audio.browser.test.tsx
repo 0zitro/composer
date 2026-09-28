@@ -25,7 +25,28 @@ describe("ImportPanel · missing audio", () => {
     await expect.element(screen.getByText("Drop audio file here")).toBeInTheDocument();
   });
 
+  it("shows the YouTube relink state when the project's video fails to load", async () => {
+    await seedStoredProject("p", {
+      open: true,
+      project: { ...songTitled("Song"), audioSource: { kind: "youtube", videoId: "dQw4w9WgXcQ" } },
+    });
+    await restoreOpenProject();
+    useAudioStore.getState().failYouTubeLoad("Nope");
+    const screen = await render(<ImportPanel />);
+    await expect.element(screen.getByText("Couldn't load the audio from YouTube.")).toBeInTheDocument();
+    await expect.element(screen.getByText("Song")).toBeInTheDocument();
+    await expect.element(screen.getByPlaceholder("Or load a different YouTube URL")).toBeInTheDocument();
+  });
+
   describe("error paths", () => {
+    it("keeps the normal drop zone when a fresh paste fails and the project expects no audio", async () => {
+      useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+      useAudioStore.getState().failYouTubeLoad("Nope");
+      const screen = await render(<ImportPanel />);
+      await expect.element(screen.getByText("Drop audio file here")).toBeInTheDocument();
+      expect(screen.getByText("Couldn't load the audio from YouTube.").elements()).toHaveLength(0);
+    });
+
     it("keeps the relink state when a dropped file isn't playable", async () => {
       await seedStoredProject("p", {
         open: true,
