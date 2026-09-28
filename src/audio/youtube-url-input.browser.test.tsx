@@ -1,6 +1,7 @@
 import { YouTubeUrlInput } from "@/audio/youtube-url-input";
 import { waitForYouTubeLoad } from "@/hooks/useLoadYouTubeSource";
 import { useAudioStore } from "@/stores/audio";
+import { allowConsole } from "@/test/console-guard";
 import { render } from "@/test/render";
 import { describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -139,6 +140,23 @@ describe("YouTubeUrlInput", () => {
       await userEvent.keyboard("{Enter}");
       await expect.poll(() => info.mock.calls.length).toBeGreaterThan(0);
       expect(info.mock.calls[0][0]).toBe("[YouTubeUrlInput]");
+    });
+
+    it("logs a failure that is not a YouTube load error and keeps the URL for a retry", async () => {
+      allowConsole(/could not load the video/);
+      const error = vi.spyOn(console, "error");
+      const screen = await render(
+        <YouTubeUrlInput
+          onLoadVideo={() => {
+            throw new Error("save failed");
+          }}
+        />,
+      );
+      await screen.getByPlaceholder(/YouTube URL/i).fill(VALID_VIDEO_ID);
+      await userEvent.keyboard("{Enter}");
+      await expect.poll(() => error.mock.calls.length).toBeGreaterThan(0);
+      expect(error.mock.calls[0]?.slice(0, 2)).toEqual(["[YouTubeUrlInput]", "could not load the video"]);
+      await expect.element(screen.getByPlaceholder(/YouTube URL/i)).toHaveValue(VALID_VIDEO_ID);
     });
   });
 });

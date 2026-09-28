@@ -43,7 +43,7 @@ const YouTubeUrlInput: React.FC<YouTubeUrlInputProps> = ({
         console.info(LOG_PREFIX, "ignored a superseded video load", error);
         return;
       }
-      // Real load failures are surfaced via the store's youtubeLoadError; keep the input populated for retry.
+      if (!isYouTubeLoadError(error)) console.error(LOG_PREFIX, "could not load the video", error);
     }
   }, [value, loadYouTubeSource, onLoadVideo]);
 
