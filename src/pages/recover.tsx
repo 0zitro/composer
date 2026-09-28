@@ -1,9 +1,10 @@
-import { downloadRecoveryFile, readRecoveryMetadata, type RecoveryResult } from "@/lib/recovery";
+import { type RecoveryResult, downloadRecoveryFile, readRecoveryMetadata } from "@/lib/recovery";
 import { RecoverProjectList } from "@/pages/recover-project-list";
 import { PageHead } from "@/seo/page-head";
 import { Button } from "@/ui/button";
 import { ClearRecoveryButton } from "@/ui/clear-recovery-button";
 import { ClientOnly } from "@/ui/client-only";
+import { formatLineCount } from "@/utils/format-line-count";
 import { formatSavedAt } from "@/utils/format-saved-at";
 import { IconCheck, IconDownload, IconHome2, IconLifebuoy, IconRefresh } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -106,7 +107,7 @@ const RecoverPanel: React.FC = () => {
               </span>
             </p>
             <p className="text-xs text-composer-text-muted select-text">
-              {state.result.lineCount} lines, last edited {formatSavedAt(state.result.savedAt)}
+              {formatLineCount(state.result.lineCount)}, last edited {formatSavedAt(state.result.savedAt)}
             </p>
           </div>
         )}
@@ -115,7 +116,7 @@ const RecoverPanel: React.FC = () => {
           <div className="flex flex-col items-center gap-2 text-sm">
             <p className="text-composer-text">We found your last session.</p>
             <p className="text-xs text-composer-text-muted select-text">
-              {state.result.lineCount} lines, last edited {formatSavedAt(state.result.savedAt)}
+              {formatLineCount(state.result.lineCount)}, last edited {formatSavedAt(state.result.savedAt)}
             </p>
           </div>
         )}

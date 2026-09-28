@@ -8,6 +8,7 @@ import {
   readRecoveryMetadata,
 } from "@/lib/recovery";
 import { captureDownloads } from "@/test/downloads";
+import { createLine } from "@/test/factories";
 import { songTitled, storedProject } from "@/test/projects";
 import { describe, expect, it } from "vitest";
 
@@ -64,10 +65,31 @@ describe("recovery · every project", () => {
       expect(downloads.names()).toEqual([]);
     });
 
-    it("skips deleted projects", async () => {
+    it("no longer lists a project once it has been deleted", async () => {
       await seed("a", "Alpha", 100);
       await removeProjectData("a");
       expect(await listRecoverableProjects()).toEqual([]);
+    });
+  });
+
+  describe("invariants", () => {
+    it("keeps the legacy record last even when it was saved more recently", async () => {
+      await seed("a", "Alpha", 100);
+      await setInStore(
+        PROJECT_STORE_NAME,
+        LEGACY_PROJECT_KEY,
+        storedProject({ ...songTitled("Legacy"), savedAt: 999 }),
+      );
+      expect((await listRecoverableProjects()).map((project) => project.key)).toEqual(["a", "legacy"]);
+    });
+
+    it("counts lines the same way the library does, not every stored array entry", async () => {
+      await saveProjectRecord(
+        "a",
+        storedProject({ ...songTitled("Alpha"), lines: [createLine({ text: "Real line" }), createLine({ text: "" })] }),
+      );
+      const [project] = await listRecoverableProjects();
+      expect(project.lineCount).toBe(1);
     });
   });
 

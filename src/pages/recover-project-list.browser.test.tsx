@@ -1,9 +1,9 @@
-import { saveProjectRecord } from "@/lib/project-repository";
+import { removeProjectData, saveProjectRecord } from "@/lib/project-repository";
 import { RecoverProjectList } from "@/pages/recover-project-list";
 import { sleep } from "@/test/async";
 import { captureDownloads } from "@/test/downloads";
-import { render } from "@/test/render";
 import { songTitled, storedProject } from "@/test/projects";
+import { render } from "@/test/render";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 
@@ -59,6 +59,26 @@ describe("RecoverProjectList", () => {
       const screen = await render(<RecoverProjectList />);
       await sleep(50);
       expect(screen.container.textContent).toBe("");
+    });
+
+    it("tells the user when the project to download is already gone", async () => {
+      await seedTwo();
+      const screen = await render(<RecoverProjectList />);
+      await removeProjectData("a");
+      await screen.getByRole("button", { name: "Download Alpha" }).click();
+      await expect.element(screen.getByText("Couldn't download that project. Try again.")).toBeInTheDocument();
+    });
+
+    it("tells the user when every project is gone before download-all runs", async () => {
+      await seedTwo();
+      const screen = await render(<RecoverProjectList />);
+      await removeProjectData("a");
+      await removeProjectData("b");
+      const downloads = captureDownloads();
+      await screen.getByRole("button", { name: "Download all" }).click();
+      await expect.element(screen.getByText("Nothing to download.")).toBeInTheDocument();
+      downloads.stop();
+      expect(downloads.names()).toEqual([]);
     });
   });
 });

@@ -1,13 +1,10 @@
-import { PROJECT_STORE_NAME, getFromStore } from "@/lib/persistence-idb";
+import { displayTitle } from "@/domain/project/display-title";
+import type { ProjectIndexEntry } from "@/domain/project/index-entry";
+import { byMostRecentlyEdited } from "@/domain/project/library-order";
+import { PROJECT_INDEX_STORE_NAME, PROJECT_STORE_NAME, getAllFromStore, getFromStore } from "@/lib/persistence-idb";
 import { buildProjectBundle, downloadProjectBundle } from "@/lib/project-bundle";
 import { downloadProjectFile, projectFileFrom, projectFileName } from "@/lib/project-file";
-import {
-  LEGACY_PROJECT_KEY,
-  clearAllProjects,
-  getOpenProjectId,
-  listProjectRecords,
-  loadProjectRecord,
-} from "@/lib/project-storage";
+import { LEGACY_PROJECT_KEY, clearAllProjects, getOpenProjectId, loadProjectRecord } from "@/lib/project-storage";
 import type { SavedProject } from "@/lib/saved-project";
 
 // -- Types --------------------------------------------------------------------
@@ -39,6 +36,11 @@ interface RecoverableProject {
   savedAt: number | undefined;
 }
 
+interface RecoverySnapshot {
+  entries: ProjectIndexEntry[];
+  legacyProject: SavedProject | undefined;
+}
+
 // -- Constants ----------------------------------------------------------------
 
 const LEGACY_RECOVERY_KEY = "legacy";
@@ -53,34 +55,57 @@ const NOT_FOUND_RESULT: RecoveryResult = {
 
 // -- Reading ------------------------------------------------------------------
 
-function byMostRecentlySaved(a: StoredRecovery, b: StoredRecovery): number {
-  return (b.project.savedAt ?? 0) - (a.project.savedAt ?? 0);
+function legacyIndexEntry(project: SavedProject): ProjectIndexEntry {
+  return {
+    id: LEGACY_RECOVERY_KEY,
+    title: project.metadata?.title ?? "",
+    artists: project.metadata?.artists ?? [],
+    album: project.metadata?.album ?? "",
+    lineCount: project.lines?.length ?? 0,
+    syncedLineCount: 0,
+    hasWordTiming: false,
+    audioKind: "none",
+    storedAudioBytes: 0,
+    updatedAt: project.savedAt,
+  };
 }
 
-function recoveryKey(stored: StoredRecovery): string {
-  return stored.projectId ?? LEGACY_RECOVERY_KEY;
+function readLegacyProject(): Promise<SavedProject | undefined> {
+  return getFromStore<SavedProject>(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY);
 }
 
-async function readStoredProjects(): Promise<StoredRecovery[]> {
-  const [records, legacy] = await Promise.all([
-    listProjectRecords(),
-    getFromStore<SavedProject>(PROJECT_STORE_NAME, LEGACY_PROJECT_KEY),
+async function readRecoverySnapshot(): Promise<RecoverySnapshot> {
+  const [realEntries, legacyProject] = await Promise.all([
+    getAllFromStore<ProjectIndexEntry>(PROJECT_INDEX_STORE_NAME),
+    readLegacyProject(),
   ]);
-  const stored: StoredRecovery[] = records.map(({ id, project }) => ({ projectId: id, project }));
-  if (legacy) stored.push({ projectId: undefined, project: legacy });
-  return stored.toSorted(byMostRecentlySaved);
+  const ordered = realEntries.toSorted(byMostRecentlyEdited);
+  const entries = legacyProject ? [...ordered, legacyIndexEntry(legacyProject)] : ordered;
+  return { entries, legacyProject };
+}
+
+async function loadStoredRecovery(
+  key: string,
+  legacyProject: SavedProject | undefined,
+): Promise<StoredRecovery | undefined> {
+  if (key === LEGACY_RECOVERY_KEY) {
+    return legacyProject ? { projectId: undefined, project: legacyProject } : undefined;
+  }
+  const project = await loadProjectRecord(key);
+  return project ? { projectId: key, project } : undefined;
 }
 
 async function readProjectFromIDB(): Promise<StoredRecovery | undefined> {
   const openId = await getOpenProjectId();
   const open = openId ? await loadProjectRecord(openId) : undefined;
   if (open) return { projectId: openId, project: open };
-  const stored = await readStoredProjects();
-  return stored.find((candidate) => candidate.projectId !== undefined) ?? stored[0];
+  const { entries, legacyProject } = await readRecoverySnapshot();
+  const first = entries[0];
+  return first ? loadStoredRecovery(first.id, legacyProject) : undefined;
 }
 
 function buildRecoveryResult(project: RecoveredProject): RecoveryResult {
-  const title = project.metadata?.title?.trim() || "recovered";
+  const title = displayTitle(project.metadata?.title?.trim() ?? "");
   return {
     found: true,
     filename: projectFileName(title, new Date()),
@@ -88,6 +113,10 @@ function buildRecoveryResult(project: RecoveredProject): RecoveryResult {
     savedAt: project.savedAt,
     title,
   };
+}
+
+function toRecoverableProject(entry: ProjectIndexEntry): RecoverableProject {
+  return { key: entry.id, title: displayTitle(entry.title), lineCount: entry.lineCount, savedAt: entry.updatedAt };
 }
 
 function downloadStored(stored: StoredRecovery): RecoveryResult {
@@ -109,19 +138,22 @@ async function downloadRecoveryFile(): Promise<RecoveryResult> {
 }
 
 async function listRecoverableProjects(): Promise<RecoverableProject[]> {
-  return (await readStoredProjects()).map((stored) => {
-    const result = buildRecoveryResult(stored.project);
-    return { key: recoveryKey(stored), title: result.title, lineCount: result.lineCount, savedAt: result.savedAt };
-  });
+  const { entries } = await readRecoverySnapshot();
+  return entries.map(toRecoverableProject);
 }
 
 async function downloadRecoverableProject(key: string): Promise<RecoveryResult> {
-  const stored = (await readStoredProjects()).find((candidate) => recoveryKey(candidate) === key);
+  const legacyProject = key === LEGACY_RECOVERY_KEY ? await readLegacyProject() : undefined;
+  const stored = await loadStoredRecovery(key, legacyProject);
   return stored ? downloadStored(stored) : NOT_FOUND_RESULT;
 }
 
 async function downloadAllRecoverableProjects(): Promise<number> {
-  const stored = await readStoredProjects();
+  const { entries, legacyProject } = await readRecoverySnapshot();
+  if (entries.length === 0) return 0;
+  const stored = (await Promise.all(entries.map((entry) => loadStoredRecovery(entry.id, legacyProject)))).filter(
+    (candidate): candidate is StoredRecovery => candidate !== undefined,
+  );
   if (stored.length === 0) return 0;
   const sources = stored.map(({ projectId, project }) => ({ id: projectId, project }));
   downloadProjectBundle(buildProjectBundle(sources, Date.now()));

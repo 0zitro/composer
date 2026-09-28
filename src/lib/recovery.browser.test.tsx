@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import { DB_NAME, DB_VERSION, PROJECT_STORE_NAME } from "@/lib/persistence-idb";
 import { listProjectIndex, saveProjectRecord, setOpenProjectId } from "@/lib/project-repository";
 import { clearRecoveryStorage, downloadRecoveryFile, readRecoveryMetadata } from "@/lib/recovery";
 import { seedProject } from "@/test/idb";
+import { describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -87,11 +87,11 @@ describe("recovery", () => {
       expect(result.filename).toMatch(/^Drift-\d{4}-\d{2}-\d{2}\.ttml-project\.json$/);
     });
 
-    it("falls back to 'recovered' when metadata.title is missing or empty", async () => {
+    it("falls back to 'Untitled' when metadata.title is missing or empty", async () => {
       await seedProject({ version: 1, lines: [], metadata: { title: "  " } });
       const result = await readRecoveryMetadata();
-      expect(result.title).toBe("recovered");
-      expect(result.filename).toMatch(/^recovered-/);
+      expect(result.title).toBe("Untitled");
+      expect(result.filename).toMatch(/^Untitled-/);
     });
   });
 

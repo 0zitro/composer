@@ -5,8 +5,9 @@ import {
   listRecoverableProjects,
 } from "@/lib/recovery";
 import { Button } from "@/ui/button";
-import { formatProjectCount } from "@/utils/project-count";
+import { formatLineCount } from "@/utils/format-line-count";
 import { formatSavedAt } from "@/utils/format-saved-at";
+import { formatProjectCount } from "@/utils/project-count";
 import { IconDownload } from "@tabler/icons-react";
 import { useEffect, useId, useState } from "react";
 
@@ -40,7 +41,7 @@ const RecoverProjectList: React.FC = () => {
   const downloadAll = async () => {
     try {
       const count = await downloadAllRecoverableProjects();
-      setMessage(`Downloaded ${formatProjectCount(count)} as one file.`);
+      setMessage(count === 0 ? "Nothing to download." : `Downloaded ${formatProjectCount(count)} as one file.`);
     } catch (error) {
       console.error(LOG_PREFIX, "could not download every project", error);
       setMessage("Couldn't download your projects. Try again.");
@@ -49,8 +50,8 @@ const RecoverProjectList: React.FC = () => {
 
   const downloadOne = async (key: string) => {
     try {
-      await downloadRecoverableProject(key);
-      setMessage(null);
+      const result = await downloadRecoverableProject(key);
+      setMessage(result.found ? null : "Couldn't download that project. Try again.");
     } catch (error) {
       console.error(LOG_PREFIX, "could not download a project", error);
       setMessage("Couldn't download that project. Try again.");
@@ -77,7 +78,7 @@ const RecoverProjectList: React.FC = () => {
             <div className="flex-1 min-w-0">
               <p className="text-sm text-composer-text truncate select-text">{project.title}</p>
               <p className="text-xs text-composer-text-muted select-text">
-                {project.lineCount} lines, last edited {formatSavedAt(project.savedAt)}
+                {formatLineCount(project.lineCount)}, last edited {formatSavedAt(project.savedAt)}
               </p>
             </div>
             <Button

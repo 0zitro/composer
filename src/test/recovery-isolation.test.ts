@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const SRC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const ENTRY_FILE = join(SRC_ROOT, "lib", "recovery.ts");
+const ENTRY_FILES = [
+  join(SRC_ROOT, "lib", "recovery.ts"),
+  join(SRC_ROOT, "pages", "recover.tsx"),
+  join(SRC_ROOT, "pages", "recover-project-list.tsx"),
+];
 const IMPORT_SPEC = /from\s+["']([^"']+)["']/g;
 const TYPE_ONLY_IMPORT = /^import\s+type\s+[^;]*?from\s+["'][^"']+["'];?/gm;
 
@@ -42,11 +46,13 @@ function transitiveImportClosure(entryFile: string): Set<string> {
 }
 
 describe("recovery isolation", () => {
-  it("recovery.ts's import graph never reaches src/stores", () => {
-    const closure = transitiveImportClosure(ENTRY_FILE);
-    const offenders = Array.from(closure)
-      .filter((file) => file !== ENTRY_FILE && file.includes(`${join(SRC_ROOT, "stores")}/`))
-      .map((file) => relative(SRC_ROOT, file));
-    expect(offenders).toEqual([]);
-  });
+  for (const entryFile of ENTRY_FILES) {
+    it(`${relative(SRC_ROOT, entryFile)}'s import graph never reaches src/stores`, () => {
+      const closure = transitiveImportClosure(entryFile);
+      const offenders = Array.from(closure)
+        .filter((file) => file !== entryFile && file.includes(`${join(SRC_ROOT, "stores")}/`))
+        .map((file) => relative(SRC_ROOT, file));
+      expect(offenders).toEqual([]);
+    });
+  }
 });
