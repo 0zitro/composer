@@ -8,7 +8,7 @@ import { ProgressBar } from "@/ui/progress-bar";
 import { ProjectArt } from "@/ui/projects/project-art";
 import { cn } from "@/utils/cn";
 import { formatRelativeTimeInline } from "@/utils/format-relative-time";
-import { IconPlayerPlay } from "@tabler/icons-react";
+import { IconPlayerPlayFilled } from "@tabler/icons-react";
 import { useId } from "react";
 
 // -- Types --------------------------------------------------------------------
@@ -86,7 +86,7 @@ const ResumeCard: React.FC<ResumeCardProps> = ({ project, now, onOpen, className
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-6">
         <ResumeProgress project={project} />
         <Button hasIcon onClick={() => onOpen(project.id)} className="bg-white text-[#111] hover:bg-white/88">
-          <IconPlayerPlay aria-hidden="true" className="size-4" />
+          <IconPlayerPlayFilled aria-hidden="true" className="size-4" />
           {action}
         </Button>
       </div>

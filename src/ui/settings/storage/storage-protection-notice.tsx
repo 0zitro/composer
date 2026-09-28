@@ -42,22 +42,30 @@ const StorageProtectionNotice: React.FC<StorageProtectionNoticeProps> = ({ statu
     );
   }
 
+  const showsChromiumSteps = status === "unprotected" && browser === "chromium";
+
   return (
     <div
       className={cn(
         NOTICE_STYLES,
+        showsChromiumSteps && "items-start gap-3.5 p-4",
         "bg-composer-warning/8 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-composer-warning)_30%,transparent)]",
       )}
     >
-      <IconShieldExclamation aria-hidden="true" className="size-[18px] shrink-0 text-composer-warning" />
+      <IconShieldExclamation
+        aria-hidden="true"
+        className={cn("size-[18px] shrink-0 text-composer-warning", showsChromiumSteps && "mt-px")}
+      />
       <div className="flex-1 min-w-0">
         Not protected
-        {status === "unprotected" && browser === "chromium" ? (
-          <div className="text-xs text-composer-text-muted">
+        {showsChromiumSteps ? (
+          <div className="mt-1 text-xs leading-[1.55] text-composer-text-muted text-pretty">
             <p>{CHROMIUM_STEPS_INTRO}</p>
-            <ol className="list-decimal list-inside space-y-0.5">
+            <ol className="my-2.5 pl-4 space-y-1.5 list-decimal marker:text-composer-text-muted/70 marker:tabular-nums">
               {CHROMIUM_STEPS.map((step) => (
-                <li key={step}>{step}</li>
+                <li key={step} className="pl-1">
+                  {step}
+                </li>
               ))}
             </ol>
             <p>{CHROMIUM_STEPS_OUTRO}</p>
