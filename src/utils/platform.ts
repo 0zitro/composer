@@ -3,4 +3,21 @@ const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(na
 const MOD_KEY = isMac ? "Cmd" : "Ctrl";
 const ALT_KEY = isMac ? "Option" : "Alt";
 
-export { isMac, MOD_KEY, ALT_KEY };
+interface NavigatorUABrand {
+  brand: string;
+  version: string;
+}
+
+interface NavigatorUserAgentData {
+  brands?: NavigatorUABrand[];
+}
+
+function isChromiumBrands(brands: NavigatorUABrand[] | undefined): boolean {
+  return brands?.some((entry) => entry.brand === "Chromium") ?? false;
+}
+
+const isChromium =
+  typeof navigator !== "undefined" &&
+  isChromiumBrands((navigator as Navigator & { userAgentData?: NavigatorUserAgentData }).userAgentData?.brands);
+
+export { isMac, MOD_KEY, ALT_KEY, isChromium, isChromiumBrands };

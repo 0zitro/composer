@@ -1,9 +1,12 @@
 import { type StorageProtection, readStorageProtection, requestStorageProtection } from "@/lib/browser-storage";
+import { isChromium } from "@/utils/platform";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
+
+type BrowserKind = "chromium" | "other";
 
 interface StorageProtectionState {
   status: StorageProtection | undefined;
@@ -15,10 +18,11 @@ interface StorageProtectionState {
 const LOG_PREFIX = "[StorageProtection]";
 const STORAGE_PROTECTION_QUERY_KEY = ["storage-protection"] as const;
 const DECLINED_MESSAGE = "Your browser didn't allow it this time.";
+const CHROMIUM_DECLINED_MESSAGE = "Your browser said no for now. Try the steps above, then ask again.";
 
 // -- Hook ---------------------------------------------------------------------
 
-function useStorageProtection(): StorageProtectionState {
+function useStorageProtection(browser: BrowserKind = isChromium ? "chromium" : "other"): StorageProtectionState {
   const queryClient = useQueryClient();
   const { data, error } = useQuery({
     queryKey: STORAGE_PROTECTION_QUERY_KEY,
@@ -31,16 +35,18 @@ function useStorageProtection(): StorageProtectionState {
     if (error) console.error(LOG_PREFIX, "could not read storage protection", error);
   }, [error]);
 
+  const declinedMessage = browser === "chromium" ? CHROMIUM_DECLINED_MESSAGE : DECLINED_MESSAGE;
+
   const protect = useCallback(async () => {
     try {
       const status = await requestStorageProtection();
       queryClient.setQueryData(STORAGE_PROTECTION_QUERY_KEY, status);
-      if (status === "unprotected") toast(DECLINED_MESSAGE);
+      if (status === "unprotected") toast(declinedMessage);
     } catch (failure) {
       console.error(LOG_PREFIX, "could not ask for storage protection", failure);
-      toast.error(DECLINED_MESSAGE);
+      toast.error(declinedMessage);
     }
-  }, [queryClient]);
+  }, [queryClient, declinedMessage]);
 
   return { status: data, protect };
 }

@@ -6,7 +6,7 @@ import { userEvent } from "vitest/browser";
 
 // -- Helpers ------------------------------------------------------------------
 
-const DECLINED = "Your browser didn't allow it this time.";
+const DECLINED = "Your browser said no for now. Try the steps above, then ask again.";
 
 function spyOnPersist() {
   return vi.spyOn(navigator.storage, "persist").mockClear();
