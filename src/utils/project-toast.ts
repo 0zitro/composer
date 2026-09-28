@@ -4,6 +4,7 @@ import { deleteProject, openProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import type { PendingDeletion } from "@/lib/pending-deletions";
 import { useProjectStore } from "@/stores/project";
+import { formatProjectCount } from "@/utils/project-count";
 import { IconTrash } from "@tabler/icons-react";
 import { createElement } from "react";
 import { toast } from "sonner";
@@ -72,7 +73,9 @@ function showLinkedProjectToast(title: string, previousTitle: string, previousId
 // -- Deleting -----------------------------------------------------------------
 
 function deletedMessage(titles: readonly string[]): string {
-  return titles.length === 1 ? `Deleted ${quotedTitle(titles[0] ?? "")}` : `Deleted ${titles.length} projects`;
+  return titles.length === 1
+    ? `Deleted ${quotedTitle(titles[0] ?? "")}`
+    : `Deleted ${formatProjectCount(titles.length)}`;
 }
 
 function showDeletedProjectsToast(titles: readonly string[], deletion: PendingDeletion): void {

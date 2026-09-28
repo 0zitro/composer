@@ -8,6 +8,7 @@ import type { ProjectFile } from "@/lib/project-file";
 import { type ProjectFileContents, readProjectFileContents, savedProjectFromFile } from "@/lib/project-file-read";
 import { createProjectId, listProjectIndex, saveProjectRecord, updateProjectRecord } from "@/lib/project-repository";
 import { ProjectDeletedError } from "@/lib/project-tombstones";
+import { reportStorageWriteError } from "@/lib/storage-signals";
 import { useImportConflictStore } from "@/stores/import-conflict-store";
 import { formatProjectCount } from "@/utils/project-count";
 import type { ChangeEvent } from "react";
@@ -33,6 +34,7 @@ interface BundleRestore {
   restored: number;
   alreadyInLibrary: number;
   unreadable: number;
+  failed: number;
 }
 
 // -- Constants ----------------------------------------------------------------
@@ -103,37 +105,75 @@ async function restoreBundledProject(file: ProjectFile, pendingIds: ReadonlySet<
   await saveProjectRecord(createProjectId(), record);
 }
 
+function dedupeBundleProjects(projects: readonly ProjectFile[]): { unique: ProjectFile[]; duplicates: number } {
+  const seenIds = new Set<string>();
+  const unique: ProjectFile[] = [];
+  let duplicates = 0;
+  for (const project of projects) {
+    const id = project.projectId;
+    if (id && seenIds.has(id)) {
+      duplicates += 1;
+      continue;
+    }
+    if (id) seenIds.add(id);
+    unique.push(project);
+  }
+  return { unique, duplicates };
+}
+
 async function restoreProjectBundle(projects: readonly ProjectFile[], unreadable: number): Promise<BundleRestore> {
+  const { unique, duplicates } = dedupeBundleProjects(projects);
   const hidden = hiddenProjectIdsSnapshot();
   const storedIds = new Set((await listProjectIndex()).map((entry) => entry.id));
   let restored = 0;
-  let alreadyInLibrary = 0;
-  for (const project of projects) {
+  let alreadyInLibrary = duplicates;
+  let failed = 0;
+  for (const project of unique) {
     const id = project.projectId;
     if (id && storedIds.has(id) && !hidden.has(id)) {
       alreadyInLibrary += 1;
       continue;
     }
-    await restoreBundledProject(project, hidden);
+    try {
+      await restoreBundledProject(project, hidden);
+    } catch (error) {
+      failed += 1;
+      console.error(LOG_PREFIX, "could not restore a project from the backup", error);
+      reportStorageWriteError(error);
+      continue;
+    }
     if (id) storedIds.add(id);
     restored += 1;
   }
-  return { restored, alreadyInLibrary, unreadable };
+  return { restored, alreadyInLibrary, unreadable, failed };
 }
 
-function showBundleRestoreToast(result: BundleRestore): void {
-  if (result.restored === 0) {
-    if (result.alreadyInLibrary > 0) toast("Every project in this backup is already in your library");
-    else toast.error("Couldn't read any project in that backup");
-    return;
-  }
-  const details = [
-    result.alreadyInLibrary > 0 ? `${result.alreadyInLibrary} already in your library.` : "",
-    result.unreadable > 0 ? `${result.unreadable} couldn't be read.` : "",
+function bundleRestoreDetails(result: BundleRestore): string {
+  return [
+    result.alreadyInLibrary > 0 ? `${formatProjectCount(result.alreadyInLibrary)} already in your library.` : "",
+    result.unreadable > 0 ? `${formatProjectCount(result.unreadable)} couldn't be read.` : "",
+    result.failed > 0 ? `${formatProjectCount(result.failed)} couldn't be saved.` : "",
   ]
     .filter(Boolean)
     .join(" ");
-  toast.success(`Restored ${formatProjectCount(result.restored)}`, details ? { description: details } : undefined);
+}
+
+function showBundleRestoreToast(result: BundleRestore): void {
+  const { restored, alreadyInLibrary, unreadable, failed } = result;
+  if (restored === 0 && alreadyInLibrary > 0 && unreadable === 0 && failed === 0) {
+    toast("Every project in this backup is already in your library");
+    return;
+  }
+  if (restored === 0 && alreadyInLibrary === 0 && failed === 0) {
+    toast.error("Couldn't read any project in that backup");
+    return;
+  }
+  const details = bundleRestoreDetails(result);
+  if (restored === 0) {
+    toast.error("Couldn't restore that backup", details ? { description: details } : undefined);
+    return;
+  }
+  toast.success(`Restored ${formatProjectCount(restored)}`, details ? { description: details } : undefined);
 }
 
 // -- Flow ---------------------------------------------------------------------
@@ -198,6 +238,7 @@ export {
   projectFileSummary,
   replaceProjectFromFile,
   restoreProjectBundle,
+  showBundleRestoreToast,
   importProjectFile,
   importProjectFromInput,
 };

@@ -1,11 +1,12 @@
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
 import { schedulePendingDeletion } from "@/lib/pending-deletions";
 import { buildProjectBundle } from "@/lib/project-bundle";
-import { importProjectFile } from "@/lib/project-import";
+import { type BundleRestore, importProjectFile, showBundleRestoreToast } from "@/lib/project-import";
 import { listProjectIndex, removeProjectData } from "@/lib/project-repository";
 import { loadProjectRecord } from "@/lib/project-storage";
-import { render } from "@/test/render";
+import { allowConsole } from "@/test/console-guard";
 import { seedStoredProject, songTitled, storedProject } from "@/test/projects";
+import { render } from "@/test/render";
 import { Toaster } from "sonner";
 import { describe, expect, it } from "vitest";
 
@@ -22,8 +23,21 @@ function backupOf(...projects: [id: string, title: string, savedAt?: number][]):
   return new File([JSON.stringify(bundle)], "composer-backup-2026-09-27.ttml-projects.json");
 }
 
+function backupWithUnreadable(...projects: [id: string, title: string][]): File {
+  const bundle = buildProjectBundle(
+    projects.map(([id, title]) => ({ id, project: storedProject(songTitled(title)) })),
+    1_759_000_000_000,
+  );
+  const broken = { ...bundle, projects: [...bundle.projects, { nope: true }] };
+  return new File([JSON.stringify(broken)], "composer-backup-2026-09-27.ttml-projects.json");
+}
+
 async function titles(): Promise<string[]> {
   return (await listProjectIndex()).map((entry) => entry.title).toSorted();
+}
+
+function restoreResult(overrides: Partial<BundleRestore> = {}): BundleRestore {
+  return { restored: 0, alreadyInLibrary: 0, unreadable: 0, failed: 0, ...overrides };
 }
 
 // -- Tests --------------------------------------------------------------------
@@ -44,7 +58,7 @@ describe("importProjectFile · backups", () => {
     await importProjectFile(backupOf(["a", "Alpha old"], ["b", "Bravo"]));
     expect(await titles()).toEqual(["Alpha here", "Bravo"]);
     await expect.element(screen.getByText("Restored 1 project")).toBeInTheDocument();
-    await expect.element(screen.getByText("1 already in your library.")).toBeInTheDocument();
+    await expect.element(screen.getByText("1 project already in your library.")).toBeInTheDocument();
   });
 
   it("says when every project is already there", async () => {
@@ -54,6 +68,14 @@ describe("importProjectFile · backups", () => {
     await expect
       .element(screen.getByText("Every project in this backup is already in your library"))
       .toBeInTheDocument();
+  });
+
+  it("mentions unreadable projects alongside a successful restore", async () => {
+    allowConsole(/skipped a project the backup could not read/);
+    const screen = await render(<Toaster />);
+    await importProjectFile(backupWithUnreadable(["a", "Alpha"]));
+    await expect.element(screen.getByText("Restored 1 project")).toBeInTheDocument();
+    await expect.element(screen.getByText("1 project couldn't be read.")).toBeInTheDocument();
   });
 
   describe("regressions", () => {
@@ -77,6 +99,18 @@ describe("importProjectFile · backups", () => {
       expect(entries.map((entry) => entry.title)).toEqual(["Pending"]);
       expect(entries[0]?.id).not.toBe("pending");
     });
+
+    it("regression: a mix of duplicates and unreadable entries never claims every project is already in your library", async () => {
+      allowConsole(/skipped a project the backup could not read/);
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const screen = await render(<Toaster />);
+      await importProjectFile(backupWithUnreadable(["a", "Alpha"]));
+      expect(screen.getByText("Every project in this backup is already in your library").query()).toBeNull();
+      await expect.element(screen.getByText("Couldn't restore that backup")).toBeInTheDocument();
+      await expect
+        .element(screen.getByText("1 project already in your library. 1 project couldn't be read."))
+        .toBeInTheDocument();
+    });
   });
 
   describe("edge cases", () => {
@@ -85,6 +119,37 @@ describe("importProjectFile · backups", () => {
       const empty = new File([JSON.stringify(buildProjectBundle([], 1))], "empty.ttml-projects.json");
       await importProjectFile(empty);
       await expect.element(screen.getByText("Couldn't read any project in that backup")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("showBundleRestoreToast · copy", () => {
+  it("names a failed count alongside a successful restore", async () => {
+    const screen = await render(<Toaster />);
+    showBundleRestoreToast(restoreResult({ restored: 2, failed: 1 }));
+    await expect.element(screen.getByText("Restored 2 projects")).toBeInTheDocument();
+    await expect.element(screen.getByText("1 project couldn't be saved.")).toBeInTheDocument();
+  });
+
+  it("is honest when every project failed to save", async () => {
+    const screen = await render(<Toaster />);
+    showBundleRestoreToast(restoreResult({ failed: 3 }));
+    await expect.element(screen.getByText("Couldn't restore that backup")).toBeInTheDocument();
+    await expect.element(screen.getByText("3 projects couldn't be saved.")).toBeInTheDocument();
+  });
+
+  describe("edge cases", () => {
+    it("mentions every non-zero count when nothing new was restored", async () => {
+      const screen = await render(<Toaster />);
+      showBundleRestoreToast(restoreResult({ alreadyInLibrary: 1, unreadable: 1, failed: 1 }));
+      await expect.element(screen.getByText("Couldn't restore that backup")).toBeInTheDocument();
+      await expect
+        .element(
+          screen.getByText(
+            "1 project already in your library. 1 project couldn't be read. 1 project couldn't be saved.",
+          ),
+        )
+        .toBeInTheDocument();
     });
   });
 });

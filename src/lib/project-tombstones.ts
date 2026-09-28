@@ -31,8 +31,15 @@ function writeTombstone(tx: IDBTransaction, id: string): void {
 function whenProjectWritable(tx: IDBTransaction, abort: AbortTransaction, id: string, write: () => void): void {
   const request = tx.objectStore(APP_STATE_STORE_NAME).get(tombstoneKey(id));
   request.onsuccess = () => {
-    if (request.result === undefined) write();
-    else abort(new ProjectDeletedError(id));
+    if (request.result !== undefined) {
+      abort(new ProjectDeletedError(id));
+      return;
+    }
+    try {
+      write();
+    } catch (error) {
+      abort(error);
+    }
   };
 }
 
