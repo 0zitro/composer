@@ -56,7 +56,12 @@ async function duplicateProject(id: string): Promise<string> {
 }
 
 async function exportProjectFiles(ids: readonly string[]): Promise<void> {
-  for (const id of ids) downloadProjectFile(projectFileFrom(id, await latestRecord(id)));
+  const records = await Promise.allSettled(ids.map((id) => latestRecord(id)));
+  records.forEach((record, index) => {
+    if (record.status === "fulfilled") downloadProjectFile(projectFileFrom(ids[index], record.value));
+  });
+  const failure = records.find((record) => record.status === "rejected");
+  if (failure) throw failure.reason;
 }
 
 function deleteProjectsWithUndo(projects: readonly DeletableProject[]): void {

@@ -51,12 +51,11 @@ async function runSmartCleanup(context: CleanupContext): Promise<CleanupResult> 
     result.removedStemJobs = removed.jobs;
     result.freedBytes += removed.bytes;
   }
-  for (const step of steps) {
-    if (step.kind !== "youtube-audio") continue;
-    const freed = await removeCachedYouTubeAudio(step.projectId, isProjectInUse);
-    if (freed === 0) continue;
-    result.removedYouTubeAudio += 1;
-    result.freedBytes += freed;
+  const audioProjectIds = steps.flatMap((step) => (step.kind === "youtube-audio" ? [step.projectId] : []));
+  if (audioProjectIds.length > 0) {
+    const removed = await removeCachedYouTubeAudio(audioProjectIds, isProjectInUse);
+    result.removedYouTubeAudio = removed.projects;
+    result.freedBytes += removed.bytes;
   }
   return result;
 }

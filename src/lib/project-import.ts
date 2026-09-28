@@ -132,26 +132,19 @@ async function restoreProjectBundle(projects: readonly ProjectFile[], unreadable
   const { unique, duplicates } = dedupeBundleProjects(projects);
   const hidden = hiddenProjectIdsSnapshot();
   const storedIds = new Set((await listProjectIndex()).map((entry) => entry.id));
-  let restored = 0;
-  let alreadyInLibrary = duplicates;
-  let failed = 0;
-  for (const project of unique) {
+  const toRestore = unique.filter((project) => {
     const id = project.projectId;
-    if (id && storedIds.has(id) && !hidden.has(id)) {
-      alreadyInLibrary += 1;
-      continue;
-    }
-    try {
-      await restoreBundledProject(project, hidden);
-    } catch (error) {
-      failed += 1;
-      console.error(LOG_PREFIX, "could not restore a project from the backup", error);
-      reportStorageWriteError(error);
-      continue;
-    }
-    if (id) storedIds.add(id);
-    restored += 1;
+    return !(id && storedIds.has(id) && !hidden.has(id));
+  });
+  const outcomes = await Promise.allSettled(toRestore.map((project) => restoreBundledProject(project, hidden)));
+  const failures = outcomes.flatMap((outcome) => (outcome.status === "rejected" ? [outcome.reason] : []));
+  for (const error of failures) {
+    console.error(LOG_PREFIX, "could not restore a project from the backup", error);
+    reportStorageWriteError(error);
   }
+  const failed = failures.length;
+  const restored = toRestore.length - failed;
+  const alreadyInLibrary = duplicates + unique.length - toRestore.length;
   return { restored, alreadyInLibrary, unreadable, failed };
 }
 

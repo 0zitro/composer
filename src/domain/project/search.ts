@@ -1,5 +1,9 @@
 import type { ProjectIndexEntry } from "@/domain/project/index-entry";
 
+// -- Constants ----------------------------------------------------------------
+
+const FIELD_SEPARATOR = "\n";
+
 // -- Helpers ------------------------------------------------------------------
 
 function searchable(field: string): string {
@@ -14,7 +18,7 @@ function normalizeProjectQuery(query: string): string {
 
 function projectMatchesQuery(entry: ProjectIndexEntry, needle: string): boolean {
   if (needle === "") return true;
-  return [entry.title, entry.album, ...entry.artists].some((field) => searchable(field).includes(needle));
+  return searchable([entry.title, entry.album, ...entry.artists].join(FIELD_SEPARATOR)).includes(needle);
 }
 
 // -- Exports ------------------------------------------------------------------

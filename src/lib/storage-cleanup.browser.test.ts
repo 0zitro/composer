@@ -139,7 +139,8 @@ describe("runSmartCleanup", () => {
       expect((await listStemJobs()).map((job) => job.jobKey)).toEqual([key]);
     });
 
-    it("a project's audio if it starts opening after planning, while another project is still being removed", async () => {
+    it("a project's audio if it starts opening after planning, while the stems are still being removed", async () => {
+      await seedStems("h1");
       await seedYouTube("decoy", 1);
       await seedYouTube("opening", 50);
       let opening: Promise<void> | undefined;
@@ -147,19 +148,22 @@ describe("runSmartCleanup", () => {
         opening = openProject("opening");
       });
       const result = await runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
+      expect(result.removedStemJobs).toBe(1);
       expect(result.removedYouTubeAudio).toBe(1);
       expect(await loadProjectAudio("decoy")).toBeUndefined();
       expect(await loadProjectAudio("opening")).toBeDefined();
       await opening;
     });
 
-    it("a project's audio if it becomes the open project after planning, while another project is still being removed", async () => {
+    it("a project's audio if it becomes the open project after planning, while the stems are still being removed", async () => {
+      await seedStems("h1");
       await seedYouTube("decoy", 1);
       await seedYouTube("switching", 50);
       onFirstMediaRemoved(() => {
         adoptOpenProjectId("switching");
       });
       const result = await runSmartCleanup({ ...EVERYTHING, limitBytes: 0 });
+      expect(result.removedStemJobs).toBe(1);
       expect(result.removedYouTubeAudio).toBe(1);
       expect(await loadProjectAudio("decoy")).toBeUndefined();
       expect(await loadProjectAudio("switching")).toBeDefined();

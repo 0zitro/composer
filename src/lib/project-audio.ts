@@ -97,27 +97,7 @@ async function unindexedAudioBytes(): Promise<number> {
 
 // -- Cache removal ------------------------------------------------------------
 
-async function removeCachedYouTubeAudio(id: string, isInUse: ProjectInUse = NEVER_IN_USE): Promise<number> {
-  let freed = 0;
-  await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
-    const index = tx.objectStore(PROJECT_INDEX_STORE_NAME);
-    const request = index.get(id);
-    request.onsuccess = () => {
-      const entry = request.result as ProjectIndexEntry | undefined;
-      if (!entry || !isCachedYouTubeAudio(entry) || isInUse(id)) return;
-      tx.objectStore(PROJECT_AUDIO_STORE_NAME).delete(id);
-      index.put({ ...entry, storedAudioBytes: 0 }, id);
-      freed = entry.storedAudioBytes;
-    };
-  });
-  if (freed > 0) {
-    notifyProjectIndexChanged();
-    notifyStorageSignal("media-removed");
-  }
-  return freed;
-}
-
-async function clearCachedYouTubeAudio(isInUse: ProjectInUse): Promise<AudioRemoval> {
+async function deleteCachedYouTubeAudio(shouldRemove: ProjectInUse): Promise<AudioRemoval> {
   const removal: AudioRemoval = { projects: 0, bytes: 0 };
   await runTransaction(AUDIO_STORES, "readwrite", (tx) => {
     const audio = tx.objectStore(PROJECT_AUDIO_STORE_NAME);
@@ -127,7 +107,7 @@ async function clearCachedYouTubeAudio(isInUse: ProjectInUse): Promise<AudioRemo
       if (!cursor) return;
       const entry = cursor.value as ProjectIndexEntry;
       const id = String(cursor.key);
-      if (isCachedYouTubeAudio(entry) && !isInUse(id)) {
+      if (isCachedYouTubeAudio(entry) && shouldRemove(id)) {
         audio.delete(id);
         cursor.update({ ...entry, storedAudioBytes: 0 });
         removal.projects += 1;
@@ -141,6 +121,15 @@ async function clearCachedYouTubeAudio(isInUse: ProjectInUse): Promise<AudioRemo
     notifyStorageSignal("media-removed");
   }
   return removal;
+}
+
+function removeCachedYouTubeAudio(ids: readonly string[], isInUse: ProjectInUse = NEVER_IN_USE): Promise<AudioRemoval> {
+  const doomed = new Set(ids);
+  return deleteCachedYouTubeAudio((id) => doomed.has(id) && !isInUse(id));
+}
+
+function clearCachedYouTubeAudio(isInUse: ProjectInUse): Promise<AudioRemoval> {
+  return deleteCachedYouTubeAudio((id) => !isInUse(id));
 }
 
 // -- Exports ------------------------------------------------------------------

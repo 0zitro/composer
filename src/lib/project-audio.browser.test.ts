@@ -48,7 +48,7 @@ describe("removeCachedYouTubeAudio", () => {
     const audio = await seedYouTube("yt");
     const { seen, stop: stopSignals } = recordSignals();
     const { calls, stop: stopIndex } = recordIndexChanges();
-    expect(await removeCachedYouTubeAudio("yt")).toBe(audio.size);
+    expect(await removeCachedYouTubeAudio(["yt"])).toEqual({ projects: 1, bytes: audio.size });
     stopSignals();
     stopIndex();
     expect(await loadProjectAudio("yt")).toBeUndefined();
@@ -57,11 +57,25 @@ describe("removeCachedYouTubeAudio", () => {
     expect(calls()).toBe(1);
   });
 
+  it("removes several projects' audio in one call and reports the total", async () => {
+    const first = await seedYouTube("yt-a");
+    const second = await seedYouTube("yt-b");
+    await seedYouTube("yt-kept");
+    const { calls, stop } = recordIndexChanges();
+    expect(await removeCachedYouTubeAudio(["yt-a", "yt-b"])).toEqual({
+      projects: 2,
+      bytes: first.size + second.size,
+    });
+    stop();
+    expect(calls()).toBe(1);
+    expect(await loadProjectAudio("yt-kept")).toBeDefined();
+  });
+
   it("never removes a local file", async () => {
     await seedLocal("local");
     const { seen, stop: stopSignals } = recordSignals();
     const { calls, stop: stopIndex } = recordIndexChanges();
-    expect(await removeCachedYouTubeAudio("local")).toBe(0);
+    expect(await removeCachedYouTubeAudio(["local"])).toEqual({ projects: 0, bytes: 0 });
     stopSignals();
     stopIndex();
     expect(await loadProjectAudio("local")).toBeDefined();
@@ -72,16 +86,22 @@ describe("removeCachedYouTubeAudio", () => {
   describe("edge cases", () => {
     it("frees nothing when the YouTube audio is not stored", async () => {
       await seedStoredProject("streamed", { project: { audioSource: { kind: "youtube", videoId: "v" } } });
-      expect(await removeCachedYouTubeAudio("streamed")).toBe(0);
+      expect(await removeCachedYouTubeAudio(["streamed"])).toEqual({ projects: 0, bytes: 0 });
+    });
+
+    it("frees nothing for an empty list", async () => {
+      await seedYouTube("untouched");
+      expect(await removeCachedYouTubeAudio([])).toEqual({ projects: 0, bytes: 0 });
+      expect(await loadProjectAudio("untouched")).toBeDefined();
     });
 
     it("frees nothing for an unknown project", async () => {
-      expect(await removeCachedYouTubeAudio("nobody")).toBe(0);
+      expect(await removeCachedYouTubeAudio(["nobody"])).toEqual({ projects: 0, bytes: 0 });
     });
 
     it("never removes audio the guard reports as in use, checked inside the same transaction", async () => {
       await seedYouTube("guarded");
-      expect(await removeCachedYouTubeAudio("guarded", () => true)).toBe(0);
+      expect(await removeCachedYouTubeAudio(["guarded"], () => true)).toEqual({ projects: 0, bytes: 0 });
       expect(await loadProjectAudio("guarded")).toBeDefined();
     });
   });
@@ -90,7 +110,7 @@ describe("removeCachedYouTubeAudio", () => {
     it("regression: removing audio of a project deleted in the meantime never brings its index entry back", async () => {
       await seedYouTube("gone");
       await removeProjectData("gone");
-      expect(await removeCachedYouTubeAudio("gone")).toBe(0);
+      expect(await removeCachedYouTubeAudio(["gone"])).toEqual({ projects: 0, bytes: 0 });
       expect(await loadProjectIndexEntry("gone")).toBeUndefined();
     });
   });

@@ -1,8 +1,8 @@
 import { PROJECT_RECORD_STORE_NAME, deleteFromStore } from "@/lib/persistence-idb";
 import { allowConsole } from "@/test/console-guard";
 import { LocationProbe } from "@/test/location-probe";
-import { render } from "@/test/render";
 import { seedStoredProject, songTitled } from "@/test/projects";
+import { render } from "@/test/render";
 import { LibraryScreen } from "@/views/library/library-screen";
 import { Toaster } from "sonner";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -95,6 +95,16 @@ describe("LibraryScreen · failures", () => {
       await screen.getByRole("button", { name: "Export" }).click();
       await expect.element(screen.getByText("Couldn't export those projects")).toBeInTheDocument();
       expect(downloads).toEqual([expect.stringMatching(/^Alpha-/)]);
+    });
+
+    it("still exports the later files when an earlier one in a bulk export fails", async () => {
+      const screen = await renderLibrary();
+      await loseRecord("alpha");
+      await screen.getByRole("checkbox", { name: "Select Alpha" }).click();
+      await screen.getByRole("checkbox", { name: "Select Bravo" }).click();
+      await screen.getByRole("button", { name: "Export" }).click();
+      await expect.element(screen.getByText("Couldn't export those projects")).toBeInTheDocument();
+      expect(downloads).toEqual([expect.stringMatching(/^Bravo-/)]);
     });
   });
 });
