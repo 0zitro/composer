@@ -1,11 +1,13 @@
 import { listStemJobs, putStem } from "@/audio/separation/stem-store";
 import { deleteAllProjects, restoreOpenProject } from "@/lib/open-project";
 import { openProjectIdSnapshot } from "@/lib/open-project-session";
+import { hiddenProjectIdsSnapshot, schedulePendingDeletion } from "@/lib/pending-deletions";
 import { debouncedSave, flushPendingSave } from "@/lib/persistence-debounce";
 import { listProjectIndex } from "@/lib/project-repository";
 import { currentSaveInput } from "@/lib/project-snapshot";
 import { isProjectDeleted } from "@/lib/project-tombstones";
 import { useProjectStore } from "@/stores/project";
+import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile } from "@/test/audio-fixtures";
 import { createLine } from "@/test/factories";
 import { seedStoredProject, songTitled } from "@/test/projects";
@@ -36,6 +38,35 @@ describe("deleteAllProjects", () => {
       const entries = await listProjectIndex();
       expect(entries).toHaveLength(1);
       expect(entries[0]?.id).not.toBe("a");
+      expect(await isProjectDeleted("a")).toBe(true);
+    });
+
+    it("regression: a new project's first save that is still in flight does not come back after the clear", async () => {
+      useProjectStore.getState().setLines([createLine({ text: "Brand new" })]);
+      debouncedSave(currentSaveInput());
+      const firstSave = flushPendingSave();
+      await deleteAllProjects();
+      await firstSave;
+      expect(await listProjectIndex()).toEqual([]);
+    });
+
+    it("regression: an edit saved while the clear runs does not bring a project back", async () => {
+      useSettingsStore.setState({ autoSaveDelay: 60_000 });
+      const deleting = deleteAllProjects();
+      useProjectStore.getState().setLines([createLine({ text: "Typed during the clear" })]);
+      debouncedSave(currentSaveInput());
+      await deleting;
+      await flushPendingSave();
+      expect(await listProjectIndex()).toEqual([]);
+    });
+
+    it("regression: commits a deletion still waiting for its Undo first, so a late Undo changes nothing", async () => {
+      await seedStoredProject("a", { project: songTitled("Alpha") });
+      const deletion = schedulePendingDeletion(["a"]);
+      await deleteAllProjects();
+      deletion.undo();
+      expect(hiddenProjectIdsSnapshot().has("a")).toBe(true);
+      expect(await listProjectIndex()).toEqual([]);
       expect(await isProjectDeleted("a")).toBe(true);
     });
   });

@@ -7,6 +7,7 @@ import {
   forgetOpenProjectId,
   openProjectIdSnapshot,
 } from "@/lib/open-project-session";
+import { commitAllPendingDeletions } from "@/lib/pending-deletions";
 import { buildSavedProject } from "@/lib/persistence";
 import { cancelPendingSave, flushPendingSaveQuietly } from "@/lib/persistence-debounce";
 import { saveProjectAudio } from "@/lib/project-audio";
@@ -28,7 +29,7 @@ import {
 import { buildSaveInput, storedAudioFile } from "@/lib/project-snapshot";
 import { clearAllProjects } from "@/lib/project-storage";
 import { ProjectDeletedError, isProjectDeleted } from "@/lib/project-tombstones";
-import { trackSave } from "@/lib/save-status";
+import { awaitInFlightSaves, trackSave } from "@/lib/save-status";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 
@@ -177,7 +178,10 @@ async function deleteAllProjects(): Promise<void> {
   claimRequest();
   markOpenProjectChanged();
   cancelPendingSave();
+  await commitAllPendingDeletions();
+  await awaitInFlightSaves();
   await clearAllProjects();
+  cancelPendingSave();
   forgetOpenProjectId();
   applyProjectToStores(EMPTY_RESTORE);
 }
