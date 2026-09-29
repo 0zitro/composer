@@ -1,0 +1,40 @@
+schema 1
+component "domain" {
+  cone "src/domain"
+  requires "utils" ">= 1.44.2"
+}
+component "utils" {
+  cone "src/utils"
+  requires "domain" ">= 1.44.2"
+  requires "stores" ">= 1.44.2"
+}
+component "stores" {
+  cone "src/stores"
+  requires "domain" ">= 1.44.2"
+  requires "utils" ">= 1.44.2"
+  requires "views" ">= 1.44.2"
+}
+component "hooks" {
+  cone "src/hooks"
+  requires "domain" ">= 1.44.2"
+  requires "stores" ">= 1.44.2"
+  requires "ui" ">= 1.44.2"
+  requires "utils" ">= 1.44.2"
+  requires "views" ">= 1.44.2"
+}
+component "views" {
+  cone "src/views"
+  requires "domain" ">= 1.44.2"
+  requires "hooks" ">= 1.44.2"
+  requires "stores" ">= 1.44.2"
+  requires "ui" ">= 1.44.2"
+  requires "utils" ">= 1.44.2"
+}
+component "ui" {
+  cone "src/ui"
+  requires "domain" ">= 1.44.2"
+  requires "hooks" ">= 1.44.2"
+  requires "stores" ">= 1.44.2"
+  requires "utils" ">= 1.44.2"
+  requires "views" ">= 1.44.2"
+}
