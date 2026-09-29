@@ -1,5 +1,6 @@
 import { bindingsEqual, getEffectiveBinding } from "@/stores/shortcut-bindings";
 import { type ShortcutBinding, type ShortcutScope, getShortcutsByScope } from "@/stores/shortcut-registry";
+import { keyFromCode } from "@/utils/key-code";
 import { isMac } from "@/utils/platform";
 
 // -- Matching -----------------------------------------------------------------
@@ -14,6 +15,13 @@ function getEventKey(event: KeyboardEvent): string {
     if (event.code.startsWith("Digit") && event.code.length === 6) return event.code.slice(5);
   }
   return event.key.length === 1 ? event.key.toLowerCase() : event.key;
+}
+
+/** Whether the event was typed into a field. A shortcut whose letter is also text must not act on it:
+ *  a word being edited in a time input is not a navigation press. */
+function isTypingTarget(event: KeyboardEvent): boolean {
+  const target = event.target;
+  return target instanceof HTMLElement && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
 }
 
 const MODIFIER_KEYS = new Set([
@@ -45,8 +53,6 @@ const NAMED_BINDABLE_KEYS = new Set([
   "ArrowRight",
 ]);
 const FUNCTION_KEY = /^F([1-9]|1\d|2[0-4])$/;
-const PHYSICAL_LETTER_KEY = /^Key[A-Z]$/;
-const PHYSICAL_DIGIT_KEY = /^Digit[0-9]$/;
 // A physical binding holds `event.code`. The named keys are spelled the same as their codes, except
 // that the space bar's code is `Space` where its key is a space.
 const NAMED_BINDABLE_CODES = new Set([...NAMED_BINDABLE_KEYS, "Space"]);
@@ -56,9 +62,7 @@ function isBindableKey(key: string): boolean {
 }
 
 function isBindableCode(code: string): boolean {
-  return (
-    PHYSICAL_LETTER_KEY.test(code) || PHYSICAL_DIGIT_KEY.test(code) || NAMED_BINDABLE_CODES.has(code) || FUNCTION_KEY.test(code)
-  );
+  return keyFromCode(code) !== null || NAMED_BINDABLE_CODES.has(code) || FUNCTION_KEY.test(code);
 }
 
 function bindingFromKeyboardEvent(
@@ -175,10 +179,8 @@ const RESERVED_BROWSER_SHORTCUTS: ShortcutBinding[] = [
 /** The key as the reserved table above spells it: a physical binding holds a code, not a character. */
 function logicalKeyOf(binding: ShortcutBinding): string {
   if (!binding.physical) return binding.key;
-  const match = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(binding.key);
-  if (match) return (match[1] ?? match[2] ?? "").toLowerCase();
 
-  return binding.key === "Space" ? " " : binding.key;
+  return keyFromCode(binding.key) ?? binding.key;
 }
 
 function isReservedBrowserShortcut(binding: ShortcutBinding): boolean {
@@ -199,4 +201,4 @@ function isReservedBrowserShortcut(binding: ShortcutBinding): boolean {
 
 // -- Exports ------------------------------------------------------------------
 
-export { bindingFromKeyboardEvent, findMatchingShortcut, isReservedBrowserShortcut };
+export { bindingFromKeyboardEvent, findMatchingShortcut, isReservedBrowserShortcut, isTypingTarget };
