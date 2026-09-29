@@ -1,7 +1,7 @@
 import { mainBounds } from "@/domain/line/bounds";
 import type { LyricLine } from "@/domain/line/model";
 import { isLineSynced } from "@/domain/line/predicates";
-import { isSyncableLine, type SyncGranularity } from "@/domain/line/sync-progress";
+import { isSyncableLine, lastWordSlot, type SyncGranularity } from "@/domain/line/sync-progress";
 import { splitIntoWords } from "@/utils/sync-helpers";
 
 // -- Types --------------------------------------------------------------------
@@ -56,7 +56,7 @@ function clampCursor(lines: readonly LyricLine[], stored: SyncCursor, granularit
   }
   const line = lines[lineIndex];
   if (!line || granularity === "line") return { lineIndex, wordIndex: 0 };
-  return { lineIndex, wordIndex: Math.max(0, Math.min(stored.wordIndex, line.words?.length ?? 0)) };
+  return { lineIndex, wordIndex: Math.max(0, Math.min(stored.wordIndex, lastWordSlot(line))) };
 }
 
 // Undo can remove timing behind the stored cursor; pull it back so the next tap fills the hole.

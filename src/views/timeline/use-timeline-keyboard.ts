@@ -15,7 +15,7 @@ import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { showGroupActionToast } from "@/utils/group-toast";
 import { MOD_KEY } from "@/utils/platform";
-import { findMatchingShortcut } from "@/utils/shortcut-matcher";
+import { findMatchingShortcut, isTypingTarget } from "@/utils/shortcut-matcher";
 import { setBgWordBoundary } from "@/utils/timing/bg-word-timing";
 import { setWordBoundary } from "@/utils/timing/word-timing";
 import { handleWordChangeWithDivergenceCheck } from "@/utils/word-divergence-flow";
@@ -169,8 +169,7 @@ function useTimelineKeyboard(
     const handleKeyDown = (e: KeyboardEvent) => {
       if (useProjectStore.getState().activeTab !== "timeline") return;
       if (isAnyModalOpen()) return;
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      if (isTypingTarget(e)) return;
 
       if (e.code === "KeyZ" && (e.metaKey || e.ctrlKey) && !e.repeat) {
         e.preventDefault();

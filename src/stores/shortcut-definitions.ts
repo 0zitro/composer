@@ -2,6 +2,12 @@
 
 interface ShortcutBinding {
   key: string;
+  /**
+   * Match `event.code` — the physical key — rather than `event.key`, which is the character the active
+   * layout produces. A spatial cluster (WASD and the like) is positional, so it must keep working on a
+   * layout where that letter sits elsewhere; `key` then names a code, as in `KeyW`, `Digit1`, `Space`.
+   */
+  physical?: true;
   shift?: boolean;
   alt?: boolean;
   ctrl?: boolean;
@@ -117,6 +123,37 @@ const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     scope: "sync",
     description: "Toggle original / transliteration text",
     defaultBinding: { key: "l" },
+  },
+  // The caret cluster is positional: WASD must move the caret on a layout where those letters sit
+  // elsewhere, so the four match the physical key rather than the character it produces. None of
+  // them touches audio -- the arrows keep doing that.
+  {
+    id: "sync.previousWord",
+    scope: "sync",
+    description: "Move the caret to the previous word",
+    defaultBinding: { key: "KeyA", physical: true },
+    repeatable: true,
+  },
+  {
+    id: "sync.nextWord",
+    scope: "sync",
+    description: "Move the caret to the next word",
+    defaultBinding: { key: "KeyD", physical: true },
+    repeatable: true,
+  },
+  {
+    id: "sync.previousLine",
+    scope: "sync",
+    description: "Move the caret to the line above",
+    defaultBinding: { key: "KeyW", physical: true },
+    repeatable: true,
+  },
+  {
+    id: "sync.nextLine",
+    scope: "sync",
+    description: "Move the caret to the line below",
+    defaultBinding: { key: "KeyS", physical: true },
+    repeatable: true,
   },
   {
     id: "timeline.toggleFollow",

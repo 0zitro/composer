@@ -4,6 +4,7 @@ import {
   isLineTimed,
   isSyncableLine,
   isSyncComplete,
+  lastWordSlot,
   syncProgress,
   wordSlotCount,
 } from "@/domain/line/sync-progress";
@@ -86,5 +87,28 @@ describe("isSyncComplete", () => {
   it("is false with no syncable lines", () => {
     expect(isSyncComplete([])).toBe(false);
     expect(isSyncComplete([createLine({ text: "" })])).toBe(false);
+  });
+});
+
+describe("lastWordSlot", () => {
+  it("is the last word of a fully timed line", () => {
+    expect(lastWordSlot(createLine({ text: "a b c", words: [word("a ", 1, 2), word("b ", 2, 3), word("c", 3, 4)] }))).toBe(2);
+  });
+
+  it("is the frontier a partially timed line would write next", () => {
+    expect(lastWordSlot(createLine({ text: "a b c", words: [word("a ", 1, 2), word("b ", 2, 3)] }))).toBe(2);
+  });
+
+  it("is the first slot of a line with nothing timed", () => {
+    expect(lastWordSlot(createLine({ text: "a b" }))).toBe(0);
+  });
+
+  it("is zero for a line whose text has no words", () => {
+    expect(lastWordSlot(createLine({ text: "" }))).toBe(0);
+  });
+
+  it("holds a line whose timings outnumber its words to the words it has", () => {
+    // A text edit can leave more timings than the text spells; the caret addresses the text.
+    expect(lastWordSlot(createLine({ text: "a", words: [word("a", 1, 2), word("b", 2, 3)] }))).toBe(0);
   });
 });

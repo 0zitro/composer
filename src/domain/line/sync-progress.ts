@@ -36,6 +36,17 @@ function isLineFullyTimed(line: LyricLine): boolean {
   return slots > 0 && timedWordCount(line) === slots;
 }
 
+/**
+ * The last word slot of a line: the highest index the caret can rest on there.
+ *
+ * A line is addressed by the words it has timed, plus the frontier — the next untimed word, the slot a
+ * tap writes — and by nothing beyond that. A slot the line cannot take is one the resolver pulls the
+ * caret out of on the next render, and a slot past the last word is one no word stands on.
+ */
+function lastWordSlot(line: LyricLine): number {
+  return Math.min(timedWordCount(line), Math.max(0, wordSlotCount(line) - 1));
+}
+
 // -- Aggregates ---------------------------------------------------------------
 
 function syncProgress(lines: readonly LyricLine[], granularity: SyncGranularity): SyncProgress {
@@ -57,5 +68,13 @@ function isSyncComplete(lines: readonly LyricLine[]): boolean {
 
 // -- Exports ------------------------------------------------------------------
 
-export { isLineFullyTimed, isLineTimed, isSyncableLine, isSyncComplete, syncProgress, wordSlotCount };
+export {
+  isLineFullyTimed,
+  isLineTimed,
+  isSyncableLine,
+  isSyncComplete,
+  lastWordSlot,
+  syncProgress,
+  wordSlotCount,
+};
 export type { SyncGranularity };

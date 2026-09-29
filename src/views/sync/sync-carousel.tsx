@@ -102,6 +102,7 @@ const WordGranularityLine: React.FC<WordGranularityLineProps> = ({
     return (
       <m.span
         key={`${line.id}-${widx}`}
+        data-sync-word={widx}
         animate={{ color, scale: isCurrentHeld ? 0.95 : 1 }}
         transition={syncCarouselTransition}
         className="relative inline-flex items-center justify-center origin-center"
@@ -148,6 +149,7 @@ const SyncCarousel: React.FC<SyncCarouselProps> = ({
           return (
             <m.div
               key={line.id}
+              data-sync-line={line.id}
               initial={{ opacity, scale }}
               animate={{ opacity, scale }}
               transition={syncCarouselTransition}

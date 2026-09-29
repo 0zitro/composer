@@ -130,4 +130,56 @@ describe("WordRenderer", () => {
     );
     await expect.element(screen.getByTitle("Jump to this word")).toBeInTheDocument();
   });
+
+  // -- The box spatial navigation measures -------------------------------------
+
+  it("marks the word with its index", async () => {
+    const screen = await render(
+      <WordRenderer
+        lineId="test-line"
+        word="hello"
+        idx={4}
+        timing={{ text: "hello", begin: 1, end: 2 }}
+        allWords={undefined}
+        handlers={{}}
+        editMode
+      />,
+    );
+    const marked = screen.container.querySelector('[data-sync-word="4"]');
+    expect(marked?.textContent).toContain("hello");
+  });
+
+  it("marks a background word apart, so navigation does not read it", async () => {
+    const screen = await render(
+      <WordRenderer
+        lineId="test-line"
+        word="(echo)"
+        idx={1}
+        timing={{ text: "(echo)", begin: 1, end: 2 }}
+        allWords={undefined}
+        handlers={{}}
+        isBackground
+        editMode
+      />,
+    );
+    expect(screen.container.querySelector("[data-sync-word]")).toBeNull();
+    expect(screen.container.querySelector('[data-sync-bg-word="1"]')).not.toBeNull();
+  });
+
+  it("marks the word's text rather than the wrapper that also holds the nudge inputs", async () => {
+    const screen = await render(
+      <WordRenderer
+        lineId="test-line"
+        word="hello"
+        idx={0}
+        timing={{ text: "hello", begin: 1, end: 2 }}
+        allWords={undefined}
+        handlers={{}}
+        editMode={false}
+      />,
+    );
+    const marked = screen.container.querySelector("[data-sync-word]");
+    expect(marked?.textContent).toBe("hello");
+    expect(marked?.querySelector("input")).toBeNull();
+  });
 });

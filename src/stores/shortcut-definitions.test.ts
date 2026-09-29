@@ -7,6 +7,7 @@ import { SHORTCUT_DEFINITIONS, type ShortcutBinding, type ShortcutScope } from "
 const bindingSignature = (binding: ShortcutBinding): string =>
   [
     binding.key,
+    binding.physical ? "physical" : "",
     binding.shift ? "shift" : "",
     binding.alt ? "alt" : "",
     binding.ctrl ? "ctrl" : "",
