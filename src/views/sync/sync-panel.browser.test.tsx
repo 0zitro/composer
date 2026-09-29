@@ -359,3 +359,120 @@ describe("bg-init derivation", () => {
     expect(useProjectStore.getState().lines[0].text).toBe("a");
   });
 });
+
+// -- Caret navigation ---------------------------------------------------------
+//
+// The footer's `Last Synced` reading is `previousSlot` over the cursor, so it names where the caret
+// stands: nothing before the first word's slot, then the word the caret has just left, then the
+// previous line's last word once the caret is on the line below.
+
+describe("SyncPanel caret navigation", () => {
+  function loadTwoWordsPerLine(): void {
+    useAudioStore.setState({
+      source: { type: "file", file: createAudioFile() },
+      duration: 10,
+      currentTime: 5,
+      isPlaying: false,
+    });
+    useProjectStore.setState({
+      activeTab: "sync",
+      granularity: "word",
+      lines: [
+        createLine({
+          id: "l0",
+          text: "alpha beta",
+          words: [createWord({ text: "alpha ", begin: 1, end: 2 }), createWord({ text: "beta", begin: 2, end: 3 })],
+        }),
+        createLine({
+          id: "l1",
+          text: "gamma delta",
+          words: [createWord({ text: "gamma ", begin: 4, end: 5 }), createWord({ text: "delta", begin: 5, end: 6 })],
+        }),
+      ],
+    });
+  }
+
+  function press(key: string, code: string, init: KeyboardEventInit = {}): void {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key, code, bubbles: true, ...init }));
+  }
+
+  /** The footer's reading of the previous slot, or `null` where the caret has none behind it. The
+   *  value is read beside its own label, because the same times appear in the per-word inputs. */
+  function lastSynced(container: HTMLElement): string | null {
+    const label = Array.from(container.querySelectorAll("div")).find((el) => el.textContent === "Last Synced");
+
+    return label?.nextElementSibling?.textContent ?? null;
+  }
+
+  it("moves the caret a word with D, and leaves the audio where it stands", async () => {
+    loadTwoWordsPerLine();
+    const screen = await render(<SyncPanel />);
+    expect(lastSynced(screen.container)).toBeNull();
+
+    press("d", "KeyD");
+
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:01.000");
+    expect(useAudioStore.getState().currentTime).toBe(5);
+    expect(useAudioStore.getState().isPlaying).toBe(false);
+  });
+
+  it("rolls forward onto the next line's first word", async () => {
+    loadTwoWordsPerLine();
+    const screen = await render(<SyncPanel />);
+
+    press("d", "KeyD");
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:01.000");
+
+    press("d", "KeyD");
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:02.000");
+  });
+
+  it("honours the auto-repeat of a held key", async () => {
+    loadTwoWordsPerLine();
+    const screen = await render(<SyncPanel />);
+
+    press("d", "KeyD");
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:01.000");
+
+    // A repeat is a key event of its own, so the caret has committed the first move before it lands.
+    press("d", "KeyD", { repeat: true });
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:02.000");
+  });
+
+  it("moves the caret a line with S", async () => {
+    loadTwoWordsPerLine();
+    const screen = await render(<SyncPanel />);
+
+    press("s", "KeyS");
+
+    // Any word of the second line leaves the first line's last word behind the caret.
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:02.000");
+  });
+
+  it("makes A and D walk lines at line granularity", async () => {
+    loadTwoWordsPerLine();
+    useProjectStore.setState({ granularity: "line" });
+    const screen = await render(<SyncPanel />);
+
+    // At line granularity the previous slot is the line before, so its own start is what stands behind
+    // the caret once it has moved down.
+    press("d", "KeyD");
+    await expect.poll(() => lastSynced(screen.container)).toBe("0:01.000");
+
+    press("a", "KeyA");
+    await expect.poll(() => lastSynced(screen.container)).toBeNull();
+  });
+
+  it("leaves a key typed into a field alone", async () => {
+    loadTwoWordsPerLine();
+    const screen = await render(<SyncPanel />);
+    const field = document.createElement("input");
+    document.body.append(field);
+
+    field.dispatchEvent(new KeyboardEvent("keydown", { key: "d", code: "KeyD", bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(lastSynced(screen.container)).toBeNull();
+    field.remove();
+  });
+});
