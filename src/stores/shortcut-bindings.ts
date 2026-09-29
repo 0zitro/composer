@@ -7,6 +7,7 @@ import {
   SHORTCUT_REGISTRY,
   getShortcutById,
 } from "@/stores/shortcut-registry";
+import { keyFromCode } from "@/utils/key-code";
 
 // -- Types --------------------------------------------------------------------
 
@@ -87,10 +88,10 @@ function assignBinding(id: string, binding: ShortcutBinding): void {
 function readableKey(binding: ShortcutBinding): string {
   if (!binding.physical) return binding.key === " " ? "Space" : binding.key;
 
-  const match = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(binding.key);
-  if (match) return match[1] ?? match[2] ?? binding.key;
+  const key = keyFromCode(binding.key);
+  if (key === " ") return "Space";
 
-  return binding.key === "Space" ? "Space" : binding.key;
+  return key ?? binding.key;
 }
 
 function bindingToKeys(binding: ShortcutBinding): string[] {
