@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assignBinding,
+  bindingsEqual,
   bindingToKeys,
   detectConflicts,
   getEffectiveBinding,
@@ -70,5 +71,30 @@ describe("bindingToKeys", () => {
     it("returns no keys for an unbound shortcut", () => {
       expect(bindingToKeys({ key: "" })).toEqual([]);
     });
+  });
+
+  describe("physical bindings", () => {
+    it("reads a code as the key it spells", () => {
+      expect(bindingToKeys({ key: "KeyW", physical: true })).toEqual(["W"]);
+      expect(bindingToKeys({ key: "Digit1", physical: true })).toEqual(["1"]);
+      expect(bindingToKeys({ key: "KeyW", physical: true, shift: true })).toEqual(["Shift", "W"]);
+    });
+
+    it("reads the space bar's code as Space", () => {
+      expect(bindingToKeys({ key: "Space", physical: true })).toEqual(["Space"]);
+    });
+  });
+});
+
+describe("bindingsEqual", () => {
+  it("tells a physical binding from the logical key it spells", () => {
+    expect(bindingsEqual({ key: "KeyW", physical: true }, { key: "w" })).toBe(false);
+    expect(bindingsEqual({ key: "KeyW", physical: true }, { key: "KeyW", physical: true })).toBe(true);
+  });
+
+  it("does not report a physical binding as conflicting with the logical key it spells", () => {
+    // `timeline.togglePreview` is `p`: a physical `KeyP` matches a position, the logical `p` a
+    // character, and the two differ on any layout that puts those in different places.
+    expect(detectConflicts("timeline.toggleFollow", { key: "KeyP", physical: true })).toEqual([]);
   });
 });
