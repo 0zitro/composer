@@ -1,8 +1,8 @@
+import { render } from "@/test/render";
+import { PasteSection } from "@/views/lyrics-import-modal/paste-section";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
-import { PasteSection } from "@/views/lyrics-import-modal/paste-section";
-import { render } from "@/test/render";
 
 // -- Helpers ------------------------------------------------------------------
 
@@ -36,6 +36,12 @@ describe("PasteSection", () => {
     const textarea = screen.getByLabelText("Lyrics text");
     await expect.element(textarea).toBeInTheDocument();
     expect((textarea.element() as HTMLTextAreaElement).placeholder).toMatch(/Paste lyrics here/i);
+  });
+
+  it("says a whole lyrics file can be pasted, naming every supported format", async () => {
+    const screen = await render(<Controlled />);
+    const placeholder = (screen.getByLabelText("Lyrics text").element() as HTMLTextAreaElement).placeholder;
+    expect(placeholder).toContain("A whole .txt, .lrc, .srt, .ttml, .qrc file works too.");
   });
 
   it("autofocuses the textarea on mount", async () => {

@@ -1,6 +1,4 @@
-import { useMemo } from "react";
-import { toast } from "sonner";
-import { isSupportedLyricsFile, UNSUPPORTED_LYRICS_FILE_MESSAGE } from "@/domain/lyrics-file/supported-formats";
+import { UNSUPPORTED_LYRICS_FILE_MESSAGE, isSupportedLyricsFile } from "@/domain/lyrics-file/supported-formats";
 import type { LyricsSearchResult } from "@/domain/lyrics-search/result";
 import { filledMetadata } from "@/domain/project/imported-metadata";
 import type { ProjectMetadata } from "@/domain/project/metadata";
@@ -10,15 +8,17 @@ import { useImportModalStore } from "@/stores/import-modal-store";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { extractBackgroundVocals } from "@/utils/background-vocal-extraction";
-import { parseLyricsFile } from "@/utils/lyrics-parsers";
+import { PARSERS, parseLyricsFile } from "@/utils/lyrics-parsers";
 import {
   type ParseIssue,
   type ParseResult,
   skippedLineCount,
   skippedLinesMessage,
 } from "@/utils/lyrics-parsers/shared";
-import { distributeLinesTiming } from "@/views/timeline/utils";
 import { pluralize } from "@/utils/pluralize";
+import { distributeLinesTiming } from "@/views/timeline/utils";
+import { useMemo } from "react";
+import { toast } from "sonner";
 
 // -- Types --------------------------------------------------------------------
 
@@ -39,6 +39,8 @@ interface ImportContext {
   onResult?: (parsed: ParseResult, source: ImportSourceInfo) => void;
 }
 
+type EditedTtmlApply = { status: "applied"; skipped: number } | { status: "unreadable"; message: string };
+
 interface ImportLyricsInput {
   filename: string;
   content: string;
@@ -46,6 +48,8 @@ interface ImportLyricsInput {
 }
 
 // -- Copy ---------------------------------------------------------------------
+
+const EDITED_TTML = "the edited TTML";
 
 function noLyricsMessage(filename: string, issues: ParseIssue[]): string {
   if (issues.some((issue) => issue.reason === "empty-document")) return `Could not read ${filename}.`;
@@ -118,6 +122,18 @@ async function importLyrics(input: ImportLyricsInput, ctx: ImportContext): Promi
   return true;
 }
 
+function applyEditedTtml(content: string, audioDuration: number): EditedTtmlApply {
+  const parsed = PARSERS.ttml(content, audioDuration > 0 ? audioDuration : undefined);
+  if (parsed.lines.length === 0) return { status: "unreadable", message: noLyricsMessage(EDITED_TTML, parsed.issues) };
+  useProjectStore.getState().replaceLyricsWithHistory({
+    lines: parsed.lines,
+    groups: parsed.groups ?? [],
+    agents: parsed.agents,
+    metadata: filledMetadata(parsed.metadata),
+  });
+  return { status: "applied", skipped: skippedLineCount(parsed.issues) };
+}
+
 async function importLyricsFile(file: File, ctx: ImportContext): Promise<boolean> {
   // accept= is only a dialog hint: an OS picker set to all files or a drop reaches here.
   if (!isSupportedLyricsFile(file.name)) {
@@ -159,5 +175,5 @@ function useImportContext(sourceLabel: string): ImportContext {
 
 // -- Exports ------------------------------------------------------------------
 
-export { importLyrics, importLyricsFile, useImportContext };
+export { applyEditedTtml, importLyrics, importLyricsFile, useImportContext };
 export type { ImportContext, ImportSourceInfo };

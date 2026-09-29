@@ -7,11 +7,13 @@ import { useThemeStore } from "@/stores/theme";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Scroll } from "@/ui/scroll";
+import { skippedLinesMessage } from "@/utils/lyrics-parsers/shared";
 import { validateTtml } from "@/utils/lyrics-parsers/validate-ttml";
 import { codeHighlightThemeFor } from "@/utils/theme/code-highlight-theme";
 import { MetadataPanel } from "@/views/export/metadata-panel";
 import { TtmlConflictNotice } from "@/views/export/ttml-conflict-notice";
 import { TtmlEditor } from "@/views/export/ttml-editor";
+import { applyEditedTtml } from "@/views/lyrics-import-modal/import-lyrics";
 import {
   IconCheck,
   IconCopy,
@@ -26,12 +28,35 @@ import { Highlight } from "prism-react-renderer";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
+// -- Constants ----------------------------------------------------------------
+
+const APPLIED_MESSAGE = "Updated the lyrics from the TTML";
+const EXPORT_ONLY_MESSAGE = "The lyrics stay as they were, so your edits only change the exported file.";
+
+// -- Helpers ------------------------------------------------------------------
+
+function applyEditsToProject(
+  content: string,
+  duration: number,
+  setEditState: ReturnType<typeof useExportTtml>["setEditState"],
+): void {
+  const result = applyEditedTtml(content, duration);
+  if (result.status === "unreadable") {
+    toast.error(`${result.message} ${EXPORT_ONLY_MESSAGE}`);
+    return;
+  }
+  setEditState(null);
+  toast(APPLIED_MESSAGE);
+  if (result.skipped > 0) toast.warning(skippedLinesMessage(result.skipped));
+}
+
 // -- Components ---------------------------------------------------------------
 
 const ExportPanel: React.FC = () => {
   const scheme = useThemeStore((s) => s.getThemeById(s.activeThemeId)?.scheme ?? "dark");
   const {
     content: exportContent,
+    duration,
     editedContent,
     generatedContent: generatedTtml,
     hasConflict,
@@ -73,8 +98,9 @@ const ExportPanel: React.FC = () => {
   }, [exportContent, isExportable]);
 
   const handleEdit = useCallback(() => {
+    if (isEditing && editedContent !== null && !hasConflict) applyEditsToProject(editedContent, duration, setEditState);
     setIsEditing((prev) => !prev);
-  }, []);
+  }, [isEditing, editedContent, hasConflict, duration, setEditState]);
 
   const handleRegenerate = useCallback(() => {
     setEditState(null);

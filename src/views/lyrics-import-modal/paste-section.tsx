@@ -1,7 +1,8 @@
-import { IconArrowLeft, IconUpload } from "@tabler/icons-react";
+import { LYRICS_FORMATS_PROSE } from "@/domain/lyrics-file/supported-formats";
 import { Button } from "@/ui/button";
 import { cn } from "@/utils/cn";
 import { pluralize } from "@/utils/pluralize";
+import { IconArrowLeft, IconUpload } from "@tabler/icons-react";
 
 // -- Types --------------------------------------------------------------------
 
@@ -26,6 +27,10 @@ function countNonEmptyLines(text: string): number {
   }
   return count;
 }
+
+// -- Constants ----------------------------------------------------------------
+
+const PASTE_PLACEHOLDER = `Paste lyrics here, one line per line. Use | to split syllables. A whole ${LYRICS_FORMATS_PROSE} file works too.`;
 
 // -- Component ----------------------------------------------------------------
 
@@ -54,7 +59,7 @@ const PasteSection: React.FC<PasteSectionProps> = ({ value, onChange, onSwitchTo
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.stopPropagation()}
-        placeholder="Paste lyrics here, one line per line. Use | to split syllables"
+        placeholder={PASTE_PLACEHOLDER}
         spellCheck={false}
         className={cn(
           "h-32 p-3 text-sm rounded-lg resize-none",

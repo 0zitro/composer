@@ -211,8 +211,10 @@ describe("ExportPanel · edits across regeneration", () => {
     await screen.getByRole("button", { name: /Edit$/ }).click();
     const textarea = screen.getByRole("textbox", { name: "Edit TTML content" });
     const generated = (textarea.element() as HTMLTextAreaElement).value;
-    await textarea.fill(generated.replace("Hello", "HELLO EDITED"));
     await screen.getByRole("button", { name: "Done" }).click();
+    useProjectStore.setState({
+      ttmlEditState: { source: generated, content: generated.replace("Hello", "HELLO EDITED") },
+    });
 
     useProjectStore.setState((state) => ({
       lines: state.lines.map((line, index) => (index === 0 ? { ...line, text: "HELLO REGEN" } : line)),
@@ -488,6 +490,67 @@ describe("ExportPanel · project file keeps the hand-edited TTML with its projec
       await expect.poll(() => useProjectStore.getState().ttmlEditState).toEqual(SAVED_EDIT);
       expect(useProjectStore.getState().isDirty).toBe(false);
       expect(useProjectStore.getState().hasUnexportedImport).toBe(true);
+    });
+  });
+});
+
+describe("ExportPanel · Done applies TTML edits to the project", () => {
+  async function renderEditing() {
+    useProjectStore.setState({
+      lines: [createLine({ text: "Hello", begin: 0, end: 1 }), createLine({ text: "World", begin: 1, end: 2 })],
+      ttmlEditState: null,
+    });
+    const screen = await render(
+      <>
+        <ExportPanel />
+        <Toaster />
+      </>,
+    );
+    await screen.getByRole("button", { name: /Edit$/ }).click();
+    const textarea = screen.getByRole("textbox", { name: "Edit TTML content" });
+    return { screen, textarea, generated: (textarea.element() as HTMLTextAreaElement).value };
+  }
+
+  it("updates the lyrics every tab reads and drops the export override", async () => {
+    const { screen, textarea, generated } = await renderEditing();
+    await textarea.fill(generated.replace(">Hello<", ">Hello there<"));
+    await screen.getByRole("button", { name: "Done" }).click();
+    await expect
+      .poll(() => useProjectStore.getState().lines.map((line) => line.text))
+      .toEqual(["Hello there", "World"]);
+    expect(useProjectStore.getState().ttmlEditState).toBeNull();
+    await expect.element(screen.getByText("Updated the lyrics from the TTML")).toBeInTheDocument();
+  });
+
+  it("takes a whole pasted TTML document", async () => {
+    const { screen, textarea } = await renderEditing();
+    await textarea.fill(
+      '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:05.000" end="00:06.000">Pasted in</p></div></body></tt>',
+    );
+    await screen.getByRole("button", { name: "Done" }).click();
+    await expect.poll(() => useProjectStore.getState().lines.map((line) => line.text)).toEqual(["Pasted in"]);
+    expect(useProjectStore.getState().lines[0]?.begin).toBe(5);
+  });
+
+  describe("error paths", () => {
+    it("keeps the edit as the export only, and says so, when the TTML has no readable lines", async () => {
+      const { screen, textarea } = await renderEditing();
+      await textarea.fill("CUSTOM EDITED CONTENT");
+      await screen.getByRole("button", { name: "Done" }).click();
+      await expect.element(screen.getByText(/only change the exported file/)).toBeInTheDocument();
+      expect(useProjectStore.getState().lines.map((line) => line.text)).toEqual(["Hello", "World"]);
+      expect(useProjectStore.getState().ttmlEditState?.content).toBe("CUSTOM EDITED CONTENT");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("changes nothing when Done is clicked without an edit", async () => {
+      const { screen } = await renderEditing();
+      const before = useProjectStore.getState().lines;
+      await screen.getByRole("button", { name: "Done" }).click();
+      await expect.element(screen.getByRole("button", { name: /Edit$/ })).toBeInTheDocument();
+      expect(useProjectStore.getState().lines).toBe(before);
+      expect(screen.getByText("Updated the lyrics from the TTML").elements()).toHaveLength(0);
     });
   });
 });
