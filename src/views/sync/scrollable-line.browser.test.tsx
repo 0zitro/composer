@@ -59,4 +59,32 @@ describe("ScrollableLine", () => {
     expect(clickedWord).toBe(1);
     expect(lineClicks).toBe(0);
   });
+
+  // -- The markers spatial navigation reads -------------------------------------
+
+  it("marks the line with its id", async () => {
+    const screen = await render(<ScrollableLine {...BASE_PROPS} />);
+    expect(screen.container.querySelector('[data-sync-line="test-line"]')).not.toBeNull();
+  });
+
+  it("marks each word with its index", async () => {
+    const screen = await render(
+      <ScrollableLine
+        {...BASE_PROPS}
+        words={[
+          { text: "Hello ", begin: 0, end: 0.5 },
+          { text: "world", begin: 0.5, end: 1 },
+        ]}
+      />,
+    );
+    expect(screen.container.querySelector('[data-sync-word="0"]')?.textContent).toContain("Hello");
+    expect(screen.container.querySelector('[data-sync-word="1"]')?.textContent).toContain("world");
+  });
+
+  it("marks a background word apart from the line's own words", async () => {
+    const screen = await render(<ScrollableLine {...BASE_PROPS} backgroundText="(echo)" />);
+    const background = screen.container.querySelector('[data-sync-bg-word="0"]');
+    expect(background?.textContent).toContain("(echo)");
+    expect(background?.closest("[data-sync-word]")).toBeNull();
+  });
 });

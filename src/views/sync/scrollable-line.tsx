@@ -265,6 +265,7 @@ const ScrollableLineInner: React.FC<ScrollableLineProps> = ({
       ref={lineRef}
       role="button"
       tabIndex={-1}
+      data-sync-line={lineId}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === "Enter") onClick();
