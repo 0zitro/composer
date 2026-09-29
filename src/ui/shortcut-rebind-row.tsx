@@ -2,6 +2,7 @@ import {
   assignBinding,
   bindingToKeys,
   detectConflicts,
+  getEffectiveBinding,
   getEffectiveKeysArray,
   useShortcutBindingsStore,
 } from "@/stores/shortcut-bindings";
@@ -86,7 +87,11 @@ const ShortcutRebindRow: React.FC<ShortcutRebindRowProps> = ({ definition }) => 
         return;
       }
 
-      const newBinding = bindingFromKeyboardEvent(e);
+      // Rebinding keeps the kind it replaces: a physical shortcut is recorded from the code, so the
+      // keyboard layout stays out of it, while a logical one keeps matching the character produced.
+      const newBinding = bindingFromKeyboardEvent(e, {
+        physical: !!getEffectiveBinding(definition.id).physical,
+      });
       if (!newBinding) return;
 
       if (isReservedBrowserShortcut(newBinding)) {
