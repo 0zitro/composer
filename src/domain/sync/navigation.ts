@@ -1,5 +1,5 @@
 import type { LyricLine } from "@/domain/line/model";
-import { type SyncGranularity, timedWordCount, wordSlotCount } from "@/domain/line/sync-progress";
+import { type SyncGranularity, lastWordSlot } from "@/domain/line/sync-progress";
 import { nextSyncableLineIndex, prevSyncableLineIndex, type SyncCursor } from "@/domain/sync/cursor";
 
 // -- Types --------------------------------------------------------------------
@@ -13,22 +13,8 @@ type WordPicker = (lineIndex: number) => number | null;
 
 // -- Slots --------------------------------------------------------------------
 
-/**
- * The last word slot of a line the sync cursor can rest on.
- *
- * The resolver holds a stored word index within the words a line has timed, so a slot past that
- * count is not reachable: the next render would pull the caret back to the frontier. The frontier --
- * the next untimed word -- is the slot a tap writes, and it is reachable.
- *
- * A line whose text is a single word has no slot after it, and a line with no words at all has only
- * slot zero, which is also what the resolver leaves.
- */
-function lastReachableWordIndex(line: LyricLine): number {
-  return Math.min(timedWordCount(line), Math.max(0, wordSlotCount(line) - 1));
-}
-
 function clampWordIndex(line: LyricLine, wordIndex: number): number {
-  return Math.max(0, Math.min(wordIndex, lastReachableWordIndex(line)));
+  return Math.max(0, Math.min(wordIndex, lastWordSlot(line)));
 }
 
 // -- Steps --------------------------------------------------------------------
@@ -50,7 +36,7 @@ function stepByWord(lines: readonly LyricLine[], cursor: SyncCursor, step: Step)
   if (!line) return null;
 
   const wordIndex = cursor.wordIndex + step;
-  if (wordIndex >= 0 && wordIndex <= lastReachableWordIndex(line)) {
+  if (wordIndex >= 0 && wordIndex <= lastWordSlot(line)) {
     return { lineIndex: cursor.lineIndex, wordIndex };
   }
 
@@ -58,7 +44,7 @@ function stepByWord(lines: readonly LyricLine[], cursor: SyncCursor, step: Step)
   const neighbour = lines[lineIndex];
   if (!neighbour) return null;
 
-  return { lineIndex, wordIndex: step < 0 ? lastReachableWordIndex(neighbour) : 0 };
+  return { lineIndex, wordIndex: step < 0 ? lastWordSlot(neighbour) : 0 };
 }
 
 /**
