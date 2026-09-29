@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { SHORTCUT_DEFINITIONS } from "@/stores/shortcut-definitions";
-import { bindingFromKeyboardEvent, findMatchingShortcut, isReservedBrowserShortcut } from "@/utils/shortcut-matcher";
+import {
+  bindingFromKeyboardEvent,
+  findMatchingShortcut,
+  isReservedBrowserShortcut,
+  isTypingTarget,
+} from "@/utils/shortcut-matcher";
 
 function keydown(init: KeyboardEventInit): KeyboardEvent {
   return new KeyboardEvent("keydown", { bubbles: true, ...init });
@@ -37,13 +42,16 @@ describe("findMatchingShortcut", () => {
   });
 
   describe("invariants", () => {
-    it("only nudges and jumps opt into auto-repeat", () => {
+    it("only keys that move something opt into auto-repeat", () => {
       const repeatable = SHORTCUT_DEFINITIONS.filter((definition) => definition.repeatable).map(({ id }) => id);
       for (const id of repeatable) {
-        expect(id).toMatch(/\.(nudge|jump)/);
+        expect(id).toMatch(/\.(nudge|jump|previous|next)/);
       }
       expect(repeatable).toContain("timeline.nudgeLeft");
       expect(repeatable).toContain("timeline.nudgeRight");
+      expect(repeatable).toEqual(
+        expect.arrayContaining(["sync.previousWord", "sync.nextWord", "sync.previousLine", "sync.nextLine"]),
+      );
     });
   });
 });
@@ -136,29 +144,31 @@ describe("physical bindings", () => {
   });
 
   describe("matching", () => {
+    // These use a physical key no default binding sits on, so the shift between a position and the
+    // character it produces is the only thing under test.
     it("matches the same physical key on a layout that spells it differently", () => {
       useShortcutBindingsStore.setState({
-        overrides: { "sync.toggleTextVariant": { key: "KeyW", physical: true } },
+        overrides: { "sync.toggleTextVariant": { key: "KeyQ", physical: true } },
       });
 
-      // The AZERTY arrangement puts the key where QWERTY's W sits at `z`, and its code is still KeyW.
-      expect(findMatchingShortcut(keydown({ key: "z", code: "KeyW" }), "sync")).toBe("sync.toggleTextVariant");
+      // The AZERTY arrangement puts the key where QWERTY's Q sits at `a`, and its code is still KeyQ.
+      expect(findMatchingShortcut(keydown({ key: "a", code: "KeyQ" }), "sync")).toBe("sync.toggleTextVariant");
     });
 
     it("leaves a logical binding matching the character, not the position", () => {
-      useShortcutBindingsStore.setState({ overrides: { "sync.toggleTextVariant": { key: "w" } } });
+      useShortcutBindingsStore.setState({ overrides: { "sync.toggleTextVariant": { key: "q" } } });
 
-      expect(findMatchingShortcut(keydown({ key: "z", code: "KeyW" }), "sync")).toBeNull();
-      expect(findMatchingShortcut(keydown({ key: "w", code: "KeyZ" }), "sync")).toBe("sync.toggleTextVariant");
+      expect(findMatchingShortcut(keydown({ key: "a", code: "KeyQ" }), "sync")).toBeNull();
+      expect(findMatchingShortcut(keydown({ key: "q", code: "KeyA" }), "sync")).toBe("sync.toggleTextVariant");
     });
 
     it("still honours the modifiers", () => {
       useShortcutBindingsStore.setState({
-        overrides: { "sync.toggleTextVariant": { key: "KeyW", physical: true, shift: true } },
+        overrides: { "sync.toggleTextVariant": { key: "KeyQ", physical: true, shift: true } },
       });
 
-      expect(findMatchingShortcut(keydown({ key: "w", code: "KeyW" }), "sync")).toBeNull();
-      expect(findMatchingShortcut(keydown({ key: "w", code: "KeyW", shiftKey: true }), "sync")).toBe(
+      expect(findMatchingShortcut(keydown({ key: "q", code: "KeyQ" }), "sync")).toBeNull();
+      expect(findMatchingShortcut(keydown({ key: "q", code: "KeyQ", shiftKey: true }), "sync")).toBe(
         "sync.toggleTextVariant",
       );
     });
@@ -172,5 +182,39 @@ describe("physical bindings", () => {
     it("leaves a bare physical key alone", () => {
       expect(isReservedBrowserShortcut({ key: "KeyW", physical: true })).toBe(false);
     });
+  });
+});
+
+describe("isTypingTarget", () => {
+  function typedInto(element: HTMLElement): boolean {
+    let seen = false;
+    element.addEventListener("keydown", (event) => {
+      seen = isTypingTarget(event);
+    });
+    element.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+
+    return seen;
+  }
+
+  it.each(["input", "textarea"])("sees a key typed into a %s", (tag) => {
+    expect(typedInto(document.createElement(tag))).toBe(true);
+  });
+
+  it("leaves a key pressed while a button holds focus alone", () => {
+    expect(typedInto(document.createElement("button"))).toBe(false);
+  });
+
+  it("sees a key pressed on the page itself as typed into nothing", () => {
+    let seen = true;
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        seen = isTypingTarget(event);
+      },
+      { once: true },
+    );
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+
+    expect(seen).toBe(false);
   });
 });
