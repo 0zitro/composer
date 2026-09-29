@@ -45,20 +45,35 @@ const NAMED_BINDABLE_KEYS = new Set([
   "ArrowRight",
 ]);
 const FUNCTION_KEY = /^F([1-9]|1\d|2[0-4])$/;
+const PHYSICAL_LETTER_KEY = /^Key[A-Z]$/;
+const PHYSICAL_DIGIT_KEY = /^Digit[0-9]$/;
+// A physical binding holds `event.code`. The named keys are spelled the same as their codes, except
+// that the space bar's code is `Space` where its key is a space.
+const NAMED_BINDABLE_CODES = new Set([...NAMED_BINDABLE_KEYS, "Space"]);
 
 function isBindableKey(key: string): boolean {
   return key.length === 1 || NAMED_BINDABLE_KEYS.has(key) || FUNCTION_KEY.test(key);
 }
 
-function bindingFromKeyboardEvent(event: KeyboardEvent): ShortcutBinding | null {
+function isBindableCode(code: string): boolean {
+  return (
+    PHYSICAL_LETTER_KEY.test(code) || PHYSICAL_DIGIT_KEY.test(code) || NAMED_BINDABLE_CODES.has(code) || FUNCTION_KEY.test(code)
+  );
+}
+
+function bindingFromKeyboardEvent(
+  event: KeyboardEvent,
+  { physical = false }: { physical?: boolean } = {},
+): ShortcutBinding | null {
   if (MODIFIER_KEYS.has(event.key)) return null;
-  const key = getEventKey(event);
-  if (!isBindableKey(key)) return null;
+  const key = physical ? event.code : getEventKey(event);
+  if (physical ? !isBindableCode(key) : !isBindableKey(key)) return null;
   const modPressed = isMac ? event.metaKey : event.ctrlKey;
   const rawCtrl = isMac && event.ctrlKey;
   const rawMeta = !isMac && event.metaKey;
   return {
     key,
+    ...(physical && { physical: true as const }),
     ...(event.shiftKey && { shift: true }),
     ...(event.altKey && { alt: true }),
     ...(modPressed && { mod: true }),
@@ -67,12 +82,18 @@ function bindingFromKeyboardEvent(event: KeyboardEvent): ShortcutBinding | null 
   };
 }
 
-function matchesBinding(event: KeyboardEvent, binding: ShortcutBinding): boolean {
+function matchesKey(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   if (binding.key === "") return false;
+  if (binding.physical) return event.code === binding.key;
+
   const eventKey = getEventKey(event);
   const bindingKey = binding.key.length === 1 ? binding.key.toLowerCase() : binding.key;
 
-  if (eventKey !== bindingKey) return false;
+  return eventKey === bindingKey;
+}
+
+function matchesBinding(event: KeyboardEvent, binding: ShortcutBinding): boolean {
+  if (!matchesKey(event, binding)) return false;
   if (!!binding.shift !== event.shiftKey) return false;
   if (!!binding.alt !== event.altKey) return false;
 
@@ -151,8 +172,29 @@ const RESERVED_BROWSER_SHORTCUTS: ShortcutBinding[] = [
   { key: "0", mod: true },
 ];
 
+/** The key as the reserved table above spells it: a physical binding holds a code, not a character. */
+function logicalKeyOf(binding: ShortcutBinding): string {
+  if (!binding.physical) return binding.key;
+  const match = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(binding.key);
+  if (match) return (match[1] ?? match[2] ?? "").toLowerCase();
+
+  return binding.key === "Space" ? " " : binding.key;
+}
+
 function isReservedBrowserShortcut(binding: ShortcutBinding): boolean {
-  return RESERVED_BROWSER_SHORTCUTS.some((reserved) => bindingsEqual(reserved, binding));
+  // A physical binding is still the browser's shortcut when its code spells that key: Ctrl+W closes
+  // the tab whether it was recorded as `w` or as `KeyW`, so the comparison drops the distinction.
+  const { shift, alt, ctrl, meta, mod } = binding;
+  const asLogical: ShortcutBinding = {
+    key: logicalKeyOf(binding),
+    ...(shift && { shift: true }),
+    ...(alt && { alt: true }),
+    ...(ctrl && { ctrl: true }),
+    ...(meta && { meta: true }),
+    ...(mod && { mod: true }),
+  };
+
+  return RESERVED_BROWSER_SHORTCUTS.some((reserved) => bindingsEqual(reserved, asLogical));
 }
 
 // -- Exports ------------------------------------------------------------------
