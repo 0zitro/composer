@@ -2,7 +2,7 @@ lock {
   schema 1
 }
 component "domain" {
-  commit "86415e5f029d5761bce8d79b0f5685311bbbcdfc"
+  commit "3bc84d5f075623cb247a35faae8b64de3e10f2be"
 }
 component "utils" {
   commit "2aa38130ea88bf9acf6a924a8e692634fa14756b"
@@ -14,7 +14,7 @@ component "hooks" {
   commit "fdc05009208ebc6bae2e2cb63b9993dd5a41a849"
 }
 component "views" {
-  commit "c1909b4bbe881b902664f77a1d44d92dc361a6a8"
+  commit "9233ff8ec4b2ff42221c20247f2faeb93b44865f"
 }
 component "ui" {
   commit "18227b38c11cf4dec8e7a3f13d3d5453135c3ee1"

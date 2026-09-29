@@ -22,17 +22,14 @@ function lineElement(container: HTMLElement, lineId: string): HTMLElement | null
  * The boxes of a line's main words, in the order the line reads.
  *
  * The marked elements are the words' own text: a background word carries a marker of its own, and the
- * wrappers that hold the timing inputs carry none, so neither widens a box.
+ * wrappers that hold the timing inputs carry none, so neither widens a box. A word's own rect already
+ * has the shape the pick reads, so it is handed over as it stands.
  */
 function readWordBoxes(container: HTMLElement, lineId: string): WordBox[] {
   const line = lineElement(container, lineId);
   if (!line) return [];
 
-  return Array.from(line.querySelectorAll<HTMLElement>("[data-sync-word]")).map((word) => {
-    const rect = word.getBoundingClientRect();
-
-    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
-  });
+  return Array.from(line.querySelectorAll<HTMLElement>("[data-sync-word]")).map((word) => word.getBoundingClientRect());
 }
 
 // -- The hook -----------------------------------------------------------------
