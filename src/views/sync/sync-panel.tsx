@@ -3,7 +3,7 @@ import { isLinked } from "@/domain/instance/predicates";
 import { getLanguageDisplayLine } from "@/domain/language/display";
 import { effectiveBounds } from "@/domain/line/bounds";
 import { isSyncComplete, syncProgress } from "@/domain/line/sync-progress";
-import { previousSlot, slotBounds } from "@/domain/sync/cursor";
+import { type SyncCursor, previousSlot, slotBounds } from "@/domain/sync/cursor";
 import { useFrameLoop } from "@/hooks/use-frame-loop";
 import { useSyncHandlers } from "@/hooks/useSyncHandlers";
 import { useAudioStore } from "@/stores/audio";
@@ -12,7 +12,7 @@ import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { EmptyState } from "@/ui/empty-state";
 import { shimmerTransition, shimmerVariants } from "@/utils/animationVariants";
-import { findMatchingShortcut } from "@/utils/shortcut-matcher";
+import { findMatchingShortcut, isTypingTarget } from "@/utils/shortcut-matcher";
 import {
   type SyncState,
   convertLineToWord,
@@ -25,6 +25,7 @@ import { ScrollableLine, type ScrollableLineLinkInfo } from "@/views/sync/scroll
 import { type RippleTarget, SyncCarousel } from "@/views/sync/sync-carousel";
 import { SyncFooter, SyncGestureControls } from "@/views/sync/sync-footer";
 import { SyncHeader } from "@/views/sync/sync-header";
+import { useSyncNavigation } from "@/views/sync/use-sync-navigation";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { m } from "motion/react";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
@@ -123,6 +124,21 @@ const SyncPanel: React.FC = () => {
     granularity,
     setShowPulse,
     setIsPlaying,
+  });
+
+  // A caret step is a placement the operator made, so `jumpedToPosition` keeps the resolver from
+  // walking it back into the gap a tap left open. It writes the cursor only: a step never seeks and
+  // never touches playback.
+  const setCaretPosition = useCallback(
+    (position: SyncCursor) => setSyncState((prev) => ({ ...prev, position, jumpedToPosition: true })),
+    [setSyncState],
+  );
+  const navigation = useSyncNavigation({
+    lines,
+    cursor,
+    granularity,
+    containerRef: scrollContainerRef,
+    setPosition: setCaretPosition,
   });
 
   const stopSessionAtSongEnd = useEffectEvent(() => {
@@ -277,6 +293,8 @@ const SyncPanel: React.FC = () => {
   const performKeyboardTap = useEffectEvent(performTap);
   const beginKeyboardHold = useEffectEvent(beginHold);
   const endKeyboardHold = useEffectEvent(endHold);
+  const stepCaretByWord = useEffectEvent(navigation.stepWord);
+  const stepCaretByLine = useEffectEvent(navigation.stepLine);
 
   const handleTapPointerDown = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -324,6 +342,7 @@ const SyncPanel: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeTab !== "sync") return;
       if (isAnyModalOpen()) return;
+      if (isTypingTarget(e)) return;
 
       if (e.code === "KeyZ" && (e.metaKey || e.ctrlKey) && !e.repeat) {
         e.preventDefault();
@@ -360,6 +379,22 @@ const SyncPanel: React.FC = () => {
         case "sync.toggleTextVariant":
           e.preventDefault();
           if (hasTransliteration) toggleTextVariant();
+          break;
+        case "sync.previousWord":
+          e.preventDefault();
+          stepCaretByWord(-1);
+          break;
+        case "sync.nextWord":
+          e.preventDefault();
+          stepCaretByWord(1);
+          break;
+        case "sync.previousLine":
+          e.preventDefault();
+          stepCaretByLine(-1);
+          break;
+        case "sync.nextLine":
+          e.preventDefault();
+          stepCaretByLine(1);
           break;
       }
     };

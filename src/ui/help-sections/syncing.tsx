@@ -72,6 +72,22 @@ const SyncSection: React.FC = () => (
       </p>
     </HelpTopic>
 
+    <HelpTopic title="Moving the caret">
+      <p className={PROSE}>
+        To redo a word, seek until just before it starts, then move the caret onto that word and sync it again. The
+        caret travels word by word with <InlineKeyBadge keys={getEffectiveKeysArray("sync.previousWord")} /> and{" "}
+        <InlineKeyBadge keys={getEffectiveKeysArray("sync.nextWord")} />, and line by line with{" "}
+        <InlineKeyBadge keys={getEffectiveKeysArray("sync.previousLine")} /> and{" "}
+        <InlineKeyBadge keys={getEffectiveKeysArray("sync.nextLine")} />.
+      </p>
+      <p className={`${PROSE} mt-2`}>
+        A line step lands on the word standing directly above or below the caret, so holding the key walks down the
+        words as they are laid out on the page rather than down a column of the text. These keys move the caret and
+        nothing else: they never seek, and never start or stop playback, which leaves the arrow keys free for nudging
+        the last synced word.
+      </p>
+    </HelpTopic>
+
     <HelpTopic title="Line-level vs word-level">
       <p className={PROSE}>
         By default, you're syncing word by word. The granularity toggle at the top lets you switch to line-level if you
