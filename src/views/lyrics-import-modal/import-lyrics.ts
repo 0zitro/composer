@@ -41,6 +41,8 @@ interface ImportContext {
 
 type EditedTtmlApply = { status: "applied"; skipped: number } | { status: "unreadable"; message: string };
 
+type TtmlLyricsRead = { status: "readable"; parsed: ParseResult } | { status: "unreadable"; message: string };
+
 interface ImportLyricsInput {
   filename: string;
   content: string;
@@ -122,16 +124,26 @@ async function importLyrics(input: ImportLyricsInput, ctx: ImportContext): Promi
   return true;
 }
 
-function applyEditedTtml(content: string, audioDuration: number): EditedTtmlApply {
+function readTtmlLyrics(content: string, sourceName: string, audioDuration: number): TtmlLyricsRead {
   const parsed = PARSERS.ttml(content, audioDuration > 0 ? audioDuration : undefined);
-  if (parsed.lines.length === 0) return { status: "unreadable", message: noLyricsMessage(EDITED_TTML, parsed.issues) };
+  if (parsed.lines.length === 0) return { status: "unreadable", message: noLyricsMessage(sourceName, parsed.issues) };
+  return { status: "readable", parsed };
+}
+
+function replaceWithTtmlLyrics(parsed: ParseResult): number {
   useProjectStore.getState().replaceLyricsWithHistory({
     lines: parsed.lines,
     groups: parsed.groups ?? [],
     agents: parsed.agents,
     metadata: filledMetadata(parsed.metadata),
   });
-  return { status: "applied", skipped: skippedLineCount(parsed.issues) };
+  return skippedLineCount(parsed.issues);
+}
+
+function applyEditedTtml(content: string, audioDuration: number): EditedTtmlApply {
+  const read = readTtmlLyrics(content, EDITED_TTML, audioDuration);
+  if (read.status === "unreadable") return read;
+  return { status: "applied", skipped: replaceWithTtmlLyrics(read.parsed) };
 }
 
 async function importLyricsFile(file: File, ctx: ImportContext): Promise<boolean> {
@@ -175,5 +187,5 @@ function useImportContext(sourceLabel: string): ImportContext {
 
 // -- Exports ------------------------------------------------------------------
 
-export { applyEditedTtml, importLyrics, importLyricsFile, useImportContext };
+export { applyEditedTtml, importLyrics, importLyricsFile, readTtmlLyrics, replaceWithTtmlLyrics, useImportContext };
 export type { ImportContext, ImportSourceInfo };

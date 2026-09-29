@@ -76,6 +76,20 @@ describe("NewSongPanel", () => {
     expect(useProjectStore.getState().metadata.title).toBe("Imported");
   });
 
+  it("opens a TTML document saved under a project file name as a new project", async () => {
+    const screen = await renderPanel();
+    const ttml =
+      '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><head><metadata><ttm:title>Cynic</ttm:title></metadata></head><body><div><p begin="0:01.458" end="0:03.324"><span begin="0:01.458" end="0:02.000">今</span><span begin="0:02.000" end="0:03.324">は</span></p></div></body></tt>';
+    await userEvent.upload(
+      screen.getByLabelText("Import project file"),
+      new File([ttml], "Cynic.ttml-project.ttml-project.json", { type: "application/json" }),
+    );
+    await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent("/editor");
+    expect(useProjectStore.getState().metadata.title).toBe("Cynic");
+    expect(useProjectStore.getState().lines[0]?.words?.map((word) => word.text)).toEqual(["今", "は"]);
+    expect(openProjectIdSnapshot()).toBeDefined();
+  });
+
   it("imports a project file dropped or chosen in the drop zone and opens it", async () => {
     const screen = await renderPanel();
     const file = new File(
