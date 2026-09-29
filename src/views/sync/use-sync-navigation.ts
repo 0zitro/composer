@@ -112,4 +112,3 @@ function useSyncNavigation({
 // -- Exports ------------------------------------------------------------------
 
 export { useSyncNavigation };
-export type { SyncNavigation };
