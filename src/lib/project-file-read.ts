@@ -17,6 +17,11 @@ const SUPPORTED_VERSIONS: readonly number[] = Array.from({ length: SAVED_PROJECT
 
 // -- Parsing ------------------------------------------------------------------
 
+function isProjectFileName(name: string): boolean {
+  const lowered = name.toLowerCase();
+  return PROJECT_FILE_ACCEPT.split(",").some((extension) => lowered.endsWith(extension));
+}
+
 function isProjectFilePayload(value: unknown): value is SavedProject & { projectId?: unknown } {
   return (
     typeof value === "object" && value !== null && !Array.isArray(value) && "lines" in value && "metadata" in value
@@ -73,5 +78,5 @@ function savedProjectFromFile(file: ProjectFile, savedAt: number): SavedProject 
 
 // -- Exports ------------------------------------------------------------------
 
-export { PROJECT_FILE_ACCEPT, readProjectFile, readProjectFileContents, savedProjectFromFile };
+export { PROJECT_FILE_ACCEPT, isProjectFileName, readProjectFile, readProjectFileContents, savedProjectFromFile };
 export type { ProjectFileContents };

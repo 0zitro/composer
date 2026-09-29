@@ -40,7 +40,7 @@ describe("NewSongPanel", () => {
     await seedStoredProject("a", { open: true, project: songTitled("Alpha") });
     await restoreOpenProject();
     const screen = await renderPanel();
-    await userEvent.upload(screen.getByLabelText("Upload audio file"), createAudioFile("bravo.wav"));
+    await userEvent.upload(screen.getByLabelText("Upload audio or project file"), createAudioFile("bravo.wav"));
     await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent("/editor");
     expect(openProjectIdSnapshot()).not.toBe("a");
     await expect
@@ -76,7 +76,37 @@ describe("NewSongPanel", () => {
     expect(useProjectStore.getState().metadata.title).toBe("Imported");
   });
 
+  it("imports a project file dropped or chosen in the drop zone and opens it", async () => {
+    const screen = await renderPanel();
+    const file = new File(
+      [JSON.stringify(projectFileFrom(undefined, storedProject(songTitled("Dropped in"))))],
+      "dropped.ttml-project.json",
+      { type: "application/json" },
+    );
+    await userEvent.upload(screen.getByLabelText("Upload audio or project file"), file);
+    await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent("/editor");
+    expect(useProjectStore.getState().metadata.title).toBe("Dropped in");
+    expect(useAudioStore.getState().source).toBeNull();
+  });
+
+  it("says the drop zone takes project files too", async () => {
+    const screen = await renderPanel();
+    await expect.element(screen.getByText("Drop an audio or project file, or choose one")).toBeInTheDocument();
+  });
+
   describe("edge cases", () => {
+    it("says so and stays on the library when a project file dropped in the drop zone is broken", async () => {
+      allowConsole(/could not read the project file/);
+      const screen = await renderPanel();
+      await userEvent.upload(
+        screen.getByLabelText("Upload audio or project file"),
+        new File(["not json"], "broken.json", { type: "application/json" }),
+      );
+      await expect.element(screen.getByText("Couldn't read that project file")).toBeInTheDocument();
+      await expect.element(screen.getByRole("status", { name: "Current path" })).toHaveTextContent(/^\/$/);
+      expect(openProjectIdSnapshot()).toBeUndefined();
+    });
+
     it("keeps Create disabled until something is typed", async () => {
       const screen = await renderPanel();
       await expect.element(screen.getByRole("button", { name: "Create" })).toBeDisabled();
@@ -124,7 +154,7 @@ describe("NewSongPanel", () => {
     it("ignores a non-audio file and starts nothing", async () => {
       const screen = await renderPanel();
       await userEvent.upload(
-        screen.getByLabelText("Upload audio file"),
+        screen.getByLabelText("Upload audio or project file"),
         new File(["hello"], "notes.txt", { type: "text/plain" }),
       );
       expect(openProjectIdSnapshot()).toBeUndefined();

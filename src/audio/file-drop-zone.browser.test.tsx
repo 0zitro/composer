@@ -166,4 +166,75 @@ describe("FileDropZone ids", () => {
     expect(label?.classList.contains("p-3.5")).toBe(true);
     expect(label?.classList.contains("p-8")).toBe(false);
   });
+
+  describe("project files", () => {
+    function projectFile(name = "song.ttml-project.json") {
+      return new File(["{}"], name, { type: "application/json" });
+    }
+
+    it("hands a dropped project file to onProjectFileDrop, not onFileDrop", async () => {
+      const audio: File[] = [];
+      const projects: File[] = [];
+      const screen = await render(
+        <FileDropZone accept="audio/*" onFileDrop={(f) => audio.push(f)} onProjectFileDrop={(f) => projects.push(f)}>
+          <span>Drop</span>
+        </FileDropZone>,
+      );
+      const label = screen.container.querySelector("label") as HTMLLabelElement;
+      dispatchDragEvent(label, "drop", [projectFile()]);
+      expect(projects.map((f) => f.name)).toEqual(["song.ttml-project.json"]);
+      expect(audio).toEqual([]);
+    });
+
+    it("still hands audio to onFileDrop when it also takes project files", async () => {
+      const audio: File[] = [];
+      const screen = await render(
+        <FileDropZone accept="audio/*" onFileDrop={(f) => audio.push(f)} onProjectFileDrop={() => {}}>
+          <span>Drop</span>
+        </FileDropZone>,
+      );
+      const label = screen.container.querySelector("label") as HTMLLabelElement;
+      dispatchDragEvent(label, "drop", [createAudioFile("song.wav")]);
+      expect(audio.map((f) => f.name)).toEqual(["song.wav"]);
+    });
+
+    it("lets the picker choose project files and names them in the input label", async () => {
+      const screen = await render(
+        <FileDropZone accept="audio/*" onFileDrop={() => {}} onProjectFileDrop={() => {}}>
+          <span>Drop</span>
+        </FileDropZone>,
+      );
+      const input = screen.getByLabelText("Upload audio or project file").element() as HTMLInputElement;
+      expect(input.accept).toBe("audio/*,.json,.ttml-project.json");
+    });
+
+    it("names project files in the message for a file it cannot use", async () => {
+      const screen = await render(
+        <>
+          <FileDropZone accept="audio/*" onFileDrop={() => {}} onProjectFileDrop={() => {}}>
+            <span>Drop</span>
+          </FileDropZone>
+          <Toaster />
+        </>,
+      );
+      const label = screen.container.querySelector("label") as HTMLLabelElement;
+      dispatchDragEvent(label, "drop", [new File(["plain text"], "lyrics.txt", { type: "text/plain" })]);
+      await expect
+        .element(screen.getByText("Unsupported file type. Use .mp3 .wav .m4a .ogg .flac or a project file (.json)"))
+        .toBeInTheDocument();
+    });
+
+    it("regression: an audio-only drop zone still rejects a project file", async () => {
+      const audio: File[] = [];
+      const screen = await render(
+        <FileDropZone accept="audio/*" onFileDrop={(f) => audio.push(f)}>
+          <span>Drop</span>
+        </FileDropZone>,
+      );
+      const label = screen.container.querySelector("label") as HTMLLabelElement;
+      dispatchDragEvent(label, "drop", [projectFile()]);
+      expect(audio).toEqual([]);
+      expect(screen.getByLabelText("Upload audio file").elements()).toHaveLength(1);
+    });
+  });
 });

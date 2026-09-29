@@ -1,3 +1,4 @@
+import { PROJECT_FILE_ACCEPT, isProjectFileName } from "@/lib/project-file-read";
 import { cn } from "@/utils/cn";
 import { useCallback, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 interface FileDropZoneProps {
   accept: string;
   onFileDrop: (file: File) => void;
+  onProjectFileDrop?: (file: File) => void;
   children?: React.ReactNode;
   className?: string;
 }
@@ -31,23 +33,28 @@ const ACCEPTED_AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "ogg", "flac"];
 const ACCEPTED_AUDIO_EXTENSION_REGEX = new RegExp(String.raw`\.(${ACCEPTED_AUDIO_EXTENSIONS.join("|")})$`, "i");
 
 const UNSUPPORTED_AUDIO_FILE_MESSAGE = `Unsupported file type. Use ${ACCEPTED_AUDIO_EXTENSIONS.map((ext) => `.${ext}`).join(" ")}`;
+const UNSUPPORTED_FILE_MESSAGE = `${UNSUPPORTED_AUDIO_FILE_MESSAGE} or a project file (.json)`;
 
 // -- Component ----------------------------------------------------------------
 
-const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, children, className }) => {
+const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, onProjectFileDrop, children, className }) => {
   const [isDragging, setIsDragging] = useState(false);
   const inputId = useId();
   const dragCountRef = useRef(0);
 
   const handleFile = useCallback(
     (file: File) => {
+      if (onProjectFileDrop && isProjectFileName(file.name)) {
+        onProjectFileDrop(file);
+        return;
+      }
       if (ACCEPTED_AUDIO_TYPES.includes(file.type) || ACCEPTED_AUDIO_EXTENSION_REGEX.test(file.name)) {
         onFileDrop(file);
         return;
       }
-      toast.error(UNSUPPORTED_AUDIO_FILE_MESSAGE);
+      toast.error(onProjectFileDrop ? UNSUPPORTED_FILE_MESSAGE : UNSUPPORTED_AUDIO_FILE_MESSAGE);
     },
-    [onFileDrop],
+    [onFileDrop, onProjectFileDrop],
   );
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -116,8 +123,8 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({ accept, onFileDrop, childre
       <input
         id={inputId}
         type="file"
-        aria-label="Upload audio file"
-        accept={accept}
+        aria-label={onProjectFileDrop ? "Upload audio or project file" : "Upload audio file"}
+        accept={onProjectFileDrop ? `${accept},${PROJECT_FILE_ACCEPT}` : accept}
         onChange={handleInputChange}
         className="sr-only"
       />

@@ -1,7 +1,7 @@
 import { FileDropZone } from "@/audio/file-drop-zone";
 import { useStartNewSong } from "@/hooks/useStartNewSong";
 import { PROJECT_FILE_ACCEPT } from "@/lib/project-file-read";
-import { importProjectFromInput } from "@/lib/project-import";
+import { importProjectFile, importProjectFromInput } from "@/lib/project-import";
 import { Button } from "@/ui/button";
 import { IconField } from "@/ui/icon-field";
 import { EDITOR_PATH } from "@/utils/app-routes";
@@ -99,6 +99,10 @@ const NewSongPanel: React.FC<NewSongPanelProps> = ({ className }) => {
     if (await importProjectFromInput(event)) navigate(EDITOR_PATH);
   };
 
+  const handleProjectFileDrop = async (file: File) => {
+    if (await importProjectFile(file)) navigate(EDITOR_PATH);
+  };
+
   return (
     <section aria-labelledby={headingId} className={cn(PANEL_STYLES, className)}>
       <div className="flex items-center justify-between -my-1 -mr-3">
@@ -118,12 +122,17 @@ const NewSongPanel: React.FC<NewSongPanelProps> = ({ className }) => {
           className="hidden"
         />
       </div>
-      <FileDropZone accept="audio/*" onFileDrop={startWithFile} className={DROP_STYLES}>
+      <FileDropZone
+        accept="audio/*"
+        onFileDrop={startWithFile}
+        onProjectFileDrop={(file) => void handleProjectFileDrop(file)}
+        className={DROP_STYLES}
+      >
         <span className="grid place-items-center size-10 shrink-0 rounded-lg bg-composer-button text-composer-accent-text">
           <IconUpload aria-hidden="true" className="size-5" />
         </span>
         <span className="flex flex-col text-left">
-          <strong className="text-sm font-medium">Drop an audio file, or choose one</strong>
+          <strong className="text-sm font-medium">Drop an audio or project file, or choose one</strong>
           <small className="text-xs text-composer-text-muted">MP3, FLAC, WAV, M4A, OGG</small>
         </span>
       </FileDropZone>
