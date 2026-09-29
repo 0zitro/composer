@@ -84,3 +84,21 @@ describe("SyncCarousel ripple", () => {
     expect(secondRipple).not.toBe(firstRipple);
   });
 });
+
+describe("SyncCarousel markers", () => {
+  it("marks every line it renders with that line's id", async () => {
+    const screen = await render(<SyncCarousel lines={LINES} lineIndex={1} wordIndex={0} granularity="line" />);
+    expect(screen.container.querySelector('[data-sync-line="l2"]')).not.toBeNull();
+  });
+
+  it("marks each word of a word-granularity line with its index", async () => {
+    const screen = await render(<SyncCarousel lines={WORD_LINES} lineIndex={0} wordIndex={1} granularity="word" />);
+    expect(screen.container.querySelector('[data-sync-word="0"]')?.textContent).toBe("alpha");
+    expect(screen.container.querySelector('[data-sync-word="2"]')?.textContent).toBe("gamma");
+  });
+
+  it("marks no word when the line is synced as a whole", async () => {
+    const screen = await render(<SyncCarousel lines={LINES} lineIndex={0} wordIndex={0} granularity="line" />);
+    expect(screen.container.querySelector("[data-sync-word]")).toBeNull();
+  });
+});

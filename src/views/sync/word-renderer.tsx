@@ -29,16 +29,25 @@ interface WordRendererProps {
 
 // -- Helper -------------------------------------------------------------------
 
-function renderWordContent(word: string, timing: WordTiming | undefined, isBackground: boolean, editMode: boolean) {
+function renderWordContent(
+  idx: number,
+  word: string,
+  timing: WordTiming | undefined,
+  isBackground: boolean,
+  editMode: boolean,
+) {
   const isSynced = !!timing;
   const baseClass = isBackground ? "italic" : "";
   const syncedClass = isBackground ? "text-composer-text-muted/70" : "text-composer-text-muted";
   const unsyncedClass = isBackground ? "text-composer-text-muted/50" : "text-composer-text";
   const activeClass = isBackground ? "text-composer-accent-text/80" : "text-composer-accent-text";
+  // The word's own box, which is what spatial navigation measures. It sits on the element the text
+  // occupies rather than on the wrapper, because the wrapper also holds the nudge inputs below.
+  const wordMark = isBackground ? { "data-sync-bg-word": idx } : { "data-sync-word": idx };
 
   if (editMode && isSynced) {
     return (
-      <span className={`relative inline-block whitespace-pre ${baseClass}`}>
+      <span className={`relative inline-block whitespace-pre ${baseClass}`} {...wordMark}>
         <span className={syncedClass}>{word}</span>
         <span
           className={`absolute inset-0 overflow-hidden ${activeClass}`}
@@ -51,7 +60,11 @@ function renderWordContent(word: string, timing: WordTiming | undefined, isBackg
       </span>
     );
   }
-  return <span className={`whitespace-pre ${baseClass} ${isSynced ? syncedClass : unsyncedClass}`}>{word}</span>;
+  return (
+    <span className={`whitespace-pre ${baseClass} ${isSynced ? syncedClass : unsyncedClass}`} {...wordMark}>
+      {word}
+    </span>
+  );
 }
 
 // -- Component ----------------------------------------------------------------
@@ -89,10 +102,10 @@ const WordRenderer: React.FC<WordRendererProps> = ({
             title={isBackground ? "Jump to this word" : "Re-record from this word"}
             className="appearance-none border-0 bg-transparent p-0 text-left cursor-pointer"
           >
-            {renderWordContent(word, timing, isBackground, editMode)}
+            {renderWordContent(idx, word, timing, isBackground, editMode)}
           </button>
         ) : (
-          renderWordContent(word, timing, isBackground, editMode)
+          renderWordContent(idx, word, timing, isBackground, editMode)
         )}
         {isSynced && timing && timing.end === timing.begin && (
           <Tooltip content="No duration - sync the next word to close this one or increase the end time">
