@@ -10,8 +10,9 @@ interface WordBox {
 
 // -- Selection ----------------------------------------------------------------
 
-function centreY(box: WordBox): number {
-  return (box.top + box.bottom) / 2;
+/** The point a caret step is anchored on, and the point a pick measures from: the box's centre. */
+function boxCentre(box: WordBox): { x: number; y: number } {
+  return { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
 }
 
 /** How far `x` stands outside the box, and `0` where it is inside it. Never negative: a distance. */
@@ -43,7 +44,7 @@ function spatialWordIndex(boxes: readonly WordBox[], anchorX: number, anchorY: n
   let bestHorizontal = Number.POSITIVE_INFINITY;
 
   for (const [index, box] of boxes.entries()) {
-    const vertical = Math.abs(centreY(box) - anchorY);
+    const vertical = Math.abs(boxCentre(box).y - anchorY);
     const horizontal = horizontalGap(box, anchorX);
     if (vertical < bestVertical || (vertical === bestVertical && horizontal < bestHorizontal)) {
       best = index;
@@ -57,5 +58,5 @@ function spatialWordIndex(boxes: readonly WordBox[], anchorX: number, anchorY: n
 
 // -- Exports ------------------------------------------------------------------
 
-export { spatialWordIndex };
+export { boxCentre, spatialWordIndex };
 export type { WordBox };
