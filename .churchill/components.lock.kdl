@@ -2,7 +2,7 @@ lock {
   schema 1
 }
 component "domain" {
-  commit "cb93e2a7d47a63adc1042ce92fe0ceee08e4bf6f"
+  commit "e9dc8cf94d7fe0949ae64e6334e23d07b9f0831d"
 }
 component "utils" {
   commit "0db5ee4705c0d1615b4cc34d38a20d5dfa33fac3"
