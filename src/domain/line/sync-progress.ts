@@ -75,7 +75,6 @@ export {
   isSyncComplete,
   lastWordSlot,
   syncProgress,
-  timedWordCount,
   wordSlotCount,
 };
 export type { SyncGranularity };
