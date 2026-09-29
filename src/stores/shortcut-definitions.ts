@@ -2,6 +2,12 @@
 
 interface ShortcutBinding {
   key: string;
+  /**
+   * Match `event.code` — the physical key — rather than `event.key`, which is the character the active
+   * layout produces. A spatial cluster (WASD and the like) is positional, so it must keep working on a
+   * layout where that letter sits elsewhere; `key` then names a code, as in `KeyW`, `Digit1`, `Space`.
+   */
+  physical?: true;
   shift?: boolean;
   alt?: boolean;
   ctrl?: boolean;

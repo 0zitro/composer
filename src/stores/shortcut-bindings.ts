@@ -52,6 +52,7 @@ function bindingsEqual(a: ShortcutBinding, b: ShortcutBinding): boolean {
   const bKey = b.key.length === 1 ? b.key.toLowerCase() : b.key;
   return (
     aKey === bKey &&
+    !!a.physical === !!b.physical &&
     !!a.shift === !!b.shift &&
     !!a.alt === !!b.alt &&
     !!a.ctrl === !!b.ctrl &&
@@ -82,6 +83,16 @@ function assignBinding(id: string, binding: ShortcutBinding): void {
   useShortcutBindingsStore.setState((state) => ({ overrides: { ...state.overrides, ...unbound, [id]: binding } }));
 }
 
+/** The key as a person reads it: a physical binding holds a code, so its prefix is dropped. */
+function readableKey(binding: ShortcutBinding): string {
+  if (!binding.physical) return binding.key === " " ? "Space" : binding.key;
+
+  const match = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(binding.key);
+  if (match) return match[1] ?? match[2] ?? binding.key;
+
+  return binding.key === "Space" ? "Space" : binding.key;
+}
+
 function bindingToKeys(binding: ShortcutBinding): string[] {
   if (binding.key === "") return [];
   const keys: string[] = [];
@@ -90,7 +101,7 @@ function bindingToKeys(binding: ShortcutBinding): string[] {
   if (binding.ctrl) keys.push("Ctrl");
   if (binding.shift) keys.push("Shift");
   if (binding.alt) keys.push("Alt");
-  const rawKey = binding.key === " " ? "Space" : binding.key;
+  const rawKey = readableKey(binding);
   const displayKey = rawKey.length === 1 ? rawKey.toUpperCase() : rawKey;
   keys.push(displayKey);
   return keys;
